@@ -31,6 +31,21 @@
         <button class="mode-btn" data-mode="particles"><span class="mode-icon"><svg viewBox="0 0 24 24"><circle cx="4" cy="14" r="1.4"/><circle cx="11" cy="5" r="1.4"/><circle cx="20" cy="12" r="1.4"/><circle cx="10" cy="20" r="1.4"/><path d="M5.5 13l4.5-7m2 0 6.5 5.2M18.5 13l-7 6"/></svg></span><span class="mode-title">Particles<small>Részecskék</small></span><span class="keycap">4</span></button>
       </div>
       <div class="sidebar-divider"></div>
+      <section class="ai-panel" aria-label="Intelligens automatikus effektek">
+        <div class="ai-panel-head"><span class="ai-mark">✦</span><span><strong>AI Visual Director</strong><small>Automatikus effektek</small></span><button type="button" id="ai-toggle" class="ai-toggle" role="switch" aria-checked="false" aria-label="Automatikus effektek bekapcsolása"><span class="toggle-dot"></span></button></div>
+        <p class="ai-summary">A zene energiája és ritmusa alapján váltogatja a jeleneteket.</p>
+        <label for="ai-speed" class="ai-caption">Váltási sebesség</label>
+        <select id="ai-speed" class="ai-speed" aria-label="Automatikus effektváltás sebessége">
+          <option value="calm">Nyugodt · kb. 12 mp</option>
+          <option value="balanced" selected>Normál · kb. 7 mp</option>
+          <option value="party">Pörgős · kb. 4 mp</option>
+        </select>
+        <label class="ai-palette-label"><input id="ai-palette" type="checkbox"/> Színpaletta automatikusan</label>
+        <div class="ai-live" aria-live="polite"><span id="ai-indicator"></span><span id="ai-status">Kikapcsolva</span></div>
+        <div class="ai-reason" id="ai-reason">Bekapcsolás után figyeli a zenét.</div>
+        <div class="ai-bpm" id="ai-bpm">Ritmus: elemzésre vár</div>
+      </section>
+      <div class="sidebar-divider"></div>
       <div class="sidebar-section-label">SZÍNVILÁG</div>
       <div class="swatches" role="group" aria-label="Színpaletta">
         <button data-palette="azure" class="swatch selected" style="--sw:#56d5ff" aria-label="Elektromos kék" title="Electric blue"></button>
@@ -48,7 +63,7 @@
       <div class="control-line"><label for="bars-count">Oszlopok</label><output id="bars-val">56</output></div>
       <input type="range" id="bars-count" min="16" max="128" value="56" step="8" />
       <label class="check-row"><input id="show-grid" type="checkbox" checked /><span>Finom háttérrács</span></label>
-      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.1.0</span></div>
+      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.2.0</span></div>
     </aside>
     <main class="workspace">
       <div class="workspace-top">
@@ -85,6 +100,7 @@
   <audio id="audio" preload="metadata"></audio>
   <div class="toast-stack" id="toasts" role="status" aria-live="polite"></div>
   <script src="src/audio-math.js"></script>
+  <script src="src/ai-director.js"></script>
   <script src="src/ui.js"></script>
 </body>
 </html>
