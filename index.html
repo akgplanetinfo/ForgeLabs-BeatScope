@@ -68,7 +68,7 @@
     <main class="workspace">
       <div class="workspace-top">
         <div><div class="eyebrow">AUDIO REACTIVE EXPERIENCE <span>—</span> STUDIO</div><h1>Hangból <em>élmény.</em></h1><p id="subtext">Tölts be egy zenét, vagy használd a mikrofont.</p></div>
-        <div class="workspace-actions"><button class="outline-btn" id="save-image" title="Aktuális vizualizáció mentése PNG-ként">⇩ <span>Kép mentése</span></button><button class="outline-btn" id="fullscreen" title="Teljes képernyő (F11)">⛶ <span>Fullscreen</span></button></div>
+        <div class="workspace-actions"><button class="outline-btn fx-launch" id="fx-browser-open" title="120 effekt böngészése">✦ <span>FX könyvtár · 120</span></button><button class="outline-btn" id="save-image" title="Aktuális vizualizáció mentése PNG-ként">⇩ <span>Kép mentése</span></button><button class="outline-btn" id="fullscreen" title="Teljes képernyő (F11)">⛶ <span>Fullscreen</span></button></div>
       </div>
       <div class="visual-shell" id="visual-shell">
         <div class="visual-head"><div class="visual-tag"><span class="small-status-dot" id="live-dot"></span><span id="mode-label">SPECTRUM / REAL TIME</span></div><div class="visual-options"><span id="sample-info">FFT 2048 · Várakozás</span><span class="signal-badge" id="source-tag">NO INPUT</span></div></div>
@@ -82,6 +82,23 @@
         <div class="transport-center"><div class="player-actions"><button id="repeat" class="icon-only" title="Ismétlés" aria-label="Ismétlés">↻</button><button id="previous" class="icon-only" title="Vissza az elejére" aria-label="Vissza az elejére">◀◀</button><button id="play-pause" class="big-play" aria-label="Lejátszás" title="Lejátszás vagy szünet">▶</button><button id="next" class="icon-only" title="Ugrás a végéhez" aria-label="Ugrás a végéhez">▶▶</button><button id="stop" class="icon-only" title="Leállítás" aria-label="Leállítás">■</button></div><div class="progress-row"><span id="current-time">0:00</span><input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="Lejátszási pozíció" disabled/><span id="duration">0:00</span></div></div>
         <div class="volume-area"><button id="mute" class="icon-only" title="Némítás" aria-label="Némítás">◖))</button><input id="volume" type="range" min="0" max="100" value="85" aria-label="Hangerő" /></div>
       </div>
+
+      <section class="fx-drawer" id="fx-drawer" hidden aria-label="Effektkönyvtár">
+        <div class="fx-header"><div><strong>✦ FX LIBRARY</strong><small>120 látvány · 20 shadercsalád</small></div><button type="button" class="fx-close" id="fx-close" aria-label="Effektkönyvtár bezárása">✕</button></div>
+        <div class="fx-search-row"><input id="fx-search" type="search" placeholder="Effekt keresése…" aria-label="Effektek keresése"/><select id="fx-category" aria-label="Effektkategória"><option value="">Minden kategória</option></select></div>
+        <div class="fx-toolbar"><button id="fx-favorites" type="button">☆ Kedvencek</button><button id="fx-bypass" type="button" aria-pressed="false">◉ Effektek aktívak</button></div>
+        <div id="fx-results" class="fx-results" role="list"></div>
+        <div class="fx-stack-heading"><strong>AKTÍV EFFEKTEK</strong><span id="fx-stack-count">0/3</span></div>
+        <div id="fx-stack" class="fx-stack"></div>
+        <div class="fx-parameters">
+          <label for="fx-wet">Keverés (Dry/Wet) <output id="fx-wet-value">100%</output></label>
+          <input type="range" id="fx-wet" min="0" max="100" value="100"/>
+          <label for="fx-strength">Erősség <output id="fx-strength-value">100%</output></label>
+          <input type="range" id="fx-strength" min="0" max="200" value="100"/>
+        </div>
+        <div class="fx-ai-row"><div><strong>✦ AI FX Autopilot</strong><small>Hang alapján vált a 120 látvány között</small></div><button id="fx-auto" type="button" class="fx-switch" role="switch" aria-checked="false" aria-label="Automatikus effektváltás">KI</button></div>
+        <div id="fx-status" class="fx-status" aria-live="polite">Válassz egy effektet.</div>
+      </section>
     </main>
     <aside class="inspector">
       <div class="inspector-head"><span>HANGFORRÁS</span><span class="pulse-mark"></span></div>
@@ -101,6 +118,7 @@
   <div class="toast-stack" id="toasts" role="status" aria-live="polite"></div>
   <script src="src/audio-math.js"></script>
   <script src="src/ai-director.js"></script>
+  <script src="src/fx-engine.js"></script>
   <script src="src/ui.js"></script>
 </body>
 </html>

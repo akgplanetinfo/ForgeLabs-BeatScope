@@ -4,7 +4,7 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 
 const APP_TITLE = 'ForgeLabs BeatScope';
-const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.15, smooth:0.75, barCount:56, showGrid:true, micDevice:'default', volume:0.85, aiEnabled:false, aiSpeed:'balanced', aiPalette:false });
+const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.15, smooth:0.75, barCount:56, showGrid:true, micDevice:'default', volume:0.85, aiEnabled:false, aiSpeed:'balanced', aiPalette:false, fxStack:[], fxBypass:false, fxAuto:false, fxFavorites:[] });
 let window = null;
 const preferencesPath = () => path.join(app.getPath('userData'), 'beatscope-preferences.json');
 function validatePrefs(value) {
@@ -17,6 +17,10 @@ function validatePrefs(value) {
   }
   if (Number.isInteger(value.barCount)) out.barCount = Math.max(16, Math.min(128, value.barCount));
   if (typeof value.showGrid === 'boolean') out.showGrid = value.showGrid;
+  if (typeof value.fxBypass === 'boolean') out.fxBypass = value.fxBypass;
+  if (typeof value.fxAuto === 'boolean') out.fxAuto = value.fxAuto;
+  if (Array.isArray(value.fxFavorites)) out.fxFavorites = [...new Set(value.fxFavorites.filter(id=>/^fx-\d{3}$/.test(id)&&+id.slice(3)>=1&&+id.slice(3)<=120))].slice(0,120);
+  if (Array.isArray(value.fxStack)) out.fxStack = value.fxStack.filter(v=>v&&typeof v==='object'&&/^fx-\d{3}$/.test(v.id)&&+v.id.slice(3)>=1&&+v.id.slice(3)<=120).slice(0,3).map(v=>({id:v.id,strength:Number.isFinite(v.strength)?Math.max(0,Math.min(2,v.strength)):1,wet:Number.isFinite(v.wet)?Math.max(0,Math.min(1,v.wet)):1,disabled:v.disabled===true}));
   if (typeof value.aiEnabled === 'boolean') out.aiEnabled = value.aiEnabled;
   if (typeof value.aiPalette === 'boolean') out.aiPalette = value.aiPalette;
   if (['calm','balanced','party'].includes(value.aiSpeed)) out.aiSpeed = value.aiSpeed;

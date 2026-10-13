@@ -3,6 +3,12 @@
   const $=id=>document.getElementById(id);
   const math=window.BeatMath;
   const aiDirector=window.BeatDirector.createDirector();
+  const FX=window.BeatFX;
+  const fxCanvas=document.createElement('canvas');
+  fxCanvas.className='fx-overlay';fxCanvas.hidden=true;
+  UI.canvas.after(fxCanvas);
+  let fxRenderer=null,fxDisabled=false,fxSelected=-1,fxFavFilter=false,fxAICount=0,fxLastSwitch=0,fxRecent=[];
+
   const UI={
     canvas:$('visualizer'),file:$('audio-file'),audio:$('audio'),play:$('play-pause'),seek:$('seek'),volume:$('volume'),
     title:$('title-status'),titleLed:$('title-led'),liveDot:$('live-dot'),placeholder:$('visual-placeholder'),
@@ -15,7 +21,7 @@
     azure:['#4adcf8','#32a3f2','#9beeff'],mint:['#50f7bb','#1fb6b1','#bbffe0'],
     violet:['#c1a0ff','#7178f5','#f3c1ff'],sunset:['#ffc06c','#ff647c','#ffe2ae'],rainbow:['#45d8fc','#a85fff','#f2bc63']
   };
-  const settings={mode:'bars',palette:'azure',intensity:1.15,smooth:0.75,barCount:56,showGrid:true,micDevice:'default',volume:0.85,aiEnabled:false,aiSpeed:'balanced',aiPalette:false};
+  const settings={mode:'bars',palette:'azure',intensity:1.15,smooth:0.75,barCount:56,showGrid:true,micDevice:'default',volume:0.85,aiEnabled:false,aiSpeed:'balanced',aiPalette:false,fxStack:[],fxBypass:false,fxAuto:false,fxFavorites:[]};
   let audioCtx=null,analyser=null,fileAnalyser=null,micSource=null,micStream=null,sourceNode=null,sourceMode='none',fileURL=null;
   let bins=new Uint8Array(1024),wave=new Uint8Array(2048),freq={bass:0,mids:0,highs:0,total:0,dominantHz:0};
   let rms=0,peak=0,pulse=0,lastPulse=0,sceneWidth=0,sceneHeight=0,dpr=1,lastMeters=0;
@@ -261,6 +267,122 @@
     ctx.strokeStyle=paletteColor(0,4,.17+pulse*.2);ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(cx,cy,30+burst*30,0,Math.PI*2);ctx.stroke();
     ctx.fillStyle=paletteColor(1,4,.6);ctx.beginPath();ctx.arc(cx,cy,5+burst*8,0,Math.PI*2);ctx.fill();
   }
+
+  function fxStatus(value){$('fx-status').textContent=value;}
+  function fxButton(label,className,handler){
+    const b=document.createElement('button');
+    b.type='button';b.className=className;b.textContent=label;b.addEventListener('click',handler);
+    return b;
+  }
+  function fxSelectedItem(){return settings.fxStack[fxSelected]||null;}
+  function drawFXCatalog(){
+    const query=$('fx-search').value.trim().toLowerCase(),category=$('fx-category').value;
+    const matches=FX.LIBRARY.filter(e=>(!category||e.category===category)&&(!fxFavFilter||settings.fxFavorites.includes(e.id))&&(!query||(e.name+' '+e.category+' '+e.id).toLowerCase().includes(query)));
+    const list=$('fx-results');list.replaceChildren();
+    if(!matches.length){
+      const p=document.createElement('p');p.textContent='Nincs találat.';p.style.padding='14px';list.append(p);return;
+    }
+    const fragment=document.createDocumentFragment();
+    for(const entry of matches){
+      const row=document.createElement('div');row.className='fx-result';row.setAttribute('role','listitem');
+      const badge=document.createElement('span');badge.className='fx-id';badge.textContent=entry.id.slice(3);
+      const name=fxButton(entry.name,'fx-entry-name',()=>addFX(entry.id));
+      const hint=document.createElement('small');hint.textContent=entry.category;name.append(hint);
+      const fav=fxButton(settings.fxFavorites.includes(entry.id)?'★':'☆','fx-fav'+(settings.fxFavorites.includes(entry.id)?' selected':''),()=>{
+        const idx=settings.fxFavorites.indexOf(entry.id);
+        if(idx>=0)settings.fxFavorites.splice(idx,1);else settings.fxFavorites.push(entry.id);
+        persist();drawFXCatalog();
+      });
+      fav.title='Kedvencek';fav.setAttribute('aria-label','Kedvenc: '+entry.name);
+      row.append(badge,name,fav);fragment.append(row);
+    }
+    list.append(fragment);
+  }
+  function refreshFXStack(){
+    const stack=$('fx-stack');stack.replaceChildren();
+    $('fx-stack-count').textContent=settings.fxStack.length+'/3';
+    for(let i=0;i<settings.fxStack.length;i++){
+      const item=settings.fxStack[i],entry=FX.byId(item.id);if(!entry)continue;
+      const row=document.createElement('div');row.className='fx-stack-entry'+(i===fxSelected?' selected':'');
+      row.append(fxButton(entry.name,'fx-stack-name'+(item.disabled?' inactive':''),()=>{fxSelected=i;refreshFXStack();}));
+      row.append(fxButton(item.disabled?'○':'●','',()=>{item.disabled=!item.disabled;persist();refreshFXStack();}));
+      row.append(fxButton('↑','',()=>{if(i>0){const t=settings.fxStack[i-1];settings.fxStack[i-1]=item;settings.fxStack[i]=t;fxSelected=i-1;persist();refreshFXStack();}}));
+      row.append(fxButton('↓','',()=>{if(i<settings.fxStack.length-1){const t=settings.fxStack[i+1];settings.fxStack[i+1]=item;settings.fxStack[i]=t;fxSelected=i+1;persist();refreshFXStack();}}));
+      row.append(fxButton('✕','',()=>{settings.fxStack.splice(i,1);fxSelected=Math.min(fxSelected,settings.fxStack.length-1);persist();refreshFXStack();}));
+      stack.append(row);
+    }
+    if(!settings.fxStack.length)stack.textContent='Nincs aktív effekt. Válassz a listából.';
+    const item=fxSelectedItem();
+    for(const id of ['fx-wet','fx-strength'])$(id).disabled=!item;
+    $('fx-wet').value=item?Math.round(item.wet*100):100;
+    $('fx-strength').value=item?Math.round(item.strength*100):100;
+    $('fx-wet-value').textContent=$('fx-wet').value+'%';
+    $('fx-strength-value').textContent=$('fx-strength').value+'%';
+    $('fx-bypass').classList.toggle('active',settings.fxBypass);
+    $('fx-bypass').setAttribute('aria-pressed',String(settings.fxBypass));
+    $('fx-bypass').textContent=settings.fxBypass?'◌ Effektek kikapcsolva':'◉ Effektek aktívak';
+    $('fx-auto').classList.toggle('active',settings.fxAuto);
+    $('fx-auto').setAttribute('aria-checked',String(settings.fxAuto));
+    $('fx-auto').textContent=settings.fxAuto?'BE':'KI';
+    if(item)fxStatus(FX.byId(item.id)?.name||'Választott effekt');
+    else fxStatus('Válassz effektet; maximum három használható egyszerre.');
+  }
+  function addFX(id){
+    if(!FX.byId(id))return;
+    if(settings.fxStack.length>=3){notify('Maximum három effekt rakható egymásra.',true);return;}
+    settings.fxAuto=false;settings.fxBypass=false;
+    settings.fxStack.push({id,wet:1,strength:1,disabled:false});
+    fxSelected=settings.fxStack.length-1;persist();refreshFXStack();
+  }
+  function fxAutoUpdate(t,active){
+    if(!settings.fxAuto||!active)return;
+    const interval={calm:12500,balanced:7100,party:3900}[settings.aiSpeed]||7100;
+    if(t-fxLastSwitch<interval)return;
+    fxLastSwitch=t;
+    const fx=FX.recommend(freq,fxRecent,fxAICount++);
+    if(!fx)return;
+    fxRecent.push(fx.id);fxRecent=fxRecent.slice(-8);
+    settings.fxStack=[{id:fx.id,wet:1,strength:1,disabled:false}];
+    settings.fxBypass=false;
+    fxSelected=0;
+    persist();refreshFXStack();
+    fxStatus('AI választotta: '+fx.name);
+  }
+  function drawPostFX(t){
+    const stack=settings.fxBypass?[]:settings.fxStack.filter(x=>!x.disabled);
+    if(!stack.length||fxDisabled){fxCanvas.hidden=true;return;}
+    if(!fxRenderer){
+      try{fxRenderer=FX.renderer(fxCanvas);if(!fxRenderer)throw new Error('WebGL2 nem érhető el ezen a gépen.');}
+      catch(e){fxDisabled=true;fxCanvas.hidden=true;notify('GPU-effektek nem elérhetők: '+e.message,true);fxStatus('WebGL2 szükséges a GPU-effektekhez.');return;}
+    }
+    try{
+      fxCanvas.hidden=false;
+      fxRenderer.draw(UI.canvas,stack,t,{...freq,rms});
+    }catch(e){fxDisabled=true;fxCanvas.hidden=true;notify('GPU renderelési hiba: '+e.message,true);}
+  }
+  function initFXControls(){
+    const category=$('fx-category');
+    for(const item of [...new Set(FX.LIBRARY.map(e=>e.category))]){
+      const option=document.createElement('option');option.value=item;option.textContent=item;category.append(option);
+    }
+    const toggle=()=>{$('fx-drawer').hidden=!$('fx-drawer').hidden;if(!$('fx-drawer').hidden){drawFXCatalog();refreshFXStack();$('fx-search').focus();}};
+    $('fx-browser-open').addEventListener('click',toggle);
+    $('fx-close').addEventListener('click',()=>{$('fx-drawer').hidden=true;});
+    $('fx-search').addEventListener('input',drawFXCatalog);
+    category.addEventListener('change',drawFXCatalog);
+    $('fx-favorites').addEventListener('click',()=>{
+      fxFavFilter=!fxFavFilter;$('fx-favorites').classList.toggle('active',fxFavFilter);drawFXCatalog();
+    });
+    $('fx-bypass').addEventListener('click',()=>{settings.fxBypass=!settings.fxBypass;persist();refreshFXStack();});
+    $('fx-auto').addEventListener('click',()=>{
+      settings.fxAuto=!settings.fxAuto;fxLastSwitch=0;fxRecent=[];persist();refreshFXStack();
+      notify(settings.fxAuto?'AI FX Autopilot bekapcsolva':'AI FX Autopilot kikapcsolva');
+    });
+    for(const [id,key,scale] of [['fx-wet','wet',100],['fx-strength','strength',100]]){
+      $(id).addEventListener('input',e=>{const item=fxSelectedItem();if(!item)return;item[key]=+e.target.value/scale;$(id+'-value').textContent=e.target.value+'%';persist();});
+    }
+    drawFXCatalog();fxSelected=settings.fxStack.length?0:-1;refreshFXStack();
+  }
   function updateMeters(now){
     if(now-lastMeters<75)return;
     lastMeters=now;
@@ -316,15 +438,22 @@
         }else{modeTransition=null;renderMode(settings.mode,t);}
       }else renderMode(settings.mode,t);
     }
+    fxAutoUpdate(t,active);
+    drawPostFX(t);
     updateMeters(t);
   }
   async function saveImage(){
-    const png=UI.canvas.toDataURL('image/png');
+    const combined=document.createElement('canvas');
+    combined.width=UI.canvas.width;combined.height=UI.canvas.height;
+    const cc=combined.getContext('2d');cc.drawImage(UI.canvas,0,0);
+    if(!fxCanvas.hidden)cc.drawImage(fxCanvas,0,0);
+    const png=combined.toDataURL('image/png');
     try{const result=await window.beatAPI?.saveScreenshot(png);if(result?.saved)notify('Kép sikeresen elmentve.');}
     catch(e){notify('Nem sikerült elmenteni a képet: '+e.message,true);}
   }
   function setWindowState(state){document.body.classList.toggle('fullscreen',Boolean(state.fullscreen));sizeCanvas();}
   function bind(){
+    initFXControls();
     $('window-min').addEventListener('click',()=>window.beatAPI?.windowAction('minimize'));
     $('window-max').addEventListener('click',()=>window.beatAPI?.windowAction('toggle-maximize'));
     $('window-close').addEventListener('click',()=>window.beatAPI?.windowAction('close'));
@@ -363,6 +492,8 @@
     window.addEventListener('keydown',e=>{
       if(e.ctrlKey&&e.key.toLowerCase()==='o'){e.preventDefault();UI.file.click();return;}
       if(e.key==='F11'){e.preventDefault();window.beatAPI?.windowAction('toggle-fullscreen');return;}
+      if(e.ctrlKey&&e.key.toLowerCase()==='e'){e.preventDefault();$('fx-browser-open').click();return;}
+      if(e.key==='Escape'&&!$('fx-drawer').hidden){$('fx-drawer').hidden=true;return;}
       const target=e.target;if(target instanceof HTMLInputElement||target instanceof HTMLSelectElement)return;
       if(e.code==='Space'){e.preventDefault();togglePlay();return;}
       if(e.key.toLowerCase()==='a'&&!e.ctrlKey&&!e.altKey){setAI(!settings.aiEnabled);return;}
@@ -377,6 +508,10 @@
   async function init(){
     bind();
     try{Object.assign(settings,await window.beatAPI.loadPreferences());}catch{}
+    settings.fxStack=Array.isArray(settings.fxStack)?settings.fxStack:[];
+    settings.fxFavorites=Array.isArray(settings.fxFavorites)?settings.fxFavorites:[];
+    fxSelected=settings.fxStack.length?0:-1;
+    refreshFXStack();drawFXCatalog();
     setMode(settings.mode,{automatic:true});setPalette(settings.palette);
     $('ai-speed').value=settings.aiSpeed;
     $('ai-palette').checked=settings.aiPalette;

@@ -62,3 +62,14 @@ A `.github/workflows/windows-exe.yml` workflow **GitHub Windows gépen** telepí
 4. A sikeres build után a GitHub **Releases** fülén közvetlen `.exe` letöltési linkek jelennek meg, vagy az Actions run alatt **Artifacts** ZIP is elérhető.
 
 Nincs szükség Node.js telepítésére a Windows-számítógépen a kész alkalmazás használatához. A telepítő aláíratlan; a Windows SmartScreen figyelmeztethet, és vállalati eszközök szabályzata megakadályozhatja a futtatást. A projekt nem próbál ilyen korlátozásokat megkerülni.
+## v0.3.0 — 120 GPU-effekt
+
+Az FX Library 20 különböző GLSL shader-algoritmust és algoritmusonként 6 konfigurációt (összesen 120 külön választható látványt) kínál. Ez **nem** a Resolume teljes effektmotorjának vagy 120 egymástól független algoritmusának másolata. Az alapeffektek a BeatScope eredeti 4 hangvizualizációjára kerülnek rá, WebGL2 GPU-utófeldolgozásként.
+
+- **FX könyvtár · 120**: keresés, kategóriák, kedvencek (Ctrl+E).
+- Max. 3 egymásra rakható effekt; sorrend, ki-/bekapcsolás, törlés.
+- Dry/Wet és Strength csúszka effektenként.
+- **AI FX Autopilot**: aktív hangnál az energiasávok alapján választ új látványt; sebességét a meglévő AI Visual Director sebességbeállítása vezérli.
+- GIF/video export még nincs; a PNG mentés az effektelt képet is tartalmazza.
+- Minimum **WebGL2** szükséges az FX-réteghez. Ha nem érhető el, a korábbi audio-vizualizátor változatlanul működik, és erről hibaüzenet jelenik meg.
+- A képszerkesztő / shader működéséhez nincs külső AI API vagy fiók.
