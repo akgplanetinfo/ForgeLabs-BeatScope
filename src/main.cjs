@@ -4,7 +4,7 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 
 const APP_TITLE = 'ForgeLabs BeatScope';
-const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.15, smooth:0.75, barCount:56, showGrid:true, micDevice:'default', volume:0.85 });
+const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.15, smooth:0.75, barCount:56, showGrid:true, micDevice:'default', volume:0.85, aiEnabled:false, aiSpeed:'balanced', aiPalette:false });
 let window = null;
 const preferencesPath = () => path.join(app.getPath('userData'), 'beatscope-preferences.json');
 function validatePrefs(value) {
@@ -17,6 +17,9 @@ function validatePrefs(value) {
   }
   if (Number.isInteger(value.barCount)) out.barCount = Math.max(16, Math.min(128, value.barCount));
   if (typeof value.showGrid === 'boolean') out.showGrid = value.showGrid;
+  if (typeof value.aiEnabled === 'boolean') out.aiEnabled = value.aiEnabled;
+  if (typeof value.aiPalette === 'boolean') out.aiPalette = value.aiPalette;
+  if (['calm','balanced','party'].includes(value.aiSpeed)) out.aiSpeed = value.aiSpeed;
   if (typeof value.micDevice === 'string' && value.micDevice.length <= 256) out.micDevice = value.micDevice;
   return out;
 }
