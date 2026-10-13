@@ -2,6 +2,7 @@
 (() => {
   const $=id=>document.getElementById(id);
   const math=window.BeatMath;
+  const aiDirector=window.BeatDirector.createDirector();
   const UI={
     canvas:$('visualizer'),file:$('audio-file'),audio:$('audio'),play:$('play-pause'),seek:$('seek'),volume:$('volume'),
     title:$('title-status'),titleLed:$('title-led'),liveDot:$('live-dot'),placeholder:$('visual-placeholder'),
@@ -14,11 +15,11 @@
     azure:['#4adcf8','#32a3f2','#9beeff'],mint:['#50f7bb','#1fb6b1','#bbffe0'],
     violet:['#c1a0ff','#7178f5','#f3c1ff'],sunset:['#ffc06c','#ff647c','#ffe2ae'],rainbow:['#45d8fc','#a85fff','#f2bc63']
   };
-  const settings={mode:'bars',palette:'azure',intensity:1.15,smooth:0.75,barCount:56,showGrid:true,micDevice:'default',volume:0.85};
+  const settings={mode:'bars',palette:'azure',intensity:1.15,smooth:0.75,barCount:56,showGrid:true,micDevice:'default',volume:0.85,aiEnabled:false,aiSpeed:'balanced',aiPalette:false};
   let audioCtx=null,analyser=null,fileAnalyser=null,micSource=null,micStream=null,sourceNode=null,sourceMode='none',fileURL=null;
   let bins=new Uint8Array(1024),wave=new Uint8Array(2048),freq={bass:0,mids:0,highs:0,total:0,dominantHz:0};
   let rms=0,peak=0,pulse=0,lastPulse=0,sceneWidth=0,sceneHeight=0,dpr=1,lastMeters=0;
-  let isSeeking=false,saveTimer=null,repeat=false,lastFrame=0;
+  let isSeeking=false,saveTimer=null,repeat=false,lastFrame=0,modeTransition=null,lastAIStatus=0;
   const supported=Boolean(window.AudioContext||window.webkitAudioContext);
 
   function notify(message,error=false){
@@ -128,14 +129,37 @@
     else UI.audio.pause();
     setSourceLabel();
   }
-  function setMode(next){if(!['bars','wave','orbit','particles'].includes(next))return;
+  function updateAIDisplay(status,reason){
+    const toggle=$('ai-toggle');
+    toggle.classList.toggle('enabled',settings.aiEnabled);
+    toggle.setAttribute('aria-checked',String(settings.aiEnabled));
+    $('ai-indicator').classList.toggle('active',settings.aiEnabled);
+    $('ai-status').textContent=status||(settings.aiEnabled?'Figyelés...':'Kikapcsolva');
+    if(reason)$('ai-reason').textContent=reason;
+  }
+  function setAI(enabled){
+    settings.aiEnabled=Boolean(enabled);
+    aiDirector.reset();
+    modeTransition=null;
+    updateAIDisplay(settings.aiEnabled?'Hangra vár...':'Kikapcsolva',settings.aiEnabled?'A zene ritmusa alapján váltogatja az effekteket.':'Kézi effektválasztás.');
+    $('ai-bpm').textContent='Ritmus: elemzésre vár';
+    persist();
+  }
+  function setMode(next,{automatic=false,reason='',now=performance.now()}={}){
+    if(!['bars','wave','orbit','particles'].includes(next))return;
+    if(!automatic&&settings.aiEnabled)setAI(false);
+    if(settings.mode!==next)modeTransition={from:settings.mode,startedAt:now};
     settings.mode=next;
     for(const btn of document.querySelectorAll('[data-mode]'))btn.classList.toggle('active',btn.dataset.mode===next);
     UI.modeLabel.textContent={bars:'SPECTRUM / REAL TIME',wave:'WAVEFORM / OSCILLOSCOPE',orbit:'ORBIT / RADIAL SPECTRUM',particles:'PARTICLES / AUDIO REACTIVE'}[next];
+    if(automatic)updateAIDisplay('Automatikus váltás aktív',reason||'Hang alapján új effekt');
     persist();
   }
   function setPalette(p){if(!presetColors[p])return;
     settings.palette=p;document.querySelectorAll('[data-palette]').forEach(b=>b.classList.toggle('selected',b.dataset.palette===p));persist();
+  }
+  function renderMode(mode,t){
+    switch(mode){case 'bars':drawBars(t);break;case 'wave':drawWave(t);break;case 'orbit':drawOrbit(t);break;case 'particles':drawParticles(t);break;}
   }
   function paletteColor(index,total,alpha=1){
     const colors=presetColors[settings.palette];
@@ -266,8 +290,32 @@
       bins.fill(0);wave.fill(128);freq={bass:0,mids:0,highs:0,total:0,dominantHz:0};rms=0;
     }
     pulse*=.92;
+    if(settings.aiEnabled){
+      const suggestion=aiDirector.update({...freq,rms},t,settings.mode,settings.aiSpeed);
+      if(suggestion?.change){
+        setMode(suggestion.mode,{automatic:true,reason:suggestion.reason,now:t});
+        if(settings.aiPalette){
+          const choices={bars:'azure',wave:'violet',orbit:'mint',particles:'rainbow'};
+          setPalette(choices[suggestion.mode]);
+        }
+      }
+      if(t-lastAIStatus>500){
+        lastAIStatus=t;
+        if(!suggestion?.active)updateAIDisplay('Hangra vár...', 'Az AI csak aktív hangforrás mellett vált.');
+        else if(!suggestion?.change)updateAIDisplay('Hangot elemzi');
+        $('ai-bpm').textContent='Ritmus: '+(suggestion?.bpm?suggestion.bpm+' BPM (becslés)':'elemzés alatt');
+      }
+    }
     backdrop(t);
-    if(active){switch(settings.mode){case 'bars':drawBars(t);break;case 'wave':drawWave(t);break;case 'orbit':drawOrbit(t);break;case 'particles':drawParticles(t);break;}}
+    if(active){
+      if(modeTransition){
+        const progress=Math.max(0,Math.min(1,(t-modeTransition.startedAt)/650));
+        if(progress<1){
+          ctx.save();ctx.globalAlpha=1-progress;renderMode(modeTransition.from,t);ctx.restore();
+          ctx.save();ctx.globalAlpha=progress;renderMode(settings.mode,t);ctx.restore();
+        }else{modeTransition=null;renderMode(settings.mode,t);}
+      }else renderMode(settings.mode,t);
+    }
     updateMeters(t);
   }
   async function saveImage(){
@@ -283,6 +331,9 @@
     $('fullscreen').addEventListener('click',()=>window.beatAPI?.windowAction('toggle-fullscreen'));
     $('save-image').addEventListener('click',saveImage);
     window.beatAPI?.onWindowState(setWindowState);
+    $('ai-toggle').addEventListener('click',()=>setAI(!settings.aiEnabled));
+    $('ai-speed').addEventListener('change',e=>{settings.aiSpeed=e.target.value;aiDirector.reset();persist();updateAIDisplay(settings.aiEnabled?'Sebesség frissítve':undefined);});
+    $('ai-palette').addEventListener('change',e=>{settings.aiPalette=e.target.checked;persist();});
     document.querySelectorAll('[data-mode]').forEach(btn=>btn.addEventListener('click',()=>setMode(btn.dataset.mode)));
     document.querySelectorAll('[data-palette]').forEach(btn=>btn.addEventListener('click',()=>setPalette(btn.dataset.palette)));
     $('intensity').addEventListener('input',e=>{settings.intensity=+e.target.value/100;$('intensity-val').textContent=e.target.value+'%';persist();});
@@ -314,6 +365,7 @@
       if(e.key==='F11'){e.preventDefault();window.beatAPI?.windowAction('toggle-fullscreen');return;}
       const target=e.target;if(target instanceof HTMLInputElement||target instanceof HTMLSelectElement)return;
       if(e.code==='Space'){e.preventDefault();togglePlay();return;}
+      if(e.key.toLowerCase()==='a'&&!e.ctrlKey&&!e.altKey){setAI(!settings.aiEnabled);return;}
       if(['1','2','3','4'].includes(e.key)){setMode(['bars','wave','orbit','particles'][Number(e.key)-1]);}
     });
     window.addEventListener('dragover',e=>{e.preventDefault();document.body.classList.add('drag-over');});
@@ -325,7 +377,10 @@
   async function init(){
     bind();
     try{Object.assign(settings,await window.beatAPI.loadPreferences());}catch{}
-    setMode(settings.mode);setPalette(settings.palette);
+    setMode(settings.mode,{automatic:true});setPalette(settings.palette);
+    $('ai-speed').value=settings.aiSpeed;
+    $('ai-palette').checked=settings.aiPalette;
+    updateAIDisplay(settings.aiEnabled?'Hangra vár...':'Kikapcsolva',settings.aiEnabled?'Zene betöltése után automatikus váltás.':'Kézi effektválasztás.');
     $('intensity').value=Math.round(settings.intensity*100);$('intensity-val').textContent=Math.round(settings.intensity*100)+'%';
     $('smooth').value=Math.round(settings.smooth*100);$('smooth-val').textContent=Math.round(settings.smooth*100)+'%';
     $('bars-count').value=settings.barCount;$('bars-val').textContent=settings.barCount;
