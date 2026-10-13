@@ -4,9 +4,6 @@
   const math=window.BeatMath;
   const aiDirector=window.BeatDirector.createDirector();
   const FX=window.BeatFX;
-  const fxCanvas=document.createElement('canvas');
-  fxCanvas.className='fx-overlay';fxCanvas.hidden=true;
-  UI.canvas.after(fxCanvas);
   let fxRenderer=null,fxDisabled=false,fxSelected=-1,fxFavFilter=false,fxAICount=0,fxLastSwitch=0,fxRecent=[];
 
   const UI={
@@ -16,6 +13,9 @@
     microphone:$('microphone'),micCaption:$('mic-caption'),micDevices:$('mic-devices'),
     bassMeter:$('bass-meter'),midMeter:$('mid-meter'),highMeter:$('high-meter'),levelMeter:$('level-meter')
   };
+  const fxCanvas=document.createElement('canvas');
+  fxCanvas.className='fx-overlay';fxCanvas.hidden=true;
+  UI.canvas.after(fxCanvas);
   const ctx=UI.canvas.getContext('2d',{alpha:false});
   const presetColors={
     azure:['#4adcf8','#32a3f2','#9beeff'],mint:['#50f7bb','#1fb6b1','#bbffe0'],
