@@ -1,0 +1,73 @@
+name: ForgeLabs BeatScope Windows EXE
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: 'false'
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Check source and run tests
+        run: npm run check
+
+      - name: Build Windows installer and portable application
+        run: npm run dist:win
+
+      - name: Verify generated EXE files
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -Path dist -Filter 'ForgeLabs-BeatScope-Setup-*-x64.exe' -File
+          $portable  = Get-ChildItem -Path dist -Filter 'ForgeLabs-BeatScope-Portable-*-x64.exe' -File
+          if ($installer.Count -ne 1 -or $portable.Count -ne 1) {
+            throw 'Hianyzik a telepito vagy a portable EXE.'
+          }
+          foreach ($file in @($installer) + @($portable)) {
+            Write-Host "$($file.Name) - $($file.Length) bytes"
+            Get-FileHash -Algorithm SHA256 -LiteralPath $file.FullName | Format-List
+          }
+
+      - name: Save EXE build as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ForgeLabs-BeatScope-Windows-EXE
+          path: |
+            dist/ForgeLabs-BeatScope-Setup-*-x64.exe
+            dist/ForgeLabs-BeatScope-Portable-*-x64.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create GitHub Release with direct EXE downloads
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v${VERSION}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "ForgeLabs BeatScope ${TAG}" --notes "Windows x64 telepito (csak sajat felhasznalo, adminjog nelkul) es hordozhato EXE. A binarisok nem kodalairtak; Windows SmartScreen figyelmeztethet." --target "$GITHUB_SHA"
+          fi
+          gh release upload "$TAG" dist/ForgeLabs-BeatScope-Setup-*-x64.exe dist/ForgeLabs-BeatScope-Portable-*-x64.exe --clobber
