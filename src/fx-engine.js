@@ -66,20 +66,82 @@ void main(){
 }`;
 function shader(gl,type,source){const sh=gl.createShader(type);gl.shaderSource(sh,source);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS)){const error=gl.getShaderInfoLog(sh);gl.deleteShader(sh);throw new Error('Shader error: '+error);}return sh;}
 function renderer(canvas,{debug=false}={}){
- const gl=canvas.getContext('webgl2',{alpha:false,antialias:false,preserveDrawingBuffer:true});if(!gl)return null;
- const program=gl.createProgram(),vs=shader(gl,gl.VERTEX_SHADER,VERT),fs=shader(gl,gl.FRAGMENT_SHADER,FRAG);gl.attachShader(program,vs);gl.attachShader(program,fs);gl.linkProgram(program);gl.deleteShader(vs);gl.deleteShader(fs);
+ const gl=canvas.getContext('webgl2',{alpha:false,antialias:false,preserveDrawingBuffer:true});
+ if(!gl)return null;
+ const program=gl.createProgram();
+ const vs=shader(gl,gl.VERTEX_SHADER,VERT),fs=shader(gl,gl.FRAGMENT_SHADER,FRAG);
+ gl.attachShader(program,vs);gl.attachShader(program,fs);gl.linkProgram(program);
+ gl.deleteShader(vs);gl.deleteShader(fs);
  if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error('Shader link: '+gl.getProgramInfoLog(program));
- const uni=Object.fromEntries(['tex','prevTex','res','snd','tm','strength','wet','family','variant'].map(k=>[k,gl.getUniformLocation(program,k)]));gl.useProgram(program);gl.uniform1i(uni.tex,0);gl.uniform1i(uni.prevTex,1);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
- const mkTex=()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t;};
- const input=mkTex(),buffers=[mkTex(),mkTex()],history=mkTex(),fb=gl.createFramebuffer();let w=0,h=0;
- const check=phase=>{if(debug){const code=gl.getError();if(code!==gl.NO_ERROR)throw new Error('WebGL '+phase+' error '+code);}};
- function allocate(width,height){if(width===w&&height===h)return;w=width;h=height;canvas.width=w;canvas.height=h;for(const t of [...buffers,history]){gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);}}
- function draw(source,stack,time,features,amount=1){if(!stack?.length)return false;allocate(source.width,source.height);check('allocation');gl.viewport(0,0,w,h);gl.useProgram(program);
- gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,input);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,source);check('upload');
- gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,history);gl.uniform2f(uni.res,w,h);gl.uniform1f(uni.tm,time/1000);gl.uniform4f(uni.snd,features.bass||0,features.mids||0,features.highs||0,features.rms||0);
- let previous=input;gl.disable(gl.BLEND);
- for(let i=0;i<stack.length;i++){const entry=stack[i],def=byId(entry.id);if(!def)continue;const last=i===stack.length-1;gl.bindFramebuffer(gl.FRAMEBUFFER,last?null:fb);if(!last)gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,buffers[i%2],0);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,previous);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,history);gl.uniform1i(uni.family,def.family);gl.uniform1i(uni.variant,def.variant);gl.uniform1f(uni.strength,entry.strength??1);gl.uniform1f(uni.wet,(entry.wet??1)*amount);gl.drawArrays(gl.TRIANGLES,0,3);check('draw '+def.id);if(!last)previous=buffers[i%2];}
- gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,history);gl.copyTexSubImage2D(gl.TEXTURE_2D,0,0,0,0,0,w,h);check('copy-history');return true;}
- return {draw,gl};}
+ const uni=Object.fromEntries(['tex','prevTex','res','snd','tm','strength','wet','family','variant'].map(k=>[k,gl.getUniformLocation(program,k)]));
+ gl.useProgram(program);gl.uniform1i(uni.tex,0);gl.uniform1i(uni.prevTex,1);
+ gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+ const mkTex=()=>{
+   const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+   return t;
+ };
+ const input=mkTex(),buffers=[mkTex(),mkTex()],history=mkTex();
+ const fxFbo=gl.createFramebuffer(),historyFbo=gl.createFramebuffer();
+ const check=phase=>{
+   if(!debug)return;
+   const code=gl.getError();
+   if(code!==gl.NO_ERROR)throw new Error('WebGL '+phase+' error '+code);
+ };
+ let w=0,h=0;
+ function allocate(width,height){
+   if(width===w&&height===h)return;
+   w=width;h=height;canvas.width=w;canvas.height=h;
+   for(const t of [...buffers,history]){
+     gl.bindTexture(gl.TEXTURE_2D,t);
+     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+   }
+ }
+ function draw(source,stack,time,features,amount=1){
+   if(!stack?.length)return false;
+   allocate(source.width,source.height);check('allocation');
+   gl.viewport(0,0,w,h);gl.useProgram(program);
+   gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,input);
+   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,source);
+   check('upload');
+   gl.uniform2f(uni.res,w,h);gl.uniform1f(uni.tm,time/1000);
+   gl.uniform4f(uni.snd,features.bass||0,features.mids||0,features.highs||0,features.rms||0);
+   let previous=input,rendered=false;
+   gl.disable(gl.BLEND);
+   for(let i=0;i<stack.length;i++){
+     const entry=stack[i],def=byId(entry.id);
+     if(!def)continue;
+     gl.bindFramebuffer(gl.FRAMEBUFFER,fxFbo);
+     const target=buffers[i%2];
+     gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,target,0);
+     if(debug && gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE)throw new Error('FX framebuffer incomplete');
+     gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,previous);
+     gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,history);
+     gl.uniform1i(uni.family,def.family);gl.uniform1i(uni.variant,def.variant);
+     gl.uniform1f(uni.strength,entry.strength??1);gl.uniform1f(uni.wet,(entry.wet??1)*amount);
+     gl.drawArrays(gl.TRIANGLES,0,3);check('draw '+def.id);
+     previous=target;rendered=true;
+   }
+   if(!rendered){gl.bindFramebuffer(gl.FRAMEBUFFER,null);return false;}
+   // Copy from GPU framebuffer to the visible WebGL canvas.
+   gl.bindFramebuffer(gl.READ_FRAMEBUFFER,fxFbo);
+   gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,null);
+   gl.blitFramebuffer(0,0,w,h,0,0,w,h,gl.COLOR_BUFFER_BIT,gl.NEAREST);
+   check('present');
+   // Keep last frame on GPU for temporal feedback effects.
+   gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,null);
+   gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,historyFbo);
+   gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,history,0);
+   if(debug && gl.checkFramebufferStatus(gl.DRAW_FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE)throw new Error('History framebuffer incomplete');
+   gl.blitFramebuffer(0,0,w,h,0,0,w,h,gl.COLOR_BUFFER_BIT,gl.NEAREST);
+   check('history-blit');
+   gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+   return true;
+ }
+ return {draw,gl};
+}
 return {LIBRARY,FAMILIES,byId,recommend,renderer};
 });
