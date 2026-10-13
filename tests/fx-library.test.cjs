@@ -34,7 +34,7 @@ test('exclusions are honored for available recommendations',()=>{
 });
 test('GPU renderer includes WebGL2, textures, multi-pass stack and feedback',()=>{
   const src=read('src/fx-engine.js');
-  for(const needle of ['webgl2','gl.createFramebuffer()','prevTex','gl.drawArrays','copyTexSubImage2D','wet','strength'])assert.ok(src.includes(needle),needle);
+  for(const needle of ['webgl2','gl.createFramebuffer()','prevTex','gl.drawArrays','blitFramebuffer','wet','strength'])assert.ok(src.includes(needle),needle);
 });
 test('FX browser controls and screenshot export are connected',()=>{
   const html=read('index.html'),ui=read('src/ui.js');
