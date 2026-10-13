@@ -34,7 +34,7 @@ async function run(){
      const src=document.createElement('canvas');src.width=320;src.height=180;
      const c=src.getContext('2d');c.fillStyle='#31c9ec';c.fillRect(0,0,320,180);c.fillStyle='#f60';c.fillRect(30,20,100,60);
      const output=document.createElement('canvas');
-     const fx=window.BeatFX?.renderer(output);
+     const fx=window.BeatFX?.renderer(output,{debug:true});
      out.webgl2=Boolean(fx);
      if(fx){
        out.shaders=[];
