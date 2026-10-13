@@ -38,21 +38,27 @@ async function run(){
      out.webgl2=Boolean(fx);
      if(fx){
        out.shaders=[];
-       for(let family=0;family<20;family++){
+       for(let variant=0;variant<120;variant++){
          try{
-           const entry=window.BeatFX.LIBRARY[family*6+3];
+           const entry=window.BeatFX.LIBRARY[variant];
            const worked=fx.draw(src,[{id:entry.id,wet:1,strength:1}],1000,{bass:.6,mids:.2,highs:.4,rms:.3});
            const glError=fx.gl.getError();
            if(!worked||glError)out.errors.push(entry.id+' draw '+worked+' GL '+glError);
-         }catch(e){out.errors.push('family '+family+': '+e.message);}
+         }catch(e){out.errors.push('effect '+variant+': '+e.message);}
        }
-       out.shaderFamiliesTested=20;
+       out.shaderVariantsTested=120;
+       try{
+         const stack=[{id:'fx-005',wet:1,strength:1},{id:'fx-064',wet:.85,strength:1.3},{id:'fx-118',wet:1,strength:.6}];
+         out.threeLayersWorked=fx.draw(src,stack,2100,{bass:.5,mids:.6,highs:.4,rms:.3});
+         const err=fx.gl.getError();if(err)out.errors.push('3-layer stack GL '+err);
+       }catch(e){out.errors.push('3-layer stack: '+e.message);}
+
      }
    }catch(e){out.errors.push('UI: '+e.stack);}
    return out;
  })()`,true);
  console.log('BEATSCOPE ELECTRON SMOKE RESULT '+JSON.stringify(state));
- for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderFamiliesTested===20,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
+ for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
  if(state.errors?.length)fail('Shader/UI errors: '+JSON.stringify(state.errors));
  await win.close();
 }

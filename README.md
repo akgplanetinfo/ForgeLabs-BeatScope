@@ -73,3 +73,6 @@ Az FX Library 20 különböző GLSL shader-algoritmust és algoritmusonként 6 k
 - GIF/video export még nincs; a PNG mentés az effektelt képet is tartalmazza.
 - Minimum **WebGL2** szükséges az FX-réteghez. Ha nem érhető el, a korábbi audio-vizualizátor változatlanul működik, és erről hibaüzenet jelenik meg.
 - A képszerkesztő / shader működéséhez nincs külső AI API vagy fiók.
+
+### v0.3.1 – javítás
+A v0.3.0 kiadás az FX-réteg létrehozásakor a UI-inicializálás előtt hivatkozott a kezelőfelületre, ezért a gombok nem működtek. Ezt javítottuk. A WebGL2 visszacsatolás hibás framebuffer-másolását GPU blit alapú megoldásra cseréltük. A kiadást immár a teljes Electron alkalmazás indításával, a kezelőfelület tényleges kattintásaival, 120 effekt WebGL2-rajzolásával és egy háromrétegű effektlánccal ellenőrzi a Windows GitHub Actions.
