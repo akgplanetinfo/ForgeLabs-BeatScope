@@ -33,7 +33,7 @@ jobs:
         run: npm run check
 
       - name: Build Windows installer and portable application
-        run: npm run dist:win
+        run: npm run dist:win -- --publish never
 
       - name: Verify generated EXE files
         shell: pwsh
