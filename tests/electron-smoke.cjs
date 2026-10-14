@@ -22,8 +22,10 @@ async function run(){
  const fixturePNG=await win.webContents.executeJavaScript("(function(){const c=document.createElement('canvas');c.width=24;c.height=24;const x=c.getContext('2d');x.fillStyle='#f43c85';x.fillRect(0,0,24,24);x.fillStyle='#39c5e9';x.fillRect(4,4,16,16);return c.toDataURL('image/png').split(',')[1];})()");
  const fixturePath=path.join(smokeProfile,'beatscope-import-fixture.png');
  fs.writeFileSync(fixturePath,Buffer.from(fixturePNG,'base64'));
+ const videoFixturePath=path.join(__dirname,'fixture-video.webm');
  const originalDialog=dialog.showOpenDialog;
- dialog.showOpenDialog=async()=>({canceled:false,filePaths:[fixturePath]});
+ let importDialogCall=0;
+ dialog.showOpenDialog=async()=>({canceled:false,filePaths:[++importDialogCall===1?fixturePath:videoFixturePath]});
  const state=await win.webContents.executeJavaScript(`(async()=>{
    const out={};
    out.canvas=Boolean(document.querySelector('#visualizer'));
@@ -344,6 +346,54 @@ async function run(){
      document.getElementById('vj-paste').click();
      const pastedMediaLabel=document.querySelectorAll('.vj-layer-row')[0].querySelectorAll('.vj-clip')[6].textContent;
      out.mediaCopied=pastedMediaLabel==='beatscope-import-fixture.png';
+
+     // Alpha 9: actual finite-duration, decodable VP8 WebM imported through the native dialog IPC.
+     let videoFrameDraws=0,testVideo=null;
+     const originalVideoDraw=CanvasRenderingContext2D.prototype.drawImage;
+     CanvasRenderingContext2D.prototype.drawImage=function(source,...args){
+       if(source instanceof HTMLVideoElement&&source.readyState>=2&&source.videoWidth>0){
+         videoFrameDraws++;testVideo=source;
+       }
+       return originalVideoDraw.call(this,source,...args);
+     };
+     document.querySelectorAll('.vj-layer-row')[4].querySelector('.vj-layer-select').click();
+     document.getElementById('vj-import-media').click();
+     await new Promise(resolve=>setTimeout(resolve,1150));
+     out.videoFrameRendered=videoFrameDraws>0;
+     out.videoDecoded=Boolean(testVideo&&testVideo.duration>1.5&&testVideo.videoWidth===48);
+     out.videoPanelEnabled=!document.getElementById('vj-video-loop').disabled;
+     const inField=document.getElementById('vj-video-in'),outField=document.getElementById('vj-video-out');
+     inField.value='0.2';inField.dispatchEvent(new Event('change',{bubbles:true}));
+     outField.value='1.3';outField.dispatchEvent(new Event('change',{bubbles:true}));
+     const videoSpeed=document.getElementById('vj-video-speed');
+     videoSpeed.value='150';videoSpeed.dispatchEvent(new Event('input',{bubbles:true}));
+     out.videoSpeedLinked=document.getElementById('vj-speed').value==='150';
+     const videoLoop=document.getElementById('vj-video-loop');
+     videoLoop.checked=false;videoLoop.dispatchEvent(new Event('change',{bubbles:true}));
+     out.videoLoopOff=!document.getElementById('vj-video-loop').checked;
+     document.getElementById('vj-video-restart').click();
+     await new Promise(resolve=>setTimeout(resolve,125));
+     out.videoRestartAtIn=Boolean(testVideo&&testVideo.currentTime>=.15&&testVideo.currentTime<.95);
+     const videoSeek=document.getElementById('vj-video-seek');
+     videoSeek.value='1.28';videoSeek.dispatchEvent(new Event('input',{bubbles:true}));
+     await new Promise(resolve=>setTimeout(resolve,430));
+     out.videoStopsAtOut=Boolean(testVideo&&testVideo.paused&&testVideo.currentTime>=1.1&&testVideo.currentTime<=1.3);
+     videoLoop.checked=true;videoLoop.dispatchEvent(new Event('change',{bubbles:true}));
+     document.getElementById('vj-video-restart').click();
+     await new Promise(resolve=>setTimeout(resolve,110));
+     out.videoLoopResumes=Boolean(testVideo&&!testVideo.paused);
+     document.getElementById('vj-video-play').click();
+     out.videoPauseButton=Boolean(testVideo?.paused);
+     document.getElementById('vj-video-play').click();
+     await new Promise(resolve=>setTimeout(resolve,80));
+     out.videoContinueButton=Boolean(testVideo&&!testVideo.paused);
+     await new Promise(resolve=>setTimeout(resolve,550));
+     const savedVideoPrefs=await window.beatAPI.loadPreferences();
+     const savedVideoClip=savedVideoPrefs?.composition?.layers?.[4]?.clips?.find(c=>c?.mediaName==='fixture-video.webm');
+     out.videoSaved=Boolean(savedVideoClip&&savedVideoClip.playback.loop===true&&savedVideoClip.playback.inPoint===.2
+       &&savedVideoClip.playback.outPoint===1.3&&savedVideoClip.params.speed===1.5);
+     out.videoSeekUsable=!document.getElementById('vj-video-seek').disabled;
+     CanvasRenderingContext2D.prototype.drawImage=originalVideoDraw;
      document.getElementById('fx-browser-open').click();
      out.panelOpened=!document.getElementById('fx-drawer').hidden;
      out.searchRows=document.querySelectorAll('.fx-result').length;
@@ -381,7 +431,7 @@ async function run(){
    return out;
  })()`,true);
  console.log('BEATSCOPE ELECTRON SMOKE RESULT '+JSON.stringify(state));
- for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,mediaImportButton:state.importButton,mediaImported:state.mediaImported,mediaIDValid:typeof state.mediaID==='string'&&state.mediaID.startsWith('media-')&&state.mediaID.endsWith('.png'),mediaPersisted:state.mediaPersisted,mediaGrid:state.mediaGridLabel,mediaImageDrawn:state.mediaCanvasRendered,mediaCss:state.mediaImageClassified,mediaCopied:state.mediaCopied,gridRows:state.gridRows===8,clipCells:state.clipCells===64,sceneButtons:state.sceneButtons,sceneLaunch:state.sceneLaunchWorks,sceneSaved:state.sceneSaved,clipMenu:state.contextMenuOpen,clipPasted:state.pastedClip,clipParameters:state.pastedParams,clipDuplicated:state.duplicateCreated,clipDeleted:state.deleteWorked,clipCut:state.cutWorked,clipFXLibrary:state.clipFXLibraryCount===121,clipFXAdded:state.clipFXAdded,clipFXStack:state.clipFXStackCount,clipFXOrder:state.clipFXReordered,clipFXOff:state.clipFXDisabled,clipFXBypass:state.clipFXBypass,clipFXLayerMixing:state.clipFXLayerMixingRestored,clipFXGPU:state.clipFXGPU,clipFXSaved:state.clipFXPersisted,clipFXSeparate:state.clipFXIndependent,clipFXRemove:state.clipFXRemoved,layerFXLibrary:state.layerFXLibraryCount===121,layerFXAdded:state.layerFXAdded,layerFXReordered:state.layerFXReordered,layerFXDisabled:state.layerFXDisabled,layerFXBypass:state.layerFXBypass,layerFXGPU:state.layerFXGPU,layerFXOrder:state.layerFXOrder,layerFXSaved:state.layerFXSaved,layerFXSeparate:state.layerFXSeparate,layerFXDelete:state.layerFXDelete,blendCount:state.mixModes?.length===8,blendPixelResults:state.mixPixelDistinct,blendUI:state.mixModeSelected,blendOpacity:state.mixOpacitySynced,blendReorder:state.layerReordered,blendFxCarried:state.layerFXMoved,blendSaved:state.blendPersisted,blendRestore:state.layerRestoreIndex,blendRendered:state.blendUsedInRenderer,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,generatorCount:state.generatorCount===6,sourceOptions:state.generatorOptions?.length===16,extraCount:state.extraGeneratorCount===6,extraDraws:state.extraGeneratorsDrawn?.every(Boolean),extraDistinct:new Set(state.extraGeneratorHashes||[]).size===6,extraGrid:state.extraGridSources?.every(Boolean),otherClipDefault:state.otherClipDefault,paramsRestored:state.paramsRestored,paramsSaved:state.paramsSaved,paramsReset:state.paramsReset,sourceDraws:state.newGeneratorsDrawn?.every(Boolean),sourceDistinct:new Set(state.generatorHashes||[]).size===6,sourceGrid:state.newGridSources?.every(Boolean),library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
+ for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,mediaImportButton:state.importButton,mediaImported:state.mediaImported,mediaIDValid:typeof state.mediaID==='string'&&state.mediaID.startsWith('media-')&&state.mediaID.endsWith('.png'),mediaPersisted:state.mediaPersisted,mediaGrid:state.mediaGridLabel,mediaImageDrawn:state.mediaCanvasRendered,mediaCss:state.mediaImageClassified,mediaCopied:state.mediaCopied,videoDecoded:state.videoDecoded,videoFrames:state.videoFrameRendered,videoPanel:state.videoPanelEnabled,videoSpeed:state.videoSpeedLinked,videoLoopDisabled:state.videoLoopOff,videoRestart:state.videoRestartAtIn,videoStopOut:state.videoStopsAtOut,videoLoopResume:state.videoLoopResumes,videoPause:state.videoPauseButton,videoContinue:state.videoContinueButton,videoSaved:state.videoSaved,videoSeek:state.videoSeekUsable,gridRows:state.gridRows===8,clipCells:state.clipCells===64,sceneButtons:state.sceneButtons,sceneLaunch:state.sceneLaunchWorks,sceneSaved:state.sceneSaved,clipMenu:state.contextMenuOpen,clipPasted:state.pastedClip,clipParameters:state.pastedParams,clipDuplicated:state.duplicateCreated,clipDeleted:state.deleteWorked,clipCut:state.cutWorked,clipFXLibrary:state.clipFXLibraryCount===121,clipFXAdded:state.clipFXAdded,clipFXStack:state.clipFXStackCount,clipFXOrder:state.clipFXReordered,clipFXOff:state.clipFXDisabled,clipFXBypass:state.clipFXBypass,clipFXLayerMixing:state.clipFXLayerMixingRestored,clipFXGPU:state.clipFXGPU,clipFXSaved:state.clipFXPersisted,clipFXSeparate:state.clipFXIndependent,clipFXRemove:state.clipFXRemoved,layerFXLibrary:state.layerFXLibraryCount===121,layerFXAdded:state.layerFXAdded,layerFXReordered:state.layerFXReordered,layerFXDisabled:state.layerFXDisabled,layerFXBypass:state.layerFXBypass,layerFXGPU:state.layerFXGPU,layerFXOrder:state.layerFXOrder,layerFXSaved:state.layerFXSaved,layerFXSeparate:state.layerFXSeparate,layerFXDelete:state.layerFXDelete,blendCount:state.mixModes?.length===8,blendPixelResults:state.mixPixelDistinct,blendUI:state.mixModeSelected,blendOpacity:state.mixOpacitySynced,blendReorder:state.layerReordered,blendFxCarried:state.layerFXMoved,blendSaved:state.blendPersisted,blendRestore:state.layerRestoreIndex,blendRendered:state.blendUsedInRenderer,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,generatorCount:state.generatorCount===6,sourceOptions:state.generatorOptions?.length===16,extraCount:state.extraGeneratorCount===6,extraDraws:state.extraGeneratorsDrawn?.every(Boolean),extraDistinct:new Set(state.extraGeneratorHashes||[]).size===6,extraGrid:state.extraGridSources?.every(Boolean),otherClipDefault:state.otherClipDefault,paramsRestored:state.paramsRestored,paramsSaved:state.paramsSaved,paramsReset:state.paramsReset,sourceDraws:state.newGeneratorsDrawn?.every(Boolean),sourceDistinct:new Set(state.generatorHashes||[]).size===6,sourceGrid:state.newGridSources?.every(Boolean),library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
  if(state.errors?.length)fail('Shader/UI errors: '+JSON.stringify(state.errors));
  if(state.mediaID&&!fs.existsSync(path.join(smokeProfile,'beatscope-media',state.mediaID)))fail('Media asset not copied to local managed library');
  dialog.showOpenDialog=originalDialog;

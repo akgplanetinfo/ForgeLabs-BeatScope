@@ -63,7 +63,7 @@
       <div class="control-line"><label for="bars-count">Oszlopok</label><output id="bars-val">56</output></div>
       <input type="range" id="bars-count" min="16" max="128" value="56" step="8" />
       <label class="check-row"><input id="show-grid" type="checkbox" checked /><span>Finom háttérrács</span></label>
-      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α8</span></div>
+      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α9</span></div>
     </aside>
     <main class="workspace">
       <div class="workspace-top">
@@ -132,6 +132,27 @@
           <label>Rotation <output id="vj-rotation-value">0°</output><input id="vj-rotation" aria-label="Klip forgatása" type="range" min="-180" max="180" value="0" step="5"/></label>
           <label>Audio Reactivity <output id="vj-audio-value">100%</output><input id="vj-audio" aria-label="Klip hangérzékenysége" type="range" min="0" max="200" value="100" step="5"/></label>
         </div>
+      </section>
+      <section class="vj-video-controls" id="vj-video-controls" aria-label="Videoklip lejátszásának vezérlése">
+        <div class="vj-video-head">
+          <div><strong>VIDEO TRANSPORT</strong><small id="vj-video-target">Válassz ki egy videoklipet</small></div>
+          <output id="vj-video-clock">00:00.0 / 00:00.0</output>
+        </div>
+        <div class="vj-video-seek"><input type="range" id="vj-video-seek" min="0" max="100" value="0" step="0.05" disabled aria-label="Videoklip idővonal és keresés"/></div>
+        <div class="vj-video-transport">
+          <button type="button" id="vj-video-play" disabled>▶ Lejátszás</button>
+          <button type="button" id="vj-video-restart" disabled>↺ Újraindítás</button>
+          <label class="vj-video-loop"><input type="checkbox" id="vj-video-loop" checked disabled /> Loop</label>
+          <label class="vj-video-speed">Speed <output id="vj-video-speed-value">1.00×</output><input type="range" id="vj-video-speed" min="10" max="400" value="100" step="5" disabled aria-label="Videoklip lejátszási sebessége"/></label>
+        </div>
+        <div class="vj-video-cues">
+          <label>In (mp)<input type="number" id="vj-video-in" min="0" max="86400" step="0.1" value="0" disabled aria-label="Videoklip In pont másodpercben"/></label>
+          <button type="button" id="vj-video-mark-in" disabled title="In pont a videó aktuális pozíciójára">In ← fej</button>
+          <label>Out (mp)<input type="number" id="vj-video-out" min="0" max="86400" step="0.1" placeholder="Vége" disabled aria-label="Videoklip Out pont másodpercben"/></label>
+          <button type="button" id="vj-video-mark-out" disabled title="Out pont a videó aktuális pozíciójára">Out ← fej</button>
+          <button type="button" id="vj-video-reset" disabled>In/Out törlése</button>
+        </div>
+        <small class="vj-video-hint">Az In/Out pontok klipenként mentődnek. Loop kikapcsolva a videó az Out pontnál megáll.</small>
       </section>
       <section class="vj-mix" id="vj-mix" aria-label="Rétegek sorrendje és keverése">
         <div class="vj-mix-title">
@@ -227,6 +248,7 @@
   <div class="toast-stack" id="toasts" role="status" aria-live="polite"></div>
   <script src="src/audio-math.js"></script>
   <script src="src/ai-director.js"></script>
+  <script src="src/video-timing.js"></script>
   <script src="src/composition.js"></script>
   <script src="src/generators.js"></script>
   <script src="src/generators-extra.js"></script>

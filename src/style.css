@@ -171,3 +171,26 @@
 .vj-clip.media-clip{background:linear-gradient(135deg,#493557,#265669);border:1px solid #7a89cd;color:#f1dfff}
 .vj-clip.media-clip.playing{background:linear-gradient(135deg,#436f7d,#177988);border-color:#99f9d9;color:#fff}
 @media(max-width:1300px){.vj-deck-actions #clip-source-picker{max-width:115px}.vj-deck-actions #vj-import-media{font-size:9px;padding:6px}}
+
+
+/* Alpha 9: video clip In/Out transport and loop controls */
+.vj-video-controls{flex:0 0 auto;border:1px solid #38668e;border-radius:12px;background:linear-gradient(110deg,#11283b,#18314b);padding:12px;display:flex;flex-direction:column;gap:9px;min-width:0}
+.vj-video-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.vj-video-head>div{display:flex;flex-direction:column;min-width:0;gap:3px}
+.vj-video-head strong{font-size:11px;letter-spacing:1px;color:#b7e8ff}
+.vj-video-head small{font-size:10px;color:#8db7cf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vj-video-head output{white-space:nowrap;font-size:11px;font-variant-numeric:tabular-nums;color:#b6ffd8}
+.vj-video-seek input{width:100%;accent-color:#63dac4}
+.vj-video-transport{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.vj-video-transport button,.vj-video-cues button{padding:6px 9px;border:1px solid #397c97;border-radius:6px;background:#1b4258;color:#d4f8ff;font-size:10px;white-space:nowrap}
+.vj-video-transport button:disabled,.vj-video-cues button:disabled{opacity:.32}
+.vj-video-loop{display:flex;gap:5px;align-items:center;color:#c9e6ff;font-size:10px}
+.vj-video-speed{display:flex;align-items:center;gap:8px;color:#c9e6ff;font-size:10px;flex:1;min-width:170px}
+.vj-video-speed input{flex:1;min-width:60px;accent-color:#65d9c3}
+.vj-video-speed output{color:#8bffd8;white-space:nowrap;font-variant-numeric:tabular-nums}
+.vj-video-cues{display:flex;align-items:end;gap:7px;flex-wrap:wrap}
+.vj-video-cues label{font-size:10px;color:#aed1e7;display:flex;flex-direction:column;gap:4px}
+.vj-video-cues input[type=number]{width:86px;padding:7px;background:#10283e;border:1px solid #456a86;color:#e0f8ff;border-radius:6px;font-size:11px}
+.vj-video-hint{font-size:9px;color:#85aec6}
+@media(max-width:1300px){.vj-video-cues input[type=number]{width:69px}.vj-video-controls{padding:9px}}
+@media(max-height:750px){.vj-video-controls{gap:5px;padding:8px}.vj-video-hint{display:none}}

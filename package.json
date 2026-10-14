@@ -1,7 +1,7 @@
 {
   "name": "forgelabs-beatscope",
   "productName": "ForgeLabs BeatScope",
-  "version": "0.4.0-alpha.8",
+  "version": "0.4.0-alpha.9",
   "description": "ForgeLabs BeatScope – valós idejű zenei vizualizátor Windowsra",
   "private": true,
   "main": "src/main.cjs",
@@ -10,7 +10,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test tests/*.test.cjs",
-    "check": "node --check src/main.cjs && node --check src/preload.cjs && node --check src/ui.js && node --check src/audio-math.js && node --check src/ai-director.js && node --check src/fx-engine.js && node --check src/composition.js && node --check src/generators.js && node --check src/generators-extra.js && node --check src/media-library.cjs && node --test tests/*.test.cjs",
+    "check": "node --check src/main.cjs && node --check src/preload.cjs && node --check src/ui.js && node --check src/audio-math.js && node --check src/ai-director.js && node --check src/fx-engine.js && node --check src/composition.js && node --check src/video-timing.js && node --check src/generators.js && node --check src/generators-extra.js && node --check src/media-library.cjs && node --test tests/*.test.cjs",
     "dist:win": "electron-builder --win nsis portable --x64"
   },
   "devDependencies": {

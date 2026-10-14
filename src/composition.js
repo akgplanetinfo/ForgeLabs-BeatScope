@@ -4,6 +4,7 @@
  if(root)root.BeatComposition=api;
 })(typeof window!=='undefined'?window:typeof globalThis!=='undefined'?globalThis:null,function(){
  'use strict';
+ const VideoTiming=typeof module==='object'&&module.exports?require('./video-timing.js'):window.BeatVideoTiming;
  const SOURCES=Object.freeze(['bars','wave','orbit','particles','tunnel','plasma','rings','grid','laser','starfield','hexfield','digitalrain','ribbon','mandala','fireflies','electric']);
  const MEDIA_ID=/^media-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|jpeg|webp|gif|mp4|webm|m4v|mov)$/;
  function validMedia(clip){return clip?.source==='media'&&typeof clip.mediaId==='string'&&MEDIA_ID.test(clip.mediaId);}
@@ -13,6 +14,7 @@
    const output={source:clip.source,params:sanitizeParams(clip.params),fxStack:normalizeFxStack(clip.fxStack),fxBypass:clip.fxBypass===true};
    if(clip.source==='media'){
      output.mediaId=clip.mediaId;
+     output.playback=VideoTiming.normalizePlayback(clip.playback);
      output.mediaName=typeof clip.mediaName==='string'?clip.mediaName.slice(0,90):clip.mediaId;
    }
    return output;
@@ -197,6 +199,18 @@
    c.selectedLayer=index;c.selectedSlot=slot;
    return c;
  }
+ function setMediaPlayback(input,index,slot,patch){
+   const c=normalize(input);
+   if(!validInt(index,ROWS)||!validInt(slot,COLUMNS))return c;
+   const clip=c.layers[index].clips[slot];
+   if(!clip||!validMedia(clip)||!patch||typeof patch!=='object')return c;
+   const values={...clip.playback};
+   if(typeof patch.loop==='boolean')values.loop=patch.loop;
+   if(typeof patch.inPoint==='number'&&Number.isFinite(patch.inPoint))values.inPoint=patch.inPoint;
+   if(patch.outPoint===null||(typeof patch.outPoint==='number'&&Number.isFinite(patch.outPoint)))values.outPoint=patch.outPoint;
+   clip.playback=VideoTiming.normalizePlayback(values);
+   return c;
+ }
  function setClipEffects(input,index,slot,stack,bypass){
    const c=normalize(input);
    if(!validInt(index,ROWS)||!validInt(slot,COLUMNS)||!c.layers[index].clips[slot])return c;
@@ -230,8 +244,8 @@
  function activeLayers(input){
    const c=normalize(input),hasSolo=c.layers.some(l=>l.solo);
    return c.layers.map((l,index)=>({index,...l})).filter(l=>l.activeSlot>=0&&!l.muted&&l.opacity>0&&(!hasSolo||l.solo)&&l.clips[l.activeSlot])
-    .map(l=>({index:l.index,source:l.clips[l.activeSlot].source,mediaId:l.clips[l.activeSlot].mediaId||null,mediaName:l.clips[l.activeSlot].mediaName||null,opacity:l.opacity,blendMode:blendMode(l.blendMode),layerFxStack:normalizeFxStack(l.fxStack),layerFxBypass:l.fxBypass===true,slot:l.activeSlot,params:sanitizeParams(l.clips[l.activeSlot].params),fxStack:normalizeFxStack(l.clips[l.activeSlot].fxStack),fxBypass:l.clips[l.activeSlot].fxBypass===true}))
+    .map(l=>({index:l.index,source:l.clips[l.activeSlot].source,mediaId:l.clips[l.activeSlot].mediaId||null,mediaName:l.clips[l.activeSlot].mediaName||null,playback:l.clips[l.activeSlot].source==='media'?VideoTiming.normalizePlayback(l.clips[l.activeSlot].playback):null,opacity:l.opacity,blendMode:blendMode(l.blendMode),layerFxStack:normalizeFxStack(l.fxStack),layerFxBypass:l.fxBypass===true,slot:l.activeSlot,params:sanitizeParams(l.clips[l.activeSlot].params),fxStack:normalizeFxStack(l.clips[l.activeSlot].fxStack),fxBypass:l.clips[l.activeSlot].fxBypass===true}))
     .reverse(); // topmost layer = Layer 1, rendered last
  }
- return {ROWS,COLUMNS,MAX_CLIP_FX,MAX_LAYER_FX,BLEND_MODES,blendMode,canvasBlendMode,SOURCES,MEDIA_ID,validMedia,normalizeClip,DEFAULT_PARAMS,PARAM_LIMITS,sanitizeParams,normalizeFxStack,createComposition,normalize,selectLayer,selectClip,getClip,pasteClip,removeClip,duplicateClip,moveClip,launchScene,layerAction,putClip,updateClipParams,setClipEffects,setLayerEffects,moveLayer,putMediaClip,launch,stop,activeLayers};
+ return {ROWS,COLUMNS,MAX_CLIP_FX,MAX_LAYER_FX,BLEND_MODES,blendMode,canvasBlendMode,SOURCES,MEDIA_ID,validMedia,normalizeClip,DEFAULT_PARAMS,PARAM_LIMITS,sanitizeParams,normalizeFxStack,createComposition,normalize,selectLayer,selectClip,getClip,pasteClip,removeClip,duplicateClip,moveClip,launchScene,layerAction,putClip,updateClipParams,setClipEffects,setLayerEffects,moveLayer,putMediaClip,setMediaPlayback,launch,stop,activeLayers};
 });

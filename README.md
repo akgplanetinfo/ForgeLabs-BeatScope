@@ -142,3 +142,19 @@ Az új médiaklip a korábbi beállításfájlba menti a fájl biztonságos azon
 Az import a natív Windows fájlválasztóval működik. A rendszer csak előre engedélyezett kiterjesztéseket és legfeljebb 2 GB-os helyi fájlokat fogad el. A renderer nem kap tetszőleges Windows fájlútvonalat, a helyi médiaprotokoll csak a saját médiakönyvtárban található érvényes azonosítókat szolgálja ki. A média importálása offline is működik. Ez a részkiadás még nem tudja a videók In/Out pontjait, visszafelé lejátszását, media relinkinget vagy külső kimenetre exportálását.
 
 A Windowsos teszt az importált PNG-t a valódi Electron fájlválasztó-IPC-n keresztül hozza be, ellenőrzi a tartós fájlt, kirajzolást, klipsorban indítást, másolást és beállítások mentését. A videóformátumok MIME- és adatmodell-ellenőrzést kapnak; eltérő kodekek dekódolási kompatibilitását továbbra is külön gépen szükséges ellenőrizni.
+
+## v0.4.0-alpha.9 — 9. rész: VIDEO TRANSPORT – Loop, In/Out, Speed, Seek
+
+A CLIP DECK-ben kiválasztott **videokliphez** megjelenik a VIDEO TRANSPORT panel, amely a következő funkciókat biztosítja:
+
+- **Loop:** a kijelölt In/Out szakasz ismétlése, alapértelmezetten be. Kikapcsolva a videó az Out ponthoz érve szünetel, és az utolsó képkocka látható marad.
+- **In és Out pontok:** másodpercben szerkeszthetők (0,1 másodperces lépésköz). A „← fej” gomb a videó aktuális pozícióját használja; reset visszaállítja a teljes videóhosszt. Az Out pont alapértelmezetten a fájl végpontja.
+- **Timeline / Seek:** a videó pozícióját mutatja; a csúszkán kattintva a kijelölt szakaszon belül keres.
+- **Speed:** 0,1–4×, ugyanaz az érték, mint a Klip Paraméterek panelen. A két szabályzó egymással szinkronban van.
+- **Play / Pause és Restart:** a kiválasztott klip külön vezérelhető; a Restart az In ponttól indít.
+
+A Loop, az In/Out és a Speed értékek klipenként külön tárolódnak az Electron helyi beállításfájljában. Klipek másolásakor, duplikálásakor és rétegek átrendezésekor megmaradnak; a régi v0.4-es médiaklipek automatikusan az alapértelmezett (teljes hossz, Loop be) értékeket kapják. A lejátszó a klip- és réteg-FX-ek előtt dolgozik, változatlanul helyi videofájlokkal.
+
+**Korlátok:** a videó hangja jelenleg továbbra is némítva van. Egyes MOV/MP4 kodekeket a Chromium nem dekódol; a program csak a valóban támogatott kodekekkel használható. Nem támogatja a reverse playbacket és az idővonalvezérlés más videoklipekkel közös BPM-quantization funkcióját. A Loop pontos képkockára történő mintavétele hardvertől és kodektől függ.
+
+A Windowsos teszt nemcsak az állapotlogikát ellenőrzi: egy **1,625 másodperces, valódi VP8 WebM videót** importál, dekódol, kirajzol a vászonra, megvizsgálja az In/Out-nál történő megállítást és a Loop újraindulását, majd ellenőrzi a vezérlőpanelt és az adatok tartós mentését.

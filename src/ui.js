@@ -5,6 +5,7 @@
   const aiDirector=window.BeatDirector.createDirector();
   const FX=window.BeatFX;
   const Composition=window.BeatComposition;
+  const VideoTiming=window.BeatVideoTiming;
   const Generators=window.BeatGenerators;
   const ExtraGenerators=window.BeatExtraGenerators;
   let fxRenderer=null,fxDisabled=false,fxSelected=-1,fxFavFilter=false,fxAICount=0,fxLastSwitch=0,fxRecent=[];
@@ -90,8 +91,144 @@
   let clipClipboard=null,draggedClip=null;
 
   const mediaPlayers=new Map();
+  let videoClockUpdated=0;
   const mediaURL=id=>'beatscope-media://local/'+id; // ID validated and generated in Electron main.
   function mediaType(id){return /\.(mp4|webm|mov|m4v)$/.test(id)?'video':'image';}
+  function activeMediaLayer(index){
+    return Composition.activeLayers(settings.composition).find(layer=>layer.index===index&&layer.source==='media')||null;
+  }
+  function applyVideoTiming(item,layer){
+    if(item.type!=='video'||!layer)return;
+    const video=item.element,p=VideoTiming.normalizePlayback(layer.playback);
+    if(!Number.isFinite(video.duration)||video.duration<=0)return;
+    const {start,end}=VideoTiming.bounds(p,video.duration);
+    if(video.currentTime<start-.045||VideoTiming.atOut(video.currentTime,p,video.duration)){
+      if(video.currentTime>=end-.035&&!p.loop){
+        item.userPaused=true;video.pause();
+        const freeze=Math.max(start,end-.055);
+        if(video.currentTime>freeze+.01)video.currentTime=freeze;
+      }else{
+        video.currentTime=start;
+        if(!item.userPaused&&video.paused)video.play().catch(()=>{});
+      }
+    }
+  }
+  function selectedVideoInfo(){
+    const {row,slot,clip}=selectedCell();
+    if(!clip||clip.source!=='media'||mediaType(clip.mediaId)!=='video')return null;
+    const layer=settings.composition.layers[row];
+    const item=layer?.activeSlot===slot?mediaPlayers.get(row):null;
+    return {row,slot,clip,item:item?.id===clip.mediaId?item:null};
+  }
+  function updateVideoClock(){
+    const info=selectedVideoInfo(),video=info?.item?.element;
+    if(!info||!video||!Number.isFinite(video.duration)||video.duration<=0)return;
+    const t=VideoTiming.seekTime(video.currentTime,info.clip.playback,video.duration);
+    const d=video.duration;
+    $('vj-video-clock').textContent=VideoTiming.formatTime(t)+' / '+VideoTiming.formatTime(d);
+    const seek=$('vj-video-seek');seek.max=String(d);seek.value=String(t);seek.disabled=false;
+    $('vj-video-play').textContent=video.paused?'▶ Lejátszás':'Ⅱ Szünet';
+  }
+  function refreshVideoTransport(){
+    const info=selectedVideoInfo();
+    const enabled=Boolean(info);
+    const clip=info?.clip;
+    const playback=VideoTiming.normalizePlayback(clip?.playback);
+    $('vj-video-target').textContent=clip?clip.mediaName:'Válassz ki egy videoklipet';
+    $('vj-video-loop').checked=playback.loop;
+    $('vj-video-in').value=String(playback.inPoint);
+    $('vj-video-out').value=playback.outPoint===null?'':String(playback.outPoint);
+    $('vj-video-speed').value=String(Math.round((clip?.params?.speed??1)*100));
+    $('vj-video-speed-value').textContent=(clip?.params?.speed??1).toFixed(2)+'×';
+    for(const id of ['vj-video-loop','vj-video-in','vj-video-out','vj-video-speed',
+      'vj-video-play','vj-video-restart','vj-video-mark-in','vj-video-mark-out','vj-video-reset'])
+      $(id).disabled=!enabled;
+    const video=info?.item?.element,available=Boolean(video&&Number.isFinite(video.duration)&&video.duration>0);
+    $('vj-video-seek').disabled=!available;
+    $('vj-video-seek').max=available?String(video.duration):'100';
+    $('vj-video-seek').value=available?String(VideoTiming.seekTime(video.currentTime,playback,video.duration)):'0';
+    $('vj-video-clock').textContent=available?
+      VideoTiming.formatTime(video.currentTime)+' / '+VideoTiming.formatTime(video.duration):'00:00.0 / 00:00.0';
+    $('vj-video-play').textContent=video&&!video.paused?'Ⅱ Szünet':'▶ Lejátszás';
+  }
+  function updateVideoPlayback(patch){
+    const info=selectedVideoInfo();if(!info)return;
+    settings.composition=Composition.setMediaPlayback(settings.composition,info.row,info.slot,patch);
+    const updated=settings.composition.layers[info.row].clips[info.slot].playback;
+    if(info.item){
+      const v=info.item.element;
+      if(Number.isFinite(v.duration)&&v.duration>0){
+        const {start,end}=VideoTiming.bounds(updated,v.duration);
+        if(v.currentTime<start||v.currentTime>end)v.currentTime=start;
+      }
+    }
+    refreshVideoTransport();persist();
+  }
+  function bindVideoTransport(){
+    $('vj-video-loop').addEventListener('change',event=>updateVideoPlayback({loop:event.target.checked}));
+    for(const [key,field] of [['inPoint','vj-video-in'],['outPoint','vj-video-out']]){
+      $(field).addEventListener('change',event=>{
+        const raw=event.target.value.trim();
+        const value=raw===''&&key==='outPoint'?null:Number(raw);
+        const info=selectedVideoInfo();
+        if(!info||!(value===null||Number.isFinite(value))){refreshVideoTransport();return;}
+        if(value!==null&&value<0){refreshVideoTransport();notify('Az időpont nem lehet negatív.',true);return;}
+        updateVideoPlayback({[key]:value});
+      });
+    }
+    $('vj-video-mark-in').addEventListener('click',()=>{
+      const info=selectedVideoInfo();
+      if(!info?.item)return;
+      updateVideoPlayback({inPoint:Math.floor(info.item.element.currentTime*10)/10});
+    });
+    $('vj-video-mark-out').addEventListener('click',()=>{
+      const info=selectedVideoInfo();if(!info?.item)return;
+      updateVideoPlayback({outPoint:Math.ceil(info.item.element.currentTime*10)/10});
+    });
+    $('vj-video-reset').addEventListener('click',()=>updateVideoPlayback({inPoint:0,outPoint:null}));
+    $('vj-video-speed').addEventListener('input',event=>{
+      const info=selectedVideoInfo();if(!info)return;
+      const speed=Number(event.target.value)/100;
+      settings.composition=Composition.updateClipParams(settings.composition,info.row,info.slot,{speed});
+      refreshClipParams();refreshVideoTransport();persist();
+    });
+    $('vj-video-seek').addEventListener('input',event=>{
+      const info=selectedVideoInfo(),video=info?.item?.element;
+      if(!video||!Number.isFinite(video.duration)||video.duration<=0)return;
+      video.currentTime=VideoTiming.seekTime(Number(event.target.value),info.clip.playback,video.duration);
+      updateVideoClock();
+    });
+    $('vj-video-play').addEventListener('click',()=>{
+      let info=selectedVideoInfo();if(!info)return;
+      if(!info.item){
+        settings.composition=Composition.launch(settings.composition,info.row,info.slot);
+        renderClipGrid();setSourceLabel();persist();info=selectedVideoInfo();
+      }
+      const item=info?.item;if(!item)return;
+      const video=item.element;
+      if(!video.paused){item.userPaused=true;video.pause();}
+      else{
+        item.userPaused=false;
+        if(Number.isFinite(video.duration)&&VideoTiming.atOut(video.currentTime,info.clip.playback,video.duration))
+          video.currentTime=VideoTiming.bounds(info.clip.playback,video.duration).start;
+        video.play().catch(e=>notify('A videó nem indul: '+e.message,true));
+      }
+      refreshVideoTransport();
+    });
+    $('vj-video-restart').addEventListener('click',()=>{
+      let info=selectedVideoInfo();if(!info)return;
+      if(!info.item){
+        settings.composition=Composition.launch(settings.composition,info.row,info.slot);
+        renderClipGrid();persist();info=selectedVideoInfo();
+      }
+      const item=info?.item;if(!item)return;
+      item.userPaused=false;
+      item.element.currentTime=VideoTiming.bounds(info.clip.playback,item.element.duration).start;
+      item.element.play().catch(e=>notify('A videó nem indul: '+e.message,true));
+      refreshVideoTransport();
+    });
+    refreshVideoTransport();
+  }
   function stopMediaPlayer(item){
     if(item.type==='video'){
       item.element.pause();
@@ -114,13 +251,22 @@
       if(!Composition.MEDIA_ID.test(layer.mediaId))continue;
       const type=mediaType(layer.mediaId);
       const element=document.createElement(type==='video'?'video':'img');
-      const item={type,id:layer.mediaId,slot:layer.slot,element};
+      const item={type,id:layer.mediaId,slot:layer.slot,element,userPaused:false};
       mediaPlayers.set(index,item);
       element.onerror=()=>notify('Nem sikerült megnyitni: '+(layer.mediaName||'média')+'. Ellenőrizd a formátumot.',true);
       if(type==='video'){
-        element.muted=true;element.defaultMuted=true;element.loop=true;
+        element.muted=true;element.defaultMuted=true;element.loop=false;
         element.playsInline=true;element.autoplay=true;element.preload='auto';
         element.crossOrigin='anonymous';
+        element.onloadedmetadata=()=>{
+          const current=activeMediaLayer(index);
+          if(!current||item.id!==current.mediaId)return;
+          element.currentTime=VideoTiming.bounds(current.playback,element.duration).start;
+          refreshVideoTransport();
+          if(!item.userPaused)element.play().catch(e=>notify('A videó nem indul: '+e.message,true));
+        };
+        element.ontimeupdate=()=>applyVideoTiming(item,activeMediaLayer(index));
+        element.onended=()=>applyVideoTiming(item,activeMediaLayer(index));
       }else{
         element.crossOrigin='anonymous';
       }
@@ -136,6 +282,7 @@
       if(element.readyState<2||!element.videoWidth)return;
       const p=Composition.sanitizeParams(layer.params);
       if(Math.abs(element.playbackRate-p.speed)>.02)element.playbackRate=p.speed;
+      applyVideoTiming(item,layer);
     }else if(!element.complete||!element.naturalWidth)return;
     const width=item.type==='video'?element.videoWidth:element.naturalWidth;
     const height=item.type==='video'?element.videoHeight:element.naturalHeight;
@@ -241,13 +388,14 @@
         const v=key==='rotation'?+input.value:+input.value/100;
         settings.composition=Composition.updateClipParams(settings.composition,s.layerIndex,s.slot,{[key]:v});
         refreshClipParams();
+        if(key==='speed')refreshVideoTransport();
         persist();
       });
     }
     $('vj-reset').addEventListener('click',()=>{
       const s=selectedClipInfo();if(!s)return;
       settings.composition=Composition.updateClipParams(settings.composition,s.layerIndex,s.slot,Composition.DEFAULT_PARAMS);
-      refreshClipParams();persist();
+      refreshClipParams();refreshVideoTransport();persist();
     });
   }
 
@@ -578,7 +726,7 @@
       }
       root.append(row);
     }
-    refreshClipParams();refreshClipFX();refreshLayerFX();refreshLayerMixer();updateClipToolbar();syncMediaPlayers();
+    refreshClipParams();refreshClipFX();refreshLayerFX();refreshLayerMixer();updateClipToolbar();syncMediaPlayers();refreshVideoTransport();
   }
   function setSourceLabel(){
     const active=(sourceMode==='mic'&&!!micStream)||(sourceMode==='file'&&!UI.audio.paused&&!UI.audio.ended);
@@ -958,6 +1106,7 @@
     const hasVisuals=Composition.activeLayers(settings.composition).length>0;
     if(!active&&t-lastFrame<(hasVisuals?33:85))return;
     lastFrame=t;
+    if(t-videoClockUpdated>170){videoClockUpdated=t;updateVideoClock();}
     if(!sceneWidth||UI.canvas.clientWidth!==sceneWidth||UI.canvas.clientHeight!==sceneHeight)sizeCanvas();
     if(active&&analyser&&audioCtx){
       analyser.getByteFrequencyData(bins);analyser.getByteTimeDomainData(wave);
@@ -1078,6 +1227,7 @@
     });
 
     bindClipParams();
+    bindVideoTransport();
     bindClipFX();
     bindLayerFX();
     bindLayerMixer();
