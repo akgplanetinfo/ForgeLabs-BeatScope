@@ -45,6 +45,46 @@
     saveTimer=setTimeout(()=>window.beatAPI?.savePreferences({...settings}).catch(()=>notify('A beállításokat nem sikerült elmenteni.',true)),300);
   }
 
+  function refreshLayerMixer(){
+    const index=settings.composition.selectedLayer,layer=settings.composition.layers[index];
+    $('vj-mix-target').textContent=layer.name+' · pozíció '+(index+1)+'/8'+(index===0?' (legfelső)':index===7?' (legalsó)':'');
+    $('vj-blend-mode').value=layer.blendMode;
+    $('vj-mix-opacity').value=Math.round(layer.opacity*100);
+    $('vj-mix-opacity-value').textContent=Math.round(layer.opacity*100)+'%';
+    $('vj-layer-up').disabled=index<=0;
+    $('vj-layer-down').disabled=index>=Composition.ROWS-1;
+  }
+  function shiftSelectedLayer(offset){
+    const oldIndex=settings.composition.selectedLayer;
+    const newIndex=oldIndex+offset;
+    if(newIndex<0||newIndex>=Composition.ROWS)return;
+    settings.composition=Composition.moveLayer(settings.composition,oldIndex,offset);
+    // Temporal FX history must travel with its owning layer when reordering.
+    [layerFxCache[oldIndex],layerFxCache[newIndex]]=[layerFxCache[newIndex],layerFxCache[oldIndex]];
+    const oldFailed=layerFxFailed.has(oldIndex),newFailed=layerFxFailed.has(newIndex);
+    layerFxFailed.delete(oldIndex);layerFxFailed.delete(newIndex);
+    if(oldFailed)layerFxFailed.add(newIndex);
+    if(newFailed)layerFxFailed.add(oldIndex);
+    renderClipGrid();setSourceLabel();persist();
+  }
+  function bindLayerMixer(){
+    $('vj-blend-mode').addEventListener('change',event=>{
+      const index=settings.composition.selectedLayer;
+      settings.composition=Composition.layerAction(settings.composition,index,{blendMode:event.target.value});
+      refreshLayerMixer();persist();
+    });
+    $('vj-mix-opacity').addEventListener('input',event=>{
+      const index=settings.composition.selectedLayer;
+      settings.composition=Composition.layerAction(settings.composition,index,{opacity:Number(event.target.value)/100});
+      const row=document.querySelectorAll('.vj-layer-row')[index];
+      const opacity=row?.querySelector('.vj-layer-opacity');
+      if(opacity)opacity.value=event.target.value;
+      refreshLayerMixer();persist();
+    });
+    $('vj-layer-up').addEventListener('click',()=>shiftSelectedLayer(-1));
+    $('vj-layer-down').addEventListener('click',()=>shiftSelectedLayer(1));
+    refreshLayerMixer();
+  }
   const SOURCE_NAMES={bars:'Spectrum Bars',wave:'Waveform',orbit:'Orbit Pulse',particles:'Particles',...Generators.NAMES,...ExtraGenerators.NAMES};
   const PARAM_KEYS=['speed','scale','rotation','audio'];
   let clipClipboard=null,draggedClip=null;
@@ -413,6 +453,7 @@
       opacity.addEventListener('input',()=>{
         settings.composition=Composition.layerAction(settings.composition,rowIndex,{opacity:Number(opacity.value)/100});
         opacity.title='Réteg átlátszósága: '+opacity.value+'%';
+        if(settings.composition.selectedLayer===rowIndex)refreshLayerMixer();
         persist();
       });
       header.append(select,mute,solo,stop,opacity);row.append(header);
@@ -460,7 +501,7 @@
       }
       root.append(row);
     }
-    refreshClipParams();refreshClipFX();refreshLayerFX();updateClipToolbar();
+    refreshClipParams();refreshClipFX();refreshLayerFX();refreshLayerMixer();updateClipToolbar();
   }
   function setSourceLabel(){
     const active=(sourceMode==='mic'&&!!micStream)||(sourceMode==='file'&&!UI.audio.paused&&!UI.audio.ended);
@@ -890,7 +931,7 @@
         }
         ctx.save();saved=true;
         ctx.globalAlpha=buffer?1:layer.opacity;
-        ctx.globalCompositeOperation=buffer?'source-over':'screen';
+        ctx.globalCompositeOperation=buffer?'source-over':Composition.canvasBlendMode(layer.blendMode);
         ctx.translate(sceneWidth*.5,sceneHeight*.5);
         ctx.rotate(p.rotation*Math.PI/180);
         ctx.scale(p.scale,p.scale);
@@ -923,7 +964,7 @@
             notify('Réteg vagy klip FX rajzolási hiba a '+(layer.index+1)+'. rétegen: '+e.message,true);
           }
           ctx.save();
-          ctx.globalAlpha=layer.opacity;ctx.globalCompositeOperation='screen';
+          ctx.globalAlpha=layer.opacity;ctx.globalCompositeOperation=Composition.canvasBlendMode(layer.blendMode);
           ctx.drawImage(drawable,0,0,sceneWidth,sceneHeight);
           ctx.restore();
         }
@@ -961,6 +1002,7 @@
     bindClipParams();
     bindClipFX();
     bindLayerFX();
+    bindLayerMixer();
     $('window-min').addEventListener('click',()=>window.beatAPI?.windowAction('minimize'));
     $('window-max').addEventListener('click',()=>window.beatAPI?.windowAction('toggle-maximize'));
     $('window-close').addEventListener('click',()=>window.beatAPI?.windowAction('close'));

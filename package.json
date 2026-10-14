@@ -1,7 +1,7 @@
 {
   "name": "forgelabs-beatscope",
   "productName": "ForgeLabs BeatScope",
-  "version": "0.4.0-alpha.6",
+  "version": "0.4.0-alpha.7",
   "description": "ForgeLabs BeatScope – valós idejű zenei vizualizátor Windowsra",
   "private": true,
   "main": "src/main.cjs",

@@ -120,3 +120,13 @@ A kiválasztott réteg a CLIP DECK területén külön **LAYER FX CHAIN** panelt
 Feldolgozási sorrend: **Clip FX → Layer FX → Composition FX**. A réteg FX a klip saját GPU-feldolgozása után, de a többi réteggel való keverés előtt fut. A GPU processzorokat igény szerint hozza létre; nem aktív FX esetén az eddigi rajzolási út működik. Az előző verziók klipjei és rétegei automatikusan üres layer FX lánccal töltődnek vissza.
 
 Ez még mindig részleges VJ-rendszer, nem teljes Resolume-helyettesítő; a hosszabb effektsorok, médiaimport, csoportok, blend mode és deckek későbbi mérföldkövek.
+
+## v0.4.0-alpha.7 — 7. rész: Blend Modes és rétegsorrend
+
+A kiválasztott réteg **LAYER MIXER** panelen 8 valódi Canvas 2D keverési módot kap: Screen, Normal, Add, Multiply, Overlay, Difference, Lighten és Darken. Külön réteg-Opacity csúszka látható (szinkronizálva a CLIP DECK rétegsor csúszkájával), valamint Feljebb/Lejjebb gombokkal átrendezhető a teljes réteg.
+
+Keverési módok Canvas-megfeleltetése: Normal → source-over, Add → lighter, a további hat mód a megfelelő natív Canvas operation. A történelmi **Screen** az alapértelmezett, ezért régi munkamenetek változatlanul nyílnak. A rétegek sorrendje a klipjeikkel, aktív lejátszásukkal, klip- és réteg-FX láncukkal együtt mozog; a GPU-visszacsatolás réteghez tartozó gyorsítótára szintén helyet cserél. A műveleteket és beállításokat a meglévő preferenciafájl menti.
+
+A keverési mód **a réteg aktuális vizuálforrására**, illetve az abból képzett klip+réteg GPU-effektes képére hat, mielőtt a globális kompozíció FX fut. A teszt a nyolc keverési mód különböző képpont-eredményét, a UI-változtatásokat, a mentést és a tényleges rajzolási útvonalat ellenőrzi.
+
+Ez egy lezárt alpha-részkiadás; a médiaklipek, deckek és projektszintű kompozíciómentés további lépések.

@@ -263,3 +263,61 @@ test('layer FX rejects malformed entries and migrates old saved layers to empty 
  assert.deepEqual(C.normalize(old).layers[0].fxStack,[]);
  assert.equal(C.normalize(old).layers[0].fxBypass,false);
 });
+
+test('eight blend modes map to supported Canvas 2D composite operations',()=>{
+ assert.deepEqual(C.BLEND_MODES,['screen','normal','add','multiply','overlay','difference','lighten','darken']);
+ const expected={screen:'screen',normal:'source-over',add:'lighter',multiply:'multiply',
+   overlay:'overlay',difference:'difference',lighten:'lighten',darken:'darken'};
+ for(const [mode,op] of Object.entries(expected)){
+   assert.equal(C.canvasBlendMode(mode),op);
+   assert.equal(C.blendMode(mode),mode);
+ }
+ assert.equal(C.canvasBlendMode('javascript:evil'),'screen');
+ assert.equal(C.blendMode('unknown'),'screen');
+});
+test('mix controls persist separately per layer and migrate old preferences to screen',()=>{
+ let c=C.createComposition();
+ assert.ok(c.layers.every(l=>l.blendMode==='screen'));
+ c=C.layerAction(c,1,{blendMode:'multiply',opacity:.45});
+ c=C.layerAction(c,4,{blendMode:'difference',opacity:.65});
+ assert.equal(c.layers[1].blendMode,'multiply');
+ assert.equal(c.layers[1].opacity,.45);
+ assert.equal(c.layers[4].blendMode,'difference');
+ assert.equal(c.layers[4].opacity,.65);
+ assert.equal(c.layers[0].blendMode,'screen');
+ assert.equal(C.activeLayers(C.launch(c,1,0)).find(l=>l.index===1).blendMode,'multiply');
+ const saved=C.normalize(JSON.parse(JSON.stringify(c)));
+ assert.equal(saved.layers[1].blendMode,'multiply');
+ assert.equal(saved.layers[4].blendMode,'difference');
+ const legacy=C.createComposition();
+ delete legacy.layers[0].blendMode;
+ assert.equal(C.normalize(legacy).layers[0].blendMode,'screen');
+ assert.equal(C.layerAction(saved,1,{blendMode:'malicious'}).layers[1].blendMode,'multiply');
+});
+test('moving layers preserves their clips, active playback, FX and mix controls',()=>{
+ let c=C.createComposition();
+ c=C.launch(c,2,1);
+ c=C.setLayerEffects(c,2,[{id:'fx-031',wet:.7}],true);
+ c=C.setClipEffects(c,2,1,[{id:'fx-011',wet:.6}],false);
+ c=C.layerAction(c,2,{blendMode:'overlay',opacity:.55,name:'Visual Lead'});
+ const oldOther=JSON.stringify(c.layers[1]);
+ c=C.selectLayer(c,2);
+ c=C.moveLayer(c,2,-1);
+ assert.equal(c.selectedLayer,1);
+ assert.equal(c.layers[1].name,'Visual Lead');
+ assert.equal(c.layers[1].blendMode,'overlay');
+ assert.equal(c.layers[1].opacity,.55);
+ assert.equal(c.layers[1].fxStack[0].id,'fx-031');
+ assert.equal(c.layers[1].fxBypass,true);
+ assert.equal(c.layers[1].activeSlot,1);
+ assert.equal(c.layers[1].clips[1].fxStack[0].id,'fx-011');
+ assert.equal(JSON.stringify(c.layers[2]),oldOther);
+ const active=C.activeLayers(c);
+ assert.equal(active.find(l=>l.index===1).blendMode,'overlay');
+ c=C.moveLayer(c,1,1);
+ assert.equal(c.selectedLayer,2);
+ assert.equal(c.layers[2].name,'Visual Lead');
+ assert.deepEqual(C.moveLayer(c,0,-1),c);
+ assert.deepEqual(C.moveLayer(c,7,1),c);
+ assert.deepEqual(C.moveLayer(c,2,2),c);
+});

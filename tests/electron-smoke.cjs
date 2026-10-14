@@ -251,6 +251,58 @@ async function run(){
      document.querySelectorAll('.vj-layer-row')[2].querySelector('.vj-layer-select').click();
      document.querySelector('.vj-layer-effects .vj-cfx-item').querySelectorAll('button')[4].click();
      out.layerFXDelete=document.querySelectorAll('.vj-layer-effects .vj-cfx-item').length===1;
+
+     // Live Layer Mixer: verify all Canvas2D blend modes with real output pixels.
+     out.mixModes=[...document.querySelectorAll('#vj-blend-mode option')].map(o=>o.value);
+     const sampleMix=(mode)=>{
+       const sample=document.createElement('canvas');sample.width=4;sample.height=4;
+       const sc=sample.getContext('2d',{willReadFrequently:true});
+       sc.fillStyle='rgb(40,100,200)';sc.fillRect(0,0,4,4);
+       sc.globalCompositeOperation=window.BeatComposition.canvasBlendMode(mode);
+       sc.fillStyle='rgb(160,130,60)';sc.fillRect(0,0,4,4);
+       return [...sc.getImageData(0,0,1,1).data].slice(0,3).join(',');
+     };
+     out.mixSamples=Object.fromEntries(out.mixModes.map(m=>[m,sampleMix(m)]));
+     out.mixPixelDistinct=new Set(Object.values(out.mixSamples)).size===8;
+     document.querySelectorAll('.vj-layer-row')[2].querySelector('.vj-layer-select').click();
+     const blendSelect=document.getElementById('vj-blend-mode');
+     blendSelect.value='multiply';blendSelect.dispatchEvent(new Event('change',{bubbles:true}));
+     out.mixModeSelected=document.getElementById('vj-blend-mode').value==='multiply';
+     const mixOpacity=document.getElementById('vj-mix-opacity');
+     mixOpacity.value='45';mixOpacity.dispatchEvent(new Event('input',{bubbles:true}));
+     out.mixOpacitySynced=document.querySelectorAll('.vj-layer-row')[2].querySelector('.vj-layer-opacity').value==='45';
+     const previousLayerLabel=document.querySelectorAll('.vj-layer-row')[2].querySelector('.vj-layer-select').textContent;
+     const prevLayerFX=document.querySelectorAll('.vj-layer-effects .vj-cfx-item').length;
+     document.getElementById('vj-layer-up').click();
+     out.layerReordered=document.querySelectorAll('.vj-layer-row')[1].querySelector('.vj-layer-select').textContent===previousLayerLabel
+       &&document.querySelectorAll('.vj-layer-row')[2].querySelector('.vj-layer-select').textContent!==previousLayerLabel
+       &&document.getElementById('vj-blend-mode').value==='multiply';
+     out.layerFXMoved=document.querySelectorAll('.vj-layer-effects .vj-cfx-item').length===prevLayerFX;
+     out.moveBoundaryProtected=document.getElementById('vj-layer-up').disabled===false;
+     await new Promise(resolve=>setTimeout(resolve,700));
+     const blendPreferences=await window.beatAPI.loadPreferences();
+     out.blendPersisted=blendPreferences?.composition?.selectedLayer===1
+       &&blendPreferences.composition.layers[1].blendMode==='multiply'
+       &&blendPreferences.composition.layers[1].opacity===.45;
+     document.getElementById('vj-layer-down').click();
+     out.layerRestoreIndex=document.getElementById('vj-blend-mode').value==='multiply'
+       &&document.querySelectorAll('.vj-layer-row')[2].querySelector('.vj-layer-select').textContent===previousLayerLabel;
+     // Verify the main renderer uses the actual new blend mode, not only a saved UI label.
+     const canvas=document.getElementById('visualizer');
+     const mainCanvasCtx=canvas.getContext('2d');
+     const proto=Object.getPrototypeOf(mainCanvasCtx);
+     const descriptor=Object.getOwnPropertyDescriptor(proto,'globalCompositeOperation');
+     let blendWasApplied=false;
+     if(descriptor?.get&&descriptor?.set){
+       Object.defineProperty(mainCanvasCtx,'globalCompositeOperation',{
+         configurable:true,
+         get(){return descriptor.get.call(this);},
+         set(value){if(value==='multiply')blendWasApplied=true;return descriptor.set.call(this,value);}
+       });
+     }
+     await new Promise(resolve=>setTimeout(resolve,300));
+     out.blendUsedInRenderer=blendWasApplied;
+     if(Object.hasOwn(mainCanvasCtx,'globalCompositeOperation'))delete mainCanvasCtx.globalCompositeOperation;
      document.getElementById('fx-browser-open').click();
      out.panelOpened=!document.getElementById('fx-drawer').hidden;
      out.searchRows=document.querySelectorAll('.fx-result').length;
@@ -288,7 +340,7 @@ async function run(){
    return out;
  })()`,true);
  console.log('BEATSCOPE ELECTRON SMOKE RESULT '+JSON.stringify(state));
- for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,gridRows:state.gridRows===8,clipCells:state.clipCells===64,sceneButtons:state.sceneButtons,sceneLaunch:state.sceneLaunchWorks,sceneSaved:state.sceneSaved,clipMenu:state.contextMenuOpen,clipPasted:state.pastedClip,clipParameters:state.pastedParams,clipDuplicated:state.duplicateCreated,clipDeleted:state.deleteWorked,clipCut:state.cutWorked,clipFXLibrary:state.clipFXLibraryCount===121,clipFXAdded:state.clipFXAdded,clipFXStack:state.clipFXStackCount,clipFXOrder:state.clipFXReordered,clipFXOff:state.clipFXDisabled,clipFXBypass:state.clipFXBypass,clipFXLayerMixing:state.clipFXLayerMixingRestored,clipFXGPU:state.clipFXGPU,clipFXSaved:state.clipFXPersisted,clipFXSeparate:state.clipFXIndependent,clipFXRemove:state.clipFXRemoved,layerFXLibrary:state.layerFXLibraryCount===121,layerFXAdded:state.layerFXAdded,layerFXReordered:state.layerFXReordered,layerFXDisabled:state.layerFXDisabled,layerFXBypass:state.layerFXBypass,layerFXGPU:state.layerFXGPU,layerFXOrder:state.layerFXOrder,layerFXSaved:state.layerFXSaved,layerFXSeparate:state.layerFXSeparate,layerFXDelete:state.layerFXDelete,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,generatorCount:state.generatorCount===6,sourceOptions:state.generatorOptions?.length===16,extraCount:state.extraGeneratorCount===6,extraDraws:state.extraGeneratorsDrawn?.every(Boolean),extraDistinct:new Set(state.extraGeneratorHashes||[]).size===6,extraGrid:state.extraGridSources?.every(Boolean),otherClipDefault:state.otherClipDefault,paramsRestored:state.paramsRestored,paramsSaved:state.paramsSaved,paramsReset:state.paramsReset,sourceDraws:state.newGeneratorsDrawn?.every(Boolean),sourceDistinct:new Set(state.generatorHashes||[]).size===6,sourceGrid:state.newGridSources?.every(Boolean),library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
+ for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,gridRows:state.gridRows===8,clipCells:state.clipCells===64,sceneButtons:state.sceneButtons,sceneLaunch:state.sceneLaunchWorks,sceneSaved:state.sceneSaved,clipMenu:state.contextMenuOpen,clipPasted:state.pastedClip,clipParameters:state.pastedParams,clipDuplicated:state.duplicateCreated,clipDeleted:state.deleteWorked,clipCut:state.cutWorked,clipFXLibrary:state.clipFXLibraryCount===121,clipFXAdded:state.clipFXAdded,clipFXStack:state.clipFXStackCount,clipFXOrder:state.clipFXReordered,clipFXOff:state.clipFXDisabled,clipFXBypass:state.clipFXBypass,clipFXLayerMixing:state.clipFXLayerMixingRestored,clipFXGPU:state.clipFXGPU,clipFXSaved:state.clipFXPersisted,clipFXSeparate:state.clipFXIndependent,clipFXRemove:state.clipFXRemoved,layerFXLibrary:state.layerFXLibraryCount===121,layerFXAdded:state.layerFXAdded,layerFXReordered:state.layerFXReordered,layerFXDisabled:state.layerFXDisabled,layerFXBypass:state.layerFXBypass,layerFXGPU:state.layerFXGPU,layerFXOrder:state.layerFXOrder,layerFXSaved:state.layerFXSaved,layerFXSeparate:state.layerFXSeparate,layerFXDelete:state.layerFXDelete,blendCount:state.mixModes?.length===8,blendPixelResults:state.mixPixelDistinct,blendUI:state.mixModeSelected,blendOpacity:state.mixOpacitySynced,blendReorder:state.layerReordered,blendFxCarried:state.layerFXMoved,blendSaved:state.blendPersisted,blendRestore:state.layerRestoreIndex,blendRendered:state.blendUsedInRenderer,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,generatorCount:state.generatorCount===6,sourceOptions:state.generatorOptions?.length===16,extraCount:state.extraGeneratorCount===6,extraDraws:state.extraGeneratorsDrawn?.every(Boolean),extraDistinct:new Set(state.extraGeneratorHashes||[]).size===6,extraGrid:state.extraGridSources?.every(Boolean),otherClipDefault:state.otherClipDefault,paramsRestored:state.paramsRestored,paramsSaved:state.paramsSaved,paramsReset:state.paramsReset,sourceDraws:state.newGeneratorsDrawn?.every(Boolean),sourceDistinct:new Set(state.generatorHashes||[]).size===6,sourceGrid:state.newGridSources?.every(Boolean),library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
  if(state.errors?.length)fail('Shader/UI errors: '+JSON.stringify(state.errors));
  await win.close();
 }

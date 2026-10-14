@@ -63,7 +63,7 @@
       <div class="control-line"><label for="bars-count">Oszlopok</label><output id="bars-val">56</output></div>
       <input type="range" id="bars-count" min="16" max="128" value="56" step="8" />
       <label class="check-row"><input id="show-grid" type="checkbox" checked /><span>Finom háttérrács</span></label>
-      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α6</span></div>
+      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α7</span></div>
     </aside>
     <main class="workspace">
       <div class="workspace-top">
@@ -132,6 +132,33 @@
           <label>Rotation <output id="vj-rotation-value">0°</output><input id="vj-rotation" aria-label="Klip forgatása" type="range" min="-180" max="180" value="0" step="5"/></label>
           <label>Audio Reactivity <output id="vj-audio-value">100%</output><input id="vj-audio" aria-label="Klip hangérzékenysége" type="range" min="0" max="200" value="100" step="5"/></label>
         </div>
+      </section>
+      <section class="vj-mix" id="vj-mix" aria-label="Rétegek sorrendje és keverése">
+        <div class="vj-mix-title">
+          <span><strong>LAYER MIXER</strong><small id="vj-mix-target">Layer 1 · felül</small></span>
+          <div class="vj-mix-order">
+            <button type="button" id="vj-layer-up" aria-label="Réteg feljebb helyezése" title="Feljebb – előrébb a kompozícióban">↑ Feljebb</button>
+            <button type="button" id="vj-layer-down" aria-label="Réteg lejjebb helyezése" title="Lejjebb – hátrébb a kompozícióban">↓ Lejjebb</button>
+          </div>
+        </div>
+        <div class="vj-mix-settings">
+          <label for="vj-blend-mode">Blend Mode
+            <select id="vj-blend-mode" aria-label="Réteg keverési módja">
+              <option value="screen">Screen (alapértelmezett)</option>
+              <option value="normal">Normal</option>
+              <option value="add">Add</option>
+              <option value="multiply">Multiply</option>
+              <option value="overlay">Overlay</option>
+              <option value="difference">Difference</option>
+              <option value="lighten">Lighten</option>
+              <option value="darken">Darken</option>
+            </select>
+          </label>
+          <label for="vj-mix-opacity">Opacity <output id="vj-mix-opacity-value">100%</output>
+            <input id="vj-mix-opacity" type="range" min="0" max="100" step="5" value="100" aria-label="Kiválasztott réteg átlátszósága"/>
+          </label>
+        </div>
+        <div class="vj-mix-hint">A Layer 1 felül, a Layer 8 alul jelenik meg. A klip- és réteg-FX-ek a keverés előtt futnak.</div>
       </section>
       <section class="vj-clip-effects vj-layer-effects" id="vj-layer-effects" aria-label="Rétegenkénti effektláncok">
         <div class="vj-cfx-heading">

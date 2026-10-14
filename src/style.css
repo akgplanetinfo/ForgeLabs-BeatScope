@@ -143,3 +143,22 @@
 .vj-layer-effects #vj-lfx-bypass.off{background:#50243e;border-color:#86506f;color:#ffcae6}
 .vj-layer-effects #vj-lfx-add{border-color:#7771ae;color:#e2d5ff;background:#303756}
 @media(max-height:790px){.vj-layer-effects{gap:5px}}
+
+
+/* Alpha 7: layer blend modes and stack ordering */
+.vj-mix{flex:0 0 auto;min-width:0;border:1px solid #3e6686;border-radius:12px;padding:11px 13px;background:linear-gradient(115deg,#0e2d37,#142b48);display:flex;flex-direction:column;gap:10px}
+.vj-mix-title{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.vj-mix-title>span{min-width:0;display:flex;flex-direction:column;gap:3px}
+.vj-mix-title strong{color:#b5f6f3;font-size:10px;letter-spacing:1px}
+.vj-mix-title small{font-size:10px;color:#91b6d1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vj-mix-order{display:flex;gap:5px}
+.vj-mix-order button{padding:7px 9px;background:#153d53;color:#c5efff;border:1px solid #3d7892;border-radius:6px;font-size:10px;white-space:nowrap}
+.vj-mix-order button:disabled{opacity:.3}
+.vj-mix-settings{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.vj-mix-settings label{color:#afcce2;font-size:10px;display:block;min-width:0}
+.vj-mix-settings select{display:block;margin-top:5px;background:#0c1d30;border:1px solid #456982;padding:8px;color:#ddf5fe;border-radius:7px;width:100%;font-size:11px}
+.vj-mix-settings output{float:right;color:#66e9d4}
+.vj-mix-settings input[type=range]{width:100%;margin:14px 0 0}
+.vj-mix-hint{font-size:9px;color:#80a9bb;line-height:1.4}
+@media(max-width:1100px){.vj-mix-settings{grid-template-columns:1fr 1fr}}
+@media(max-height:750px){.vj-mix{gap:5px;padding:7px 10px}.vj-mix-hint{display:none}}
