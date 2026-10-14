@@ -194,3 +194,24 @@
 .vj-video-hint{font-size:9px;color:#85aec6}
 @media(max-width:1300px){.vj-video-cues input[type=number]{width:69px}.vj-video-controls{padding:9px}}
 @media(max-height:750px){.vj-video-controls{gap:5px;padding:8px}.vj-video-hint{display:none}}
+
+
+/* v0.4 Alpha 10 – BPM transport and quantized clip launches */
+.vj-tempo{flex:0 0 auto;border:1px solid #3b667d;border-radius:12px;background:linear-gradient(105deg,#0e2939,#172d45);padding:9px 12px;display:flex;flex-direction:column;gap:8px}
+.vj-tempo-header{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.vj-tempo-header strong{font-size:11px;letter-spacing:1px;color:#9bf4eb}
+.vj-tempo-status{font-size:10px;color:#9ec9dc;font-variant-numeric:tabular-nums}
+.vj-tempo-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.vj-tempo-controls label{display:flex;align-items:center;gap:6px;color:#a9d7e9;font-size:10px}
+#vj-bpm{width:60px;padding:6px;background:#0e2033;color:#e0f9ff;border:1px solid #376480;border-radius:6px;font-size:12px;font-variant-numeric:tabular-nums}
+#vj-quantize{max-width:150px;padding:7px;color:#d9f9fd;background:#10253b;border:1px solid #426981;border-radius:6px;font-size:10px}
+.vj-tempo-controls button{border:1px solid #456c80;background:#1c465c;color:#cef4ff;font-size:10px;font-weight:700;border-radius:7px;padding:8px 10px}
+#vj-tap-tempo{background:#1c5c63;border-color:#4ea09f;color:#bdfff5}
+.vj-tempo-controls button:disabled{opacity:.3}
+.vj-beat-leds{display:flex;gap:4px;align-items:center;padding:0 5px}
+.vj-beat-leds i{width:7px;height:7px;border-radius:50%;border:1px solid #3b6c73;background:#164044}
+.vj-beat-leds i.on{background:#89ffe1;box-shadow:0 0 11px #53ffcb}
+.vj-clip.pending,.vj-scene-trigger.pending{outline:2px solid #f8cf67;outline-offset:-2px;box-shadow:0 0 10px #f2bb5544}
+.vj-scene-trigger.pending{color:#ffe79a;background:#614922}
+.vj-clip.pending{color:#ffe3a2;background:#564a29}
+@media(max-width:1150px){.vj-tempo{gap:5px}.vj-tempo-controls{gap:5px}.vj-tempo-controls button{padding:6px}}

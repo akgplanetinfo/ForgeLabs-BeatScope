@@ -63,7 +63,7 @@
       <div class="control-line"><label for="bars-count">Oszlopok</label><output id="bars-val">56</output></div>
       <input type="range" id="bars-count" min="16" max="128" value="56" step="8" />
       <label class="check-row"><input id="show-grid" type="checkbox" checked /><span>Finom háttérrács</span></label>
-      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α9</span></div>
+      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α10</span></div>
     </aside>
     <main class="workspace">
       <div class="workspace-top">
@@ -83,6 +83,23 @@
         <div class="volume-area"><button id="mute" class="icon-only" title="Némítás" aria-label="Némítás">◖))</button><input id="volume" type="range" min="0" max="100" value="85" aria-label="Hangerő" /></div>
       </div>
 
+      <section class="vj-tempo" id="vj-tempo" aria-label="BPM szinkron és kvantált indítás">
+        <div class="vj-tempo-header"><strong>BEAT SYNC</strong><span class="vj-tempo-status" id="vj-tempo-status">Azonnali indítás</span></div>
+        <div class="vj-tempo-controls">
+          <label>BPM <input type="number" min="40" max="240" step="1" id="vj-bpm" value="120" aria-label="BPM érték"/></label>
+          <button type="button" id="vj-tap-tempo" title="A zene ritmusára koppints legalább háromszor">TAP TEMPO</button>
+          <button type="button" id="vj-beat-reset" title="Az ütem kezdőpontjának beállítása">SYNC / RESET</button>
+          <label>Kvantálás <select id="vj-quantize" aria-label="Klip- és jelenetindítás kvantálása">
+            <option value="off">OFF / Azonnal</option>
+            <option value="quarter">1/4 beat</option>
+            <option value="beat">1 beat</option>
+            <option value="two">2 beat</option>
+            <option value="bar">4 beat / 1 bar</option>
+          </select></label>
+          <span class="vj-beat-leds" id="vj-beat-leds" aria-label="Négy ütemjelző"><i></i><i></i><i></i><i></i></span>
+          <button type="button" id="vj-queue-cancel" disabled title="Összes várakozó klip- és jelenetindítás törlése">✕ Várakozás törlése</button>
+        </div>
+      </section>
       <section class="vj-deck" id="vj-deck" aria-label="VJ rétegek és klipek">
         <div class="vj-deck-header">
           <div><strong>CLIP DECK</strong><small>8 réteg × 8 klip · Scene Launch · Clip Editing</small></div>
@@ -249,6 +266,7 @@
   <script src="src/audio-math.js"></script>
   <script src="src/ai-director.js"></script>
   <script src="src/video-timing.js"></script>
+  <script src="src/beat-clock.js"></script>
   <script src="src/composition.js"></script>
   <script src="src/generators.js"></script>
   <script src="src/generators-extra.js"></script>

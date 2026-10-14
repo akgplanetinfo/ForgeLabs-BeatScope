@@ -6,6 +6,7 @@
   const FX=window.BeatFX;
   const Composition=window.BeatComposition;
   const VideoTiming=window.BeatVideoTiming;
+  const BeatClock=window.BeatClock;
   const Generators=window.BeatGenerators;
   const ExtraGenerators=window.BeatExtraGenerators;
   let fxRenderer=null,fxDisabled=false,fxSelected=-1,fxFavFilter=false,fxAICount=0,fxLastSwitch=0,fxRecent=[];
@@ -30,7 +31,7 @@
     azure:['#4adcf8','#32a3f2','#9beeff'],mint:['#50f7bb','#1fb6b1','#bbffe0'],
     violet:['#c1a0ff','#7178f5','#f3c1ff'],sunset:['#ffc06c','#ff647c','#ffe2ae'],rainbow:['#45d8fc','#a85fff','#f2bc63']
   };
-  const settings={mode:'bars',palette:'azure',intensity:1.15,smooth:0.75,barCount:56,showGrid:true,micDevice:'default',volume:0.85,aiEnabled:false,aiSpeed:'balanced',aiPalette:false,fxStack:[],fxBypass:false,fxAuto:false,fxFavorites:[],composition:Composition.createComposition()};
+  const settings={mode:'bars',palette:'azure',intensity:1.15,smooth:0.75,barCount:56,showGrid:true,micDevice:'default',volume:0.85,aiEnabled:false,aiSpeed:'balanced',aiPalette:false,fxStack:[],fxBypass:false,fxAuto:false,fxFavorites:[],composition:Composition.createComposition(),bpm:120,quantize:'off'};
   let audioCtx=null,analyser=null,fileAnalyser=null,micSource=null,micStream=null,sourceNode=null,sourceMode='none',fileURL=null;
   let bins=new Uint8Array(1024),wave=new Uint8Array(2048),freq={bass:0,mids:0,highs:0,total:0,dominantHz:0};
   let rms=0,peak=0,pulse=0,lastPulse=0,sceneWidth=0,sceneHeight=0,dpr=1,lastMeters=0;
@@ -46,6 +47,123 @@
     saveTimer=setTimeout(()=>window.beatAPI?.savePreferences({...settings}).catch(()=>notify('A beállításokat nem sikerült elmenteni.',true)),300);
   }
 
+  const tempoClock=BeatClock.createClock({bpm:120,quantize:'off',origin:performance.now()});
+  const waitingClips=new Map();
+  let waitingScene=null,lastTempoRefresh=0;
+  function waitingCount(){return waitingClips.size+(waitingScene?1:0);}
+  function clearWaiting(){
+    waitingClips.clear();waitingScene=null;
+    $('vj-queue-cancel').disabled=true;
+  }
+  function cancelPendingLayer(row){
+    waitingClips.delete(row);
+    waitingScene=null;
+  }
+  function reschedulePending(now){
+    const due=tempoClock.next(now);
+    if(waitingScene)waitingScene.due=due;
+    for(const action of waitingClips.values())action.due=due;
+    if(tempoClock.quantize==='off')flushQueued(now);
+    else if(waitingCount())renderClipGrid();
+  }
+  function refreshTempoUI(now=performance.now()){
+    const count=waitingCount();
+    $('vj-bpm').value=String(tempoClock.bpm);
+    $('vj-quantize').value=tempoClock.quantize;
+    $('vj-queue-cancel').disabled=!count;
+    if(count){
+      const targets=waitingScene?[waitingScene]:[...waitingClips.values()];
+      const remaining=Math.max(0,Math.min(...targets.map(a=>a.due))-now);
+      $('vj-tempo-status').textContent=(waitingScene?'Jelenet':'Klip')+' várakozik: '+count+' · '+(remaining/1000).toFixed(2)+' s';
+    }else{
+      $('vj-tempo-status').textContent=tempoClock.quantize==='off'?
+        'Azonnali indítás':'Kvantálás: '+$('vj-quantize').selectedOptions[0].textContent;
+    }
+    const step=Math.floor((now-tempoClock.origin)/BeatClock.beatDuration(tempoClock.bpm));
+    const lit=((step%4)+4)%4;
+    for(const [index,led] of [...$('vj-beat-leds').children].entries())led.classList.toggle('on',index===lit);
+  }
+  function launchClipNow(row,slot){
+    if(!settings.composition.layers[row]?.clips[slot])return false;
+    settings.composition=Composition.launch(settings.composition,row,slot);
+    const clip=settings.composition.layers[row].clips[slot];
+    clipTouched=true;modeTransition=null;settings.mode=clip.source;
+    for(const button of document.querySelectorAll('[data-mode]'))
+      button.classList.toggle('active',button.dataset.mode===clip.source);
+    UI.modeLabel.textContent='LIVE / '+(clip.mediaName||SOURCE_NAMES[clip.source]).toUpperCase();
+    return true;
+  }
+  function launchSceneNow(slot){
+    settings.composition=Composition.launchScene(settings.composition,slot);
+    clipTouched=true;
+  }
+  function scheduleClip(row,slot){
+    const now=performance.now();
+    if(tempoClock.quantize==='off'){
+      launchClipNow(row,slot);renderClipGrid();setSourceLabel();persist();return;
+    }
+    waitingScene=null;
+    const due=tempoClock.next(now);
+    waitingClips.set(row,{kind:'clip',row,slot,due});
+    settings.composition=Composition.selectClip(settings.composition,row,slot);
+    renderClipGrid();refreshTempoUI(now);persist();
+  }
+  function scheduleScene(slot){
+    const now=performance.now();
+    if(tempoClock.quantize==='off'){
+      clearWaiting();launchSceneNow(slot);renderClipGrid();setSourceLabel();persist();return;
+    }
+    waitingClips.clear();
+    waitingScene={kind:'scene',slot,due:tempoClock.next(now)};
+    renderClipGrid();refreshTempoUI(now);
+  }
+  function flushQueued(now){
+    let changed=false;
+    if(waitingScene&&now>=waitingScene.due){
+      const action=waitingScene;clearWaiting();
+      launchSceneNow(action.slot);changed=true;
+    }else{
+      for(const [row,action] of waitingClips){
+        if(now>=action.due){
+          waitingClips.delete(row);
+          if(launchClipNow(action.row,action.slot))changed=true;
+        }
+      }
+    }
+    if(changed){
+      renderClipGrid();setSourceLabel();persist();
+    }
+    if(changed||!waitingCount())$('vj-queue-cancel').disabled=!waitingCount();
+  }
+  function bindTempo(){
+    $('vj-bpm').addEventListener('change',event=>{
+      const bpm=BeatClock.normalizeBpm(Number(event.target.value));
+      tempoClock.setBpm(bpm,performance.now());
+      settings.bpm=bpm;
+      reschedulePending(performance.now());refreshTempoUI();persist();
+    });
+    $('vj-quantize').addEventListener('change',event=>{
+      const quant=tempoClock.setQuantize(event.target.value);
+      settings.quantize=quant;
+      reschedulePending(performance.now());refreshTempoUI();persist();
+    });
+    $('vj-tap-tempo').addEventListener('click',()=>{
+      const now=performance.now(),result=tempoClock.tap(now);
+      if(result!==null){
+        settings.bpm=result;
+        reschedulePending(now);persist();
+      }
+      refreshTempoUI(now);
+    });
+    $('vj-beat-reset').addEventListener('click',()=>{
+      const now=performance.now();tempoClock.reset(now);
+      reschedulePending(now);refreshTempoUI(now);
+    });
+    $('vj-queue-cancel').addEventListener('click',()=>{
+      clearWaiting();renderClipGrid();refreshTempoUI();
+    });
+    refreshTempoUI();
+  }
   function refreshLayerMixer(){
     const index=settings.composition.selectedLayer,layer=settings.composition.layers[index];
     $('vj-mix-target').textContent=layer.name+' · pozíció '+(index+1)+'/8'+(index===0?' (legfelső)':index===7?' (legalsó)':'');
@@ -56,6 +174,7 @@
     $('vj-layer-down').disabled=index>=Composition.ROWS-1;
   }
   function shiftSelectedLayer(offset){
+    if(waitingCount())clearWaiting();
     const oldIndex=settings.composition.selectedLayer;
     const newIndex=oldIndex+offset;
     if(newIndex<0||newIndex>=Composition.ROWS)return;
@@ -347,6 +466,7 @@
       settings.composition=Composition.removeClip(settings.composition,row,slot);
     }else return;
     $('vj-clip-menu').hidden=true;
+    cancelPendingLayer(row);
     renderClipGrid();setSourceLabel();persist();
   }
   function openClipMenu(event,row,slot){
@@ -622,14 +742,11 @@
     const header=document.createElement('span');header.textContent='SCENES →';header.className='vj-scene-label';scenes.append(header);
     for(let slot=0;slot<Composition.COLUMNS;slot++){
       const btn=document.createElement('button');
-      btn.type='button';btn.className='vj-scene-trigger';
+      btn.type='button';btn.className='vj-scene-trigger'+(waitingScene?.slot===slot?' pending':'');
       btn.dataset.scene=String(slot);btn.textContent='▶ '+(slot+1);
       btn.title='Scene '+(slot+1)+': az ebben az oszlopban lévő klipek indítása egyszerre';
       btn.setAttribute('aria-label','Scene '+(slot+1)+' indítása');
-      btn.addEventListener('click',()=>{
-        settings.composition=Composition.launchScene(settings.composition,slot);
-        renderClipGrid();setSourceLabel();persist();
-      });
+      btn.addEventListener('click',()=>scheduleScene(slot));
       scenes.append(btn);
     }
     root.append(scenes);
@@ -667,6 +784,7 @@
       stop.title='Réteg leállítása';
       stop.setAttribute('aria-label',layer.name+' leállítása');
       stop.addEventListener('click',()=>{
+        cancelPendingLayer(rowIndex);
         settings.composition=Composition.stop(settings.composition,rowIndex);
         renderClipGrid();setSourceLabel();persist();
       });
@@ -685,7 +803,7 @@
       for(let slot=0;slot<Composition.COLUMNS;slot++){
         const clip=layer.clips[slot];
         const cell=document.createElement('button');cell.type='button';
-        cell.className='vj-clip'+(clip?' populated':'')+(clip?.source==='media'?' media-clip':'')+(layer.activeSlot===slot?' playing':'')+(composition.selectedLayer===rowIndex&&composition.selectedSlot===slot?' selected':'');
+        cell.className='vj-clip'+(clip?' populated':'')+(clip?.source==='media'?' media-clip':'')+(layer.activeSlot===slot?' playing':'')+(composition.selectedLayer===rowIndex&&composition.selectedSlot===slot?' selected':'')+((waitingClips.get(rowIndex)?.slot===slot||(waitingScene?.slot===slot&&Boolean(clip)))?' pending':'');
         cell.draggable=Boolean(clip);
         cell.dataset.row=String(rowIndex);cell.dataset.slot=String(slot);
         const label=clip?(clip.mediaName||SOURCE_NAMES[clip.source]):'＋';
@@ -708,19 +826,13 @@
           if(!draggedClip)return;
           e.preventDefault();e.stopPropagation();
           const from=draggedClip;draggedClip=null;
+          cancelPendingLayer(from.row);cancelPendingLayer(rowIndex);
           settings.composition=Composition.moveClip(settings.composition,from.row,from.slot,rowIndex,slot);
           renderClipGrid();setSourceLabel();persist();
         });
         cell.addEventListener('click',()=>{
-          let next=settings.composition;
-          if(!clip)next=Composition.putClip(next,rowIndex,slot,$('clip-source-picker').value);
-          next=Composition.launch(next,rowIndex,slot);
-          settings.composition=next;
-          const launched=next.layers[rowIndex].clips[slot];
-          clipTouched=true;modeTransition=null;settings.mode=launched.source;
-          for(const button of document.querySelectorAll('[data-mode]'))button.classList.toggle('active',button.dataset.mode===launched.source);
-          UI.modeLabel.textContent='LIVE / '+(launched.mediaName||SOURCE_NAMES[launched.source]).toUpperCase();
-          renderClipGrid();setSourceLabel();persist();
+          if(!clip)settings.composition=Composition.putClip(settings.composition,rowIndex,slot,$('clip-source-picker').value);
+          scheduleClip(rowIndex,slot);
         });
         row.append(cell);
       }
@@ -1102,6 +1214,8 @@
   }
   function animate(t){
     requestAnimationFrame(animate);
+    if(waitingCount())flushQueued(t);
+    if(t-lastTempoRefresh>90){lastTempoRefresh=t;refreshTempoUI(t);}
     const active=(sourceMode==='mic'&&!!micStream)||(sourceMode==='file'&&!UI.audio.paused&&!UI.audio.ended);
     const hasVisuals=Composition.activeLayers(settings.composition).length>0;
     if(!active&&t-lastFrame<(hasVisuals?33:85))return;
@@ -1215,6 +1329,7 @@
   function setWindowState(state){document.body.classList.toggle('fullscreen',Boolean(state.fullscreen));sizeCanvas();}
   function bind(){
     initFXControls();
+    bindTempo();
     $('vj-import-media').addEventListener('click',importClipMedia);
     for(const action of ['copy','cut','paste','duplicate','delete']){
       $('vj-'+action).addEventListener('click',()=>editClip(action));
@@ -1294,6 +1409,9 @@
     settings.fxStack=Array.isArray(settings.fxStack)?settings.fxStack:[];
     settings.fxFavorites=Array.isArray(settings.fxFavorites)?settings.fxFavorites:[];
     settings.composition=Composition.normalize(settings.composition);
+    settings.bpm=tempoClock.setBpm(settings.bpm,performance.now());
+    settings.quantize=tempoClock.setQuantize(settings.quantize);
+    refreshTempoUI();
     renderClipGrid();
     fxSelected=settings.fxStack.length?0:-1;
     refreshFXStack();drawFXCatalog();

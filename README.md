@@ -158,3 +158,15 @@ A Loop, az In/Out és a Speed értékek klipenként külön tárolódnak az Elec
 **Korlátok:** a videó hangja jelenleg továbbra is némítva van. Egyes MOV/MP4 kodekeket a Chromium nem dekódol; a program csak a valóban támogatott kodekekkel használható. Nem támogatja a reverse playbacket és az idővonalvezérlés más videoklipekkel közös BPM-quantization funkcióját. A Loop pontos képkockára történő mintavétele hardvertől és kodektől függ.
 
 A Windowsos teszt nemcsak az állapotlogikát ellenőrzi: egy **1,625 másodperces, valódi VP8 WebM videót** importál, dekódol, kirajzol a vászonra, megvizsgálja az In/Out-nál történő megállítást és a Loop újraindulását, majd ellenőrzi a vezérlőpanelt és az adatok tartós mentését.
+
+## v0.4.0-alpha.10 — 10. rész: BPM-szinkronizált klip- és Scene Launch
+
+A **BEAT SYNC** panel kézi BPM-beállítást (40–240), **Tap Tempo** gombot, ütemfázis-resetet, négy LED-es 4/4 ütemjelzőt és a kvantált indítás következő opcióit kínálja: **OFF**, **1/4 beat**, **1 beat**, **2 beat**, **4 beat / 1 bar**. A funkció offline működik; a Tap Tempo legalább három következetes koppintás alapján méri a tempót. A BPM kézi érték (vagy Tap Tempo eredmény), nem automatikusan megbecsült ütemrács vagy MIDI clock.
+
+Kvantálás esetén a klipre vagy Scene Launch gombra kattintás **a következő ütemhatárra ütemez**. Addig az aktuális klipek játszanak tovább. A várakozó klipek/jelenetek sárgás szegélyt kapnak; egy rétegen az újonnan kiválasztott klip felülírja az ugyanarra a rétegre váró korábbit, a Scene Launch az összes rétegen közös ütemhatárt használ. A **Várakozás törlése** gomb minden várakozó indítást töröl. A STOP az érintett réteghez tartozó várakozást is visszavonja.
+
+BPM-, kvantálás- vagy fázismódosításkor a program újraszámolja a sorban álló indítás időpontját. Az **OFF** visszaállítja az előző verziók azonnali működését, így nem változtatja meg a korábban megszokott klipkezelést. A BPM és kvantálás a felhasználói preferenciafájlba mentődik. A várakozó klipindítások csak futás közbeni állapotok, újraindítás után nem lesznek várakozó indítások.
+
+A kvantálást a BeatScope saját, stabil `performance.now()` óraalapja vezérli, és a klipek a rajzolási ciklusban indulnak. A megjelenítés és a fájl-/videólejátszás időzítésének pontossága a Windows ütemezőjétől és a videó dekódolásától függ; professzionális MIDI/Link/DJ beatgrid szinkron, automatikus ritmusfelismerés és sample-pontos indítás még nincs. A meglévő 16 generátor, klipmédia-import, Loop/In/Out/Speed, Clip FX, Layer FX és globális FX továbbra is működik.
+
+A tesztek validálják az ütemhatárok időszámítását, Tap Tempo becslést, a Windowsos Electron UI-n keresztül a sorba állított klip/jelenet késleltetett indítását, a várakozás törlését, a régi azonnali módot és a beállítások mentését.
