@@ -13,7 +13,7 @@ let failed=false;
 const details=[];
 function fail(msg){details.push('FAIL: '+msg);failed=true;}
 async function run(){
- const win=new BrowserWindow({show:false,width:1470,height:890,webPreferences:{preload:path.join(__dirname,'../src/preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true}});
+ const win=new BrowserWindow({show:false,width:1470,height:890,webPreferences:{preload:path.join(__dirname,'../src/preload.cjs'),contextIsolation:true,sandbox:true,nodeIntegration:false,webSecurity:true,backgroundThrottling:false}});
  win.webContents.on('console-message',(_event,level,message)=>{if(level>=3)details.push('RENDERER: '+message.slice(0,700));});
  win.webContents.on('render-process-gone',(_e,d)=>fail('Renderer crashed: '+JSON.stringify(d)));
  await win.loadFile(path.join(__dirname,'../index.html'));
@@ -187,7 +187,9 @@ async function run(){
      out.clipFXBypass=document.getElementById('vj-cfx-bypass').getAttribute('aria-pressed')==='true';
      document.getElementById('vj-cfx-bypass').click();
      // Verify the actual composite renderer invokes WebGL GPU processing for the clip.
-     await new Promise(resolve=>setTimeout(resolve,330));
+     await new Promise(resolve=>setTimeout(resolve,1100));
+     out.clipFXRendererCreated=clipRendererCreated;
+     out.clipFXDrawCount=clipDrawCalls;
      out.clipFXGPU=clipRendererCreated>=1&&clipDrawCalls>=1;
      window.BeatFX.renderer=realRenderer;
      await new Promise(resolve=>setTimeout(resolve,460));
