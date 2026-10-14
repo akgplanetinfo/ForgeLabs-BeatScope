@@ -63,7 +63,7 @@
       <div class="control-line"><label for="bars-count">Oszlopok</label><output id="bars-val">56</output></div>
       <input type="range" id="bars-count" min="16" max="128" value="56" step="8" />
       <label class="check-row"><input id="show-grid" type="checkbox" checked /><span>Finom háttérrács</span></label>
-      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α1</span></div>
+      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α2</span></div>
     </aside>
     <main class="workspace">
       <div class="workspace-top">
@@ -85,10 +85,18 @@
 
       <section class="vj-deck" id="vj-deck" aria-label="VJ rétegek és klipek">
         <div class="vj-deck-header">
-          <div><strong>CLIP DECK</strong><small>8 réteg × 8 klip · 1. fejlesztési lépés</small></div>
+          <div><strong>CLIP DECK</strong><small>8 réteg × 8 klip · 10 vizuálgenerátor</small></div>
           <div class="vj-deck-actions"><label for="clip-source-picker">Új klip:</label>
             <select id="clip-source-picker" aria-label="Új klip forrása">
               <option value="bars">Spectrum Bars</option><option value="wave">Waveform</option><option value="orbit">Orbit Pulse</option><option value="particles">Particles</option>
+              <optgroup label="Új VJ generátorok">
+                <option value="tunnel">Neon Tunnel</option>
+                <option value="plasma">Plasma Flow</option>
+                <option value="rings">Pulse Rings</option>
+                <option value="grid">Perspective Grid</option>
+                <option value="laser">Laser Fan</option>
+                <option value="starfield">Warp Starfield</option>
+              </optgroup>
             </select><span class="vj-help">Üres hely: hozzáadás · Foglalt hely: indítás</span>
           </div>
         </div>
@@ -130,6 +138,7 @@
   <script src="src/audio-math.js"></script>
   <script src="src/ai-director.js"></script>
   <script src="src/composition.js"></script>
+  <script src="src/generators.js"></script>
   <script src="src/fx-engine.js"></script>
   <script src="src/ui.js"></script>
 </body>

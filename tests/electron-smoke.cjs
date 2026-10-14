@@ -31,6 +31,39 @@ async function run(){
      out.muteToggled=document.querySelectorAll('.vj-layer-row')[1]?.querySelector('button[aria-label$="némítás"]')?.getAttribute('aria-pressed')==='true';
      document.querySelectorAll('.vj-layer-row')[1]?.querySelector('button[aria-label$="Solo"]')?.click();
      out.soloToggled=document.querySelectorAll('.vj-layer-row')[1]?.querySelector('button[aria-label$="Solo"]')?.getAttribute('aria-pressed')==='true';
+
+     out.generatorOptions=[...document.querySelectorAll('#clip-source-picker option')].map(o=>o.value);
+     out.generatorCount=window.BeatGenerators?.IDS?.length??0;
+     out.newGeneratorsDrawn=[];
+     out.generatorHashes=[];
+     for(const source of window.BeatGenerators.IDS){
+       const canvas=document.createElement('canvas');canvas.width=420;canvas.height=240;
+       const context=canvas.getContext('2d',{willReadFrequently:true});
+       context.fillStyle='#091626';context.fillRect(0,0,canvas.width,canvas.height);
+       const result=window.BeatGenerators.draw(source,context,{
+         width:420,height:240,time:4200,bass:.4,mids:.3,highs:.2,rms:.2,intensity:1.15,
+         color:(i,n,a=1)=>'rgba('+[80,190,245].map((c,k)=>k===i%3?Math.min(255,c+7*i):c).join(',')+','+a+')'
+       });
+       const pixels=context.getImageData(0,0,420,240).data;
+       let differences=0,hash=2166136261;
+       for(let i=0;i<pixels.length;i+=32){
+         differences+=pixels[i]!==9||pixels[i+1]!==22||pixels[i+2]!==38?1:0;
+         hash=Math.imul(hash^pixels[i],16777619);
+         hash=Math.imul(hash^pixels[i+1],16777619);
+       }
+       out.newGeneratorsDrawn.push(Boolean(result)&&differences>20);
+       out.generatorHashes.push(hash>>>0);
+     }
+     out.newGridSources=[];
+     for(const [i,source] of window.BeatGenerators.IDS.entries()){
+       const picker=document.getElementById('clip-source-picker');
+       picker.value=source;
+       const row=document.querySelectorAll('.vj-layer-row')[i+2];
+       row.querySelectorAll('.vj-clip')[5].click();
+       const newRow=document.querySelectorAll('.vj-layer-row')[i+2];
+       const cell=newRow.querySelectorAll('.vj-clip')[5];
+       out.newGridSources.push(cell?.classList.contains('playing')&&cell.textContent===window.BeatGenerators.NAMES[source]);
+     }
      document.getElementById('fx-browser-open').click();
      out.panelOpened=!document.getElementById('fx-drawer').hidden;
      out.searchRows=document.querySelectorAll('.fx-result').length;
@@ -68,7 +101,7 @@ async function run(){
    return out;
  })()`,true);
  console.log('BEATSCOPE ELECTRON SMOKE RESULT '+JSON.stringify(state));
- for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,gridRows:state.gridRows===8,clipCells:state.clipCells===64,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
+ for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,gridRows:state.gridRows===8,clipCells:state.clipCells===64,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,generatorCount:state.generatorCount===6,sourceOptions:state.generatorOptions?.length===10,sourceDraws:state.newGeneratorsDrawn?.every(Boolean),sourceDistinct:new Set(state.generatorHashes||[]).size===6,sourceGrid:state.newGridSources?.every(Boolean),library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
  if(state.errors?.length)fail('Shader/UI errors: '+JSON.stringify(state.errors));
  await win.close();
 }

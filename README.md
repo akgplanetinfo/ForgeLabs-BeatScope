@@ -82,3 +82,9 @@ A v0.3.0 kiadás az FX-réteg létrehozásakor a UI-inicializálás előtt hivat
 Elkészült a 8 réteg × 8 kliphely (64 hely) kezelőfelülete és az alapvető élő kompozíció-renderelés. A kliphelyre kattintva az ott lévő generátor indul; üres helyre a legördülő listában kiválasztott generátor kerül. Minden réteg külön indítható, Mute és Solo állítható, Opacity csúszkával módosítható és a ■ gombbal leállítható. A meglévő FX-könyvtár, hangelemzés és AI megmarad. Az új rétegbeállítások a meglévő felhasználói beállításokkal együtt mentődnek.
 
 **Az első rész határa:** a kliphelyek egyelőre a 4 már működő generátorra épülnek. Videóimport, további különálló források, drag-and-drop, keverési módok és klipenkénti FX-lánc későbbi részek. A mostani v0.4 build **alpha**, nem a teljes Resolve/Resolume-szerű kiadás.
+
+## v0.4.0-alpha.2 — 2. rész: hat új vizuálgenerátor
+
+Hat különálló Canvas2D-algoritmus: **Neon Tunnel, Plasma Flow, Pulse Rings, Perspective Grid, Laser Fan, Warp Starfield**. A korábbi négy generátor változatlan marad, összesen **10 különböző vizuálforrás** választható az „Új klip” menüből, majd indítható a 8×8-as kliprácsban. Minden új forrás animálódik hang nélkül is, hang esetén a basszus, közép és magas tartományra reagál, és ugyanúgy részt vesz a több rétegből álló kompozícióban és a meglévő GPU FX-láncban.
+
+Az Alpha 2-ben még nincs új médiaimport, önálló klipszintű effektlánc vagy MIDI-kimenet. A Windows/Electron grafikus teszt megrajzolja mind a hat új generátort, összehasonlítja az eredményüket, és a kliprácsban is elindítja őket. Az Alpha 1 beállításai és rétegei kompatibilisek maradnak.

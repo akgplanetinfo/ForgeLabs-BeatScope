@@ -4,7 +4,7 @@
  if(root)root.BeatComposition=api;
 })(typeof window!=='undefined'?window:typeof globalThis!=='undefined'?globalThis:null,function(){
  'use strict';
- const SOURCES=Object.freeze(['bars','wave','orbit','particles']);
+ const SOURCES=Object.freeze(['bars','wave','orbit','particles','tunnel','plasma','rings','grid','laser','starfield']);
  const ROWS=8,COLUMNS=8;
  function createComposition(){
    return {selectedLayer:0,layers:Array.from({length:ROWS},(_,i)=>({

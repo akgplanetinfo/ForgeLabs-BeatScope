@@ -5,6 +5,7 @@
   const aiDirector=window.BeatDirector.createDirector();
   const FX=window.BeatFX;
   const Composition=window.BeatComposition;
+  const Generators=window.BeatGenerators;
   let fxRenderer=null,fxDisabled=false,fxSelected=-1,fxFavFilter=false,fxAICount=0,fxLastSwitch=0,fxRecent=[];
 
   const UI={
@@ -38,7 +39,7 @@
     saveTimer=setTimeout(()=>window.beatAPI?.savePreferences({...settings}).catch(()=>notify('A beállításokat nem sikerült elmenteni.',true)),300);
   }
 
-  const SOURCE_NAMES={bars:'Spectrum Bars',wave:'Waveform',orbit:'Orbit Pulse',particles:'Particles'};
+  const SOURCE_NAMES={bars:'Spectrum Bars',wave:'Waveform',orbit:'Orbit Pulse',particles:'Particles',...Generators.NAMES};
   function renderClipGrid(){
     const root=$('clip-grid'),composition=settings.composition;
     root.replaceChildren();
@@ -230,7 +231,7 @@
     persist();
   }
   function setMode(next,{automatic=false,reason='',now=performance.now()}={}){
-    if(!['bars','wave','orbit','particles'].includes(next))return;
+    if(!Composition.SOURCES.includes(next))return;
     if(!automatic&&settings.aiEnabled)setAI(false);
     if(settings.mode!==next)modeTransition={from:settings.mode,startedAt:now};
     settings.mode=next;
@@ -242,7 +243,7 @@
       renderClipGrid();
     }
     for(const btn of document.querySelectorAll('[data-mode]'))btn.classList.toggle('active',btn.dataset.mode===next);
-    UI.modeLabel.textContent={bars:'SPECTRUM / REAL TIME',wave:'WAVEFORM / OSCILLOSCOPE',orbit:'ORBIT / RADIAL SPECTRUM',particles:'PARTICLES / AUDIO REACTIVE'}[next];
+    UI.modeLabel.textContent=({bars:'SPECTRUM / REAL TIME',wave:'WAVEFORM / OSCILLOSCOPE',orbit:'ORBIT / RADIAL SPECTRUM',particles:'PARTICLES / AUDIO REACTIVE'}[next]||SOURCE_NAMES[next].toUpperCase()+' / GENERATOR');
     if(automatic)updateAIDisplay('Automatikus váltás aktív',reason||'Hang alapján új effekt');
     persist();
   }
@@ -250,7 +251,8 @@
     settings.palette=p;document.querySelectorAll('[data-palette]').forEach(b=>b.classList.toggle('selected',b.dataset.palette===p));persist();
   }
   function renderMode(mode,t){
-    switch(mode){case 'bars':drawBars(t);break;case 'wave':drawWave(t);break;case 'orbit':drawOrbit(t);break;case 'particles':drawParticles(t);break;}
+    switch(mode){case 'bars':drawBars(t);break;case 'wave':drawWave(t);break;case 'orbit':drawOrbit(t);break;case 'particles':drawParticles(t);break;
+      default:Generators.draw(mode,ctx,{width:sceneWidth,height:sceneHeight,time:t,bass:freq.bass,mids:freq.mids,highs:freq.highs,rms,intensity:settings.intensity,color:paletteColor});break;}
   }
   function paletteColor(index,total,alpha=1){
     const colors=presetColors[settings.palette];

@@ -11,7 +11,7 @@ const preferencesPath = () => path.join(app.getPath('userData'), 'beatscope-pref
 function validatePrefs(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Érvénytelen beállítások');
   const out = {...DEFAULT_PREFS};
-  if (['bars','wave','orbit','particles'].includes(value.mode)) out.mode = value.mode;
+  if (Composition.SOURCES.includes(value.mode)) out.mode = value.mode;
   if (['azure','mint','violet','sunset','rainbow'].includes(value.palette)) out.palette = value.palette;
   for (const [key, min, max] of [['intensity',0.2,3],['smooth',0,0.94],['volume',0,1]]) {
     if (typeof value[key] === 'number' && Number.isFinite(value[key])) out[key] = Math.max(min, Math.min(max, value[key]));

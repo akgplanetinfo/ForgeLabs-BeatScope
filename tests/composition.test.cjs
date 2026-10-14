@@ -2,13 +2,13 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const C=require('../src/composition.js');
-test('8x8 clip grid and four working generator source types',()=>{
+test('8x8 clip grid and ten working generator source types',()=>{
  const c=C.createComposition();
  assert.equal(c.layers.length,8);
  for(const l of c.layers)assert.equal(l.clips.length,8);
  assert.equal(C.ROWS*C.COLUMNS,64);
  assert.equal(C.activeLayers(c).length,1);
- assert.deepEqual(C.SOURCES,['bars','wave','orbit','particles']);
+ assert.deepEqual(C.SOURCES,['bars','wave','orbit','particles','tunnel','plasma','rings','grid','laser','starfield']);
 });
 test('launch multiple layers, preserve other layers while switching clips',()=>{
  let c=C.createComposition();
@@ -67,4 +67,18 @@ test('legacy preferences recover a valid composition',()=>{
  const n=C.normalize(null);
  assert.equal(n.layers.length,8);
  assert.equal(n.layers[0].activeSlot,0);
+});
+
+test('new generators can be saved, relaunched and survive normalized project preferences',()=>{
+  let c=C.createComposition();
+  for(let i=0;i<6;i++){
+    const src=C.SOURCES[i+4];
+    c=C.putClip(c,i,6,src);
+    c=C.launch(c,i,6);
+    const saved=JSON.parse(JSON.stringify(c));
+    c=C.normalize(saved);
+    assert.equal(c.layers[i].clips[6].source,src);
+    assert.equal(c.layers[i].activeSlot,6);
+  }
+  assert.equal(C.activeLayers(c).length,6);
 });
