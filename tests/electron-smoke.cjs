@@ -3,6 +3,11 @@
 // Verifies real renderer initialization, actual UI clicks, and all FX shader variants.
 const {app,BrowserWindow}=require('electron');
 const path=require('node:path');
+const fs=require('node:fs');
+const os=require('node:os');
+const smokeProfile=fs.mkdtempSync(path.join(os.tmpdir(),'beatscope-smoke-'));
+app.setPath('userData',smokeProfile);
+require('../src/main.cjs'); // Test real production IPC handlers and durable preference storage.
 app.commandLine.appendSwitch('enable-unsafe-swiftshader');
 let failed=false;
 const details=[];
