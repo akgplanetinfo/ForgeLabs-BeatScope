@@ -21,6 +21,16 @@ async function run(){
    out.director=Boolean(window.BeatDirector);
    out.errors=[];
    try {
+     out.gridRows=document.querySelectorAll('.vj-layer-row').length;
+     out.clipCells=document.querySelectorAll('.vj-clip').length;
+     document.querySelectorAll('.vj-layer-row')[0]?.querySelectorAll('.vj-clip')[2]?.click();
+     out.layer1ClipStarted=Boolean(document.querySelectorAll('.vj-layer-row')[0]?.querySelectorAll('.vj-clip')[2]?.classList.contains('playing'));
+     document.querySelectorAll('.vj-layer-row')[1]?.querySelectorAll('.vj-clip')[0]?.click();
+     out.layer2ClipStarted=Boolean(document.querySelectorAll('.vj-layer-row')[1]?.querySelectorAll('.vj-clip')[0]?.classList.contains('playing'));
+     document.querySelectorAll('.vj-layer-row')[1]?.querySelector('button[aria-label$="némítás"]')?.click();
+     out.muteToggled=document.querySelectorAll('.vj-layer-row')[1]?.querySelector('button[aria-label$="némítás"]')?.getAttribute('aria-pressed')==='true';
+     document.querySelectorAll('.vj-layer-row')[1]?.querySelector('button[aria-label$="Solo"]')?.click();
+     out.soloToggled=document.querySelectorAll('.vj-layer-row')[1]?.querySelector('button[aria-label$="Solo"]')?.getAttribute('aria-pressed')==='true';
      document.getElementById('fx-browser-open').click();
      out.panelOpened=!document.getElementById('fx-drawer').hidden;
      out.searchRows=document.querySelectorAll('.fx-result').length;
@@ -58,7 +68,7 @@ async function run(){
    return out;
  })()`,true);
  console.log('BEATSCOPE ELECTRON SMOKE RESULT '+JSON.stringify(state));
- for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
+ for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,gridRows:state.gridRows===8,clipCells:state.clipCells===64,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
  if(state.errors?.length)fail('Shader/UI errors: '+JSON.stringify(state.errors));
  await win.close();
 }

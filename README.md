@@ -76,3 +76,9 @@ Az FX Library 20 különböző GLSL shader-algoritmust és algoritmusonként 6 k
 
 ### v0.3.1 – javítás
 A v0.3.0 kiadás az FX-réteg létrehozásakor a UI-inicializálás előtt hivatkozott a kezelőfelületre, ezért a gombok nem működtek. Ezt javítottuk. A WebGL2 visszacsatolás hibás framebuffer-másolását GPU blit alapú megoldásra cseréltük. A kiadást immár a teljes Electron alkalmazás indításával, a kezelőfelület tényleges kattintásaival, 120 effekt WebGL2-rajzolásával és egy háromrétegű effektlánccal ellenőrzi a Windows GitHub Actions.
+
+## v0.4.0-alpha.1: VJ rétegek és Clip Deck – 1. rész
+
+Elkészült a 8 réteg × 8 kliphely (64 hely) kezelőfelülete és az alapvető élő kompozíció-renderelés. A kliphelyre kattintva az ott lévő generátor indul; üres helyre a legördülő listában kiválasztott generátor kerül. Minden réteg külön indítható, Mute és Solo állítható, Opacity csúszkával módosítható és a ■ gombbal leállítható. A meglévő FX-könyvtár, hangelemzés és AI megmarad. Az új rétegbeállítások a meglévő felhasználói beállításokkal együtt mentődnek.
+
+**Az első rész határa:** a kliphelyek egyelőre a 4 már működő generátorra épülnek. Videóimport, további különálló források, drag-and-drop, keverési módok és klipenkénti FX-lánc későbbi részek. A mostani v0.4 build **alpha**, nem a teljes Resolve/Resolume-szerű kiadás.

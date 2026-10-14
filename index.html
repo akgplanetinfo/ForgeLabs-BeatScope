@@ -23,7 +23,7 @@
   </header>
   <div class="app-layout">
     <aside class="sidebar">
-      <div class="sidebar-section-label">VIZUALIZÁCIÓ</div>
+      <div class="sidebar-section-label">GENERÁTOR FORRÁSOK</div>
       <div class="mode-stack" role="group" aria-label="Megjelenítési mód">
         <button class="mode-btn active" data-mode="bars"><span class="mode-icon"><svg viewBox="0 0 24 24"><path d="M4 19V12M8 19V5M12 19V10M16 19V3M20 19V13"/></svg></span><span class="mode-title">Spectrum Bars<small>Frekvenciaoszlopok</small></span><span class="keycap">1</span></button>
         <button class="mode-btn" data-mode="wave"><span class="mode-icon"><svg viewBox="0 0 24 24"><path d="M2 12h3l2-7 4 14 3-10 2 5 2-2h4" /></svg></span><span class="mode-title">Waveform<small>Hullámforma</small></span><span class="keycap">2</span></button>
@@ -63,7 +63,7 @@
       <div class="control-line"><label for="bars-count">Oszlopok</label><output id="bars-val">56</output></div>
       <input type="range" id="bars-count" min="16" max="128" value="56" step="8" />
       <label class="check-row"><input id="show-grid" type="checkbox" checked /><span>Finom háttérrács</span></label>
-      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.3.1</span></div>
+      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α1</span></div>
     </aside>
     <main class="workspace">
       <div class="workspace-top">
@@ -83,6 +83,17 @@
         <div class="volume-area"><button id="mute" class="icon-only" title="Némítás" aria-label="Némítás">◖))</button><input id="volume" type="range" min="0" max="100" value="85" aria-label="Hangerő" /></div>
       </div>
 
+      <section class="vj-deck" id="vj-deck" aria-label="VJ rétegek és klipek">
+        <div class="vj-deck-header">
+          <div><strong>CLIP DECK</strong><small>8 réteg × 8 klip · 1. fejlesztési lépés</small></div>
+          <div class="vj-deck-actions"><label for="clip-source-picker">Új klip:</label>
+            <select id="clip-source-picker" aria-label="Új klip forrása">
+              <option value="bars">Spectrum Bars</option><option value="wave">Waveform</option><option value="orbit">Orbit Pulse</option><option value="particles">Particles</option>
+            </select><span class="vj-help">Üres hely: hozzáadás · Foglalt hely: indítás</span>
+          </div>
+        </div>
+        <div class="vj-grid-scroll"><div class="vj-grid" id="clip-grid" role="group" aria-label="8 réteg, összesen 64 kliphely"></div></div>
+      </section>
       <section class="fx-drawer" id="fx-drawer" hidden aria-label="Effektkönyvtár">
         <div class="fx-header"><div><strong>✦ FX LIBRARY</strong><small>120 látvány · 20 shadercsalád</small></div><button type="button" class="fx-close" id="fx-close" aria-label="Effektkönyvtár bezárása">✕</button></div>
         <div class="fx-search-row"><input id="fx-search" type="search" placeholder="Effekt keresése…" aria-label="Effektek keresése"/><select id="fx-category" aria-label="Effektkategória"><option value="">Minden kategória</option></select></div>
@@ -118,6 +129,7 @@
   <div class="toast-stack" id="toasts" role="status" aria-live="polite"></div>
   <script src="src/audio-math.js"></script>
   <script src="src/ai-director.js"></script>
+  <script src="src/composition.js"></script>
   <script src="src/fx-engine.js"></script>
   <script src="src/ui.js"></script>
 </body>

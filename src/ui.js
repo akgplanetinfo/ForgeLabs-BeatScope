@@ -4,6 +4,7 @@
   const math=window.BeatMath;
   const aiDirector=window.BeatDirector.createDirector();
   const FX=window.BeatFX;
+  const Composition=window.BeatComposition;
   let fxRenderer=null,fxDisabled=false,fxSelected=-1,fxFavFilter=false,fxAICount=0,fxLastSwitch=0,fxRecent=[];
 
   const UI={
@@ -21,11 +22,11 @@
     azure:['#4adcf8','#32a3f2','#9beeff'],mint:['#50f7bb','#1fb6b1','#bbffe0'],
     violet:['#c1a0ff','#7178f5','#f3c1ff'],sunset:['#ffc06c','#ff647c','#ffe2ae'],rainbow:['#45d8fc','#a85fff','#f2bc63']
   };
-  const settings={mode:'bars',palette:'azure',intensity:1.15,smooth:0.75,barCount:56,showGrid:true,micDevice:'default',volume:0.85,aiEnabled:false,aiSpeed:'balanced',aiPalette:false,fxStack:[],fxBypass:false,fxAuto:false,fxFavorites:[]};
+  const settings={mode:'bars',palette:'azure',intensity:1.15,smooth:0.75,barCount:56,showGrid:true,micDevice:'default',volume:0.85,aiEnabled:false,aiSpeed:'balanced',aiPalette:false,fxStack:[],fxBypass:false,fxAuto:false,fxFavorites:[],composition:Composition.createComposition()};
   let audioCtx=null,analyser=null,fileAnalyser=null,micSource=null,micStream=null,sourceNode=null,sourceMode='none',fileURL=null;
   let bins=new Uint8Array(1024),wave=new Uint8Array(2048),freq={bass:0,mids:0,highs:0,total:0,dominantHz:0};
   let rms=0,peak=0,pulse=0,lastPulse=0,sceneWidth=0,sceneHeight=0,dpr=1,lastMeters=0;
-  let isSeeking=false,saveTimer=null,repeat=false,lastFrame=0,modeTransition=null,lastAIStatus=0;
+  let isSeeking=false,saveTimer=null,repeat=false,lastFrame=0,modeTransition=null,lastAIStatus=0,clipTouched=false,initializing=true;
   const supported=Boolean(window.AudioContext||window.webkitAudioContext);
 
   function notify(message,error=false){
@@ -36,11 +37,88 @@
     clearTimeout(saveTimer);
     saveTimer=setTimeout(()=>window.beatAPI?.savePreferences({...settings}).catch(()=>notify('A beállításokat nem sikerült elmenteni.',true)),300);
   }
+
+  const SOURCE_NAMES={bars:'Spectrum Bars',wave:'Waveform',orbit:'Orbit Pulse',particles:'Particles'};
+  function renderClipGrid(){
+    const root=$('clip-grid'),composition=settings.composition;
+    root.replaceChildren();
+    for(let rowIndex=0;rowIndex<Composition.ROWS;rowIndex++){
+      const layer=composition.layers[rowIndex];
+      const row=document.createElement('div');
+      row.className='vj-layer-row'+(rowIndex===composition.selectedLayer?' selected':'');
+      const header=document.createElement('div');header.className='vj-layer-header';
+      const select=document.createElement('button');select.type='button';select.className='vj-layer-select';
+      select.textContent=layer.name;select.title='Réteg kiválasztása';
+      select.addEventListener('click',()=>{
+        settings.composition=Composition.selectLayer(settings.composition,rowIndex);
+        renderClipGrid();persist();
+      });
+      const mute=document.createElement('button');mute.type='button';
+      mute.className='vj-layer-tool'+(layer.muted?' on':'');
+      mute.textContent='M';mute.title='Mute – réteg kikapcsolása';
+      mute.setAttribute('aria-label',layer.name+' némítás');
+      mute.setAttribute('aria-pressed',String(layer.muted));
+      mute.addEventListener('click',()=>{
+        settings.composition=Composition.layerAction(settings.composition,rowIndex,{muted:!layer.muted});
+        renderClipGrid();persist();
+      });
+      const solo=document.createElement('button');solo.type='button';
+      solo.className='vj-layer-tool'+(layer.solo?' on':'');
+      solo.textContent='S';solo.title='Solo – csak ez a réteg';
+      solo.setAttribute('aria-label',layer.name+' Solo');
+      solo.setAttribute('aria-pressed',String(layer.solo));
+      solo.addEventListener('click',()=>{
+        settings.composition=Composition.layerAction(settings.composition,rowIndex,{solo:!layer.solo});
+        renderClipGrid();persist();
+      });
+      const stop=document.createElement('button');stop.type='button';
+      stop.className='vj-layer-tool stop';stop.textContent='■';
+      stop.title='Réteg leállítása';
+      stop.setAttribute('aria-label',layer.name+' leállítása');
+      stop.addEventListener('click',()=>{
+        settings.composition=Composition.stop(settings.composition,rowIndex);
+        renderClipGrid();setSourceLabel();persist();
+      });
+      const opacity=document.createElement('input');opacity.type='range';
+      opacity.min=0;opacity.max=100;opacity.step=5;opacity.value=Math.round(layer.opacity*100);
+      opacity.className='vj-layer-opacity';
+      opacity.title='Réteg átlátszósága: '+opacity.value+'%';
+      opacity.setAttribute('aria-label',layer.name+' átlátszósága');
+      opacity.addEventListener('input',()=>{
+        settings.composition=Composition.layerAction(settings.composition,rowIndex,{opacity:Number(opacity.value)/100});
+        opacity.title='Réteg átlátszósága: '+opacity.value+'%';
+        persist();
+      });
+      header.append(select,mute,solo,stop,opacity);row.append(header);
+      for(let slot=0;slot<Composition.COLUMNS;slot++){
+        const clip=layer.clips[slot];
+        const cell=document.createElement('button');cell.type='button';
+        cell.className='vj-clip'+(clip?' populated':'')+(layer.activeSlot===slot?' playing':'');
+        const label=clip?SOURCE_NAMES[clip.source]:'＋';
+        cell.textContent=label;
+        cell.title=clip?'Indítás: '+label:'Hozzáadás és indítás: '+SOURCE_NAMES[$('clip-source-picker').value];
+        cell.setAttribute('aria-label',layer.name+' / '+(slot+1)+'. klip / '+label);
+        cell.addEventListener('click',()=>{
+          let next=settings.composition;
+          if(!clip)next=Composition.putClip(next,rowIndex,slot,$('clip-source-picker').value);
+          next=Composition.launch(next,rowIndex,slot);
+          settings.composition=next;
+          const launched=next.layers[rowIndex].clips[slot];
+          clipTouched=true;modeTransition=null;settings.mode=launched.source;
+          for(const button of document.querySelectorAll('[data-mode]'))button.classList.toggle('active',button.dataset.mode===launched.source);
+          UI.modeLabel.textContent='LIVE / '+SOURCE_NAMES[launched.source].toUpperCase();
+          renderClipGrid();setSourceLabel();persist();
+        });
+        row.append(cell);
+      }
+      root.append(row);
+    }
+  }
   function setSourceLabel(){
     const active=(sourceMode==='mic'&&!!micStream)||(sourceMode==='file'&&!UI.audio.paused&&!UI.audio.ended);
     UI.titleLed.classList.toggle('on',active);UI.liveDot.classList.toggle('on',active);
-    UI.placeholder.style.display=active?'none':'';
-    UI.title.textContent=active?(sourceMode==='mic'?'Élő mikrofon':'Lejátszás folyamatban'):(sourceMode==='file'?'Zenefájl betöltve':'Nincs hangforrás');
+    UI.placeholder.style.display=(active||Composition.activeLayers(settings.composition).length>0)?'none':'';
+    UI.title.textContent=active?(sourceMode==='mic'?'Élő mikrofon':'Lejátszás folyamatban'):(Composition.activeLayers(settings.composition).length?'Vizuál aktív · hangforrás nélkül':(sourceMode==='file'?'Zenefájl betöltve':'Nincs hangforrás'));
     UI.sourceTag.textContent=active?(sourceMode==='mic'?'MIC LIVE':'FILE LIVE'):(sourceMode==='file'?'PAUSED':'NO INPUT');
     UI.microphone.classList.toggle('active',sourceMode==='mic');
     $('open-file').classList.toggle('active',sourceMode!=='mic');
@@ -156,6 +234,13 @@
     if(!automatic&&settings.aiEnabled)setAI(false);
     if(settings.mode!==next)modeTransition={from:settings.mode,startedAt:now};
     settings.mode=next;
+    if(!initializing){
+      const layerIndex=settings.composition.selectedLayer;
+      const layer=settings.composition.layers[layerIndex];
+      const slot=layer.activeSlot>=0?layer.activeSlot:0;
+      settings.composition=Composition.launch(Composition.putClip(settings.composition,layerIndex,slot,next),layerIndex,slot);
+      renderClipGrid();
+    }
     for(const btn of document.querySelectorAll('[data-mode]'))btn.classList.toggle('active',btn.dataset.mode===next);
     UI.modeLabel.textContent={bars:'SPECTRUM / REAL TIME',wave:'WAVEFORM / OSCILLOSCOPE',orbit:'ORBIT / RADIAL SPECTRUM',particles:'PARTICLES / AUDIO REACTIVE'}[next];
     if(automatic)updateAIDisplay('Automatikus váltás aktív',reason||'Hang alapján új effekt');
@@ -429,14 +514,12 @@
       }
     }
     backdrop(t);
-    if(active){
-      if(modeTransition){
-        const progress=Math.max(0,Math.min(1,(t-modeTransition.startedAt)/650));
-        if(progress<1){
-          ctx.save();ctx.globalAlpha=1-progress;renderMode(modeTransition.from,t);ctx.restore();
-          ctx.save();ctx.globalAlpha=progress;renderMode(settings.mode,t);ctx.restore();
-        }else{modeTransition=null;renderMode(settings.mode,t);}
-      }else renderMode(settings.mode,t);
+    // Layer 8 is at the bottom, Layer 1 at the top.
+    for(const layer of Composition.activeLayers(settings.composition)){
+      ctx.save();ctx.globalAlpha=layer.opacity;
+      ctx.globalCompositeOperation='screen';
+      renderMode(layer.source,t);
+      ctx.restore();
     }
     fxAutoUpdate(t,active);
     drawPostFX(t);
@@ -510,6 +593,8 @@
     try{Object.assign(settings,await window.beatAPI.loadPreferences());}catch{}
     settings.fxStack=Array.isArray(settings.fxStack)?settings.fxStack:[];
     settings.fxFavorites=Array.isArray(settings.fxFavorites)?settings.fxFavorites:[];
+    settings.composition=Composition.normalize(settings.composition);
+    renderClipGrid();
     fxSelected=settings.fxStack.length?0:-1;
     refreshFXStack();drawFXCatalog();
     setMode(settings.mode,{automatic:true});setPalette(settings.palette);
@@ -523,6 +608,7 @@
     UI.volume.value=Math.round(settings.volume*100);UI.audio.volume=settings.volume;
     try{setWindowState(await window.beatAPI.windowState());}catch{}
     if(!supported)notify('Web Audio API nem érhető el.',true);
+    initializing=false;
     sizeCanvas();setSourceLabel();requestAnimationFrame(animate);
   }
   init();

@@ -43,3 +43,31 @@
 .fx-status{font-size:10px;color:#8ab2cb;padding:4px 14px 12px;min-height:26px}.fx-overlay{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
 .fx-launch{border-color:#4b718d!important;background:linear-gradient(110deg,#1a4b60,#233953)!important;color:#baf7f1!important}
 @media(max-height:720px){.fx-drawer{top:0;bottom:0}.fx-header{padding:8px 12px}.fx-search-row{padding:6px}.fx-result{padding:6px}.fx-ai-row{margin:5px 12px;padding:6px}.fx-parameters label{margin-top:3px}}
+
+
+/* BeatScope VJ composition clip grid, first milestone */
+.vj-deck{flex:0 0 227px;min-height:125px;max-height:265px;display:flex;flex-direction:column;background:#0a1727;border:1px solid #29445d;border-radius:13px;overflow:hidden}
+.vj-deck-header{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:9px 12px;background:linear-gradient(100deg,#13283c,#0c1c2c);border-bottom:1px solid #2b4357}
+.vj-deck-header>div:first-child{display:flex;flex-direction:column;gap:2px}
+.vj-deck-header strong{font-size:11px;color:#beecf8;letter-spacing:1px}
+.vj-deck-header small{font-size:9px;color:#819cb7}
+.vj-deck-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.vj-deck-actions label,.vj-help{font-size:9px;color:#789eb9}
+#clip-source-picker{min-height:28px;max-width:130px;border:1px solid #406580;border-radius:6px;color:#d9f7ff;background:#10283c;font-size:10px;padding:4px}
+.vj-grid-scroll{overflow:auto;min-height:0;flex:1}
+.vj-grid{min-width:740px;padding:5px;display:flex;flex-direction:column;gap:3px}
+.vj-layer-row{display:grid;grid-template-columns:184px repeat(8,minmax(57px,1fr));gap:4px;height:34px}
+.vj-layer-header{display:flex;gap:3px;align-items:center;border:1px solid #293e57;background:#172437;border-radius:6px;padding:2px 4px;min-width:0}
+.vj-layer-row.selected .vj-layer-header{border-color:#5bc9e6}
+.vj-layer-select{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:0;background:transparent;text-align:left;color:#bed8ed;font-size:10px;font-weight:750;padding:2px}
+.vj-layer-tool{width:19px;min-width:19px;height:21px;border:1px solid #35516b;border-radius:4px;background:#1d3348;color:#91adc1;font-size:9px;font-weight:900;display:grid;place-items:center;padding:0}
+.vj-layer-tool.on{background:#25687a;color:#ddffff;border-color:#52d1cd}
+.vj-layer-tool.stop{color:#e6a3ae}
+.vj-layer-opacity{width:32px!important;min-width:32px;flex:0 0 32px;margin:0!important}
+.vj-clip{border:1px dashed #294a5a;border-radius:5px;background:#0c2435;color:#567d96;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:1px 4px;min-width:0}
+.vj-clip:hover{border-color:#76cdea;background:#19455b;color:#dcf7fd}
+.vj-clip.populated{border:1px solid #306178;background:#194359;color:#bce8fa;font-size:9px;font-weight:700}
+.vj-clip.playing{background:#16888c;color:#f0fff9;border:1px solid #88f6d4;box-shadow:inset 0 0 0 1px #53dabb40}
+@media(max-height:780px){.vj-deck{flex-basis:155px;min-height:100px}.vj-deck-header{padding:5px}.vj-help{display:none}.visual-shell{min-height:110px!important}}
+@media(max-height:640px){.workspace-top{display:none}.workspace{padding-top:10px;padding-bottom:10px;gap:10px}.vj-deck{flex-basis:135px}.transport{min-height:60px;padding:9px}.visual-shell{min-height:100px!important}}
+@media(max-width:1150px){.vj-layer-row{grid-template-columns:158px repeat(8,minmax(57px,1fr))}.vj-deck{flex-basis:180px}}
