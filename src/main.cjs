@@ -33,14 +33,25 @@ async function readPrefs() {
   try { return validatePrefs(JSON.parse(await fs.readFile(preferencesPath(),'utf8'))); }
   catch { return {...DEFAULT_PREFS}; }
 }
-async function writePrefs(input) {
-  const valid = validatePrefs(input);
-  const target = preferencesPath();
-  const temp = target + '.tmp';
-  await fs.mkdir(path.dirname(target),{recursive:true});
-  await fs.writeFile(temp,JSON.stringify(valid,null,2),'utf8');
-  await fs.rename(temp,target);
-  return valid;
+let pendingPrefs=Promise.resolve();
+let prefsWriteNumber=0;
+function writePrefs(input) {
+  const valid=validatePrefs(input);
+  const write=async()=>{
+    const target=preferencesPath();
+    const temp=target+'.'+process.pid+'.'+(++prefsWriteNumber)+'.tmp';
+    await fs.mkdir(path.dirname(target),{recursive:true});
+    try{
+      await fs.writeFile(temp,JSON.stringify(valid,null,2),'utf8');
+      await fs.rename(temp,target);
+    }finally{
+      await fs.rm(temp,{force:true}).catch(()=>{});
+    }
+    return valid;
+  };
+  // Electron can have multiple windows simultaneously writing preferences.
+  pendingPrefs=pendingPrefs.catch(()=>{}).then(write);
+  return pendingPrefs;
 }
 function createWindow() {
   window = new BrowserWindow({

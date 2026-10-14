@@ -149,6 +149,16 @@ async function run(){
      const finalPrefs=await window.beatAPI.loadPreferences();
      out.sceneSaved=finalPrefs?.composition?.selectedSlot===7&&finalPrefs?.composition?.layers?.[0]?.activeSlot===7;
 
+     // Earlier UI tests deliberately enable Mute and Solo. Restore normal layer mixing
+     // before checking real-time GPU processing on Layer 3.
+     let restoreRow=document.querySelectorAll('.vj-layer-row')[1];
+     if(restoreRow.querySelector('button[aria-label$="Solo"]').getAttribute('aria-pressed')==='true')
+       restoreRow.querySelector('button[aria-label$="Solo"]').click();
+     restoreRow=document.querySelectorAll('.vj-layer-row')[1];
+     if(restoreRow.querySelector('button[aria-label$="némítás"]').getAttribute('aria-pressed')==='true')
+       restoreRow.querySelector('button[aria-label$="némítás"]').click();
+     out.clipFXLayerMixingRestored=
+       document.querySelectorAll('.vj-layer-row')[1].querySelector('button[aria-label$="Solo"]').getAttribute('aria-pressed')==='false';
      // Real clip FX: independent per-clip chains, reorder, bypass and GPU processing.
      const realRenderer=window.BeatFX.renderer;
      let clipDrawCalls=0,clipRendererCreated=0;
@@ -227,7 +237,7 @@ async function run(){
    return out;
  })()`,true);
  console.log('BEATSCOPE ELECTRON SMOKE RESULT '+JSON.stringify(state));
- for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,gridRows:state.gridRows===8,clipCells:state.clipCells===64,sceneButtons:state.sceneButtons,sceneLaunch:state.sceneLaunchWorks,sceneSaved:state.sceneSaved,clipMenu:state.contextMenuOpen,clipPasted:state.pastedClip,clipParameters:state.pastedParams,clipDuplicated:state.duplicateCreated,clipDeleted:state.deleteWorked,clipCut:state.cutWorked,clipFXLibrary:state.clipFXLibraryCount===121,clipFXAdded:state.clipFXAdded,clipFXStack:state.clipFXStackCount,clipFXOrder:state.clipFXReordered,clipFXOff:state.clipFXDisabled,clipFXBypass:state.clipFXBypass,clipFXGPU:state.clipFXGPU,clipFXSaved:state.clipFXPersisted,clipFXSeparate:state.clipFXIndependent,clipFXRemove:state.clipFXRemoved,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,generatorCount:state.generatorCount===6,sourceOptions:state.generatorOptions?.length===16,extraCount:state.extraGeneratorCount===6,extraDraws:state.extraGeneratorsDrawn?.every(Boolean),extraDistinct:new Set(state.extraGeneratorHashes||[]).size===6,extraGrid:state.extraGridSources?.every(Boolean),otherClipDefault:state.otherClipDefault,paramsRestored:state.paramsRestored,paramsSaved:state.paramsSaved,paramsReset:state.paramsReset,sourceDraws:state.newGeneratorsDrawn?.every(Boolean),sourceDistinct:new Set(state.generatorHashes||[]).size===6,sourceGrid:state.newGridSources?.every(Boolean),library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
+ for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,gridRows:state.gridRows===8,clipCells:state.clipCells===64,sceneButtons:state.sceneButtons,sceneLaunch:state.sceneLaunchWorks,sceneSaved:state.sceneSaved,clipMenu:state.contextMenuOpen,clipPasted:state.pastedClip,clipParameters:state.pastedParams,clipDuplicated:state.duplicateCreated,clipDeleted:state.deleteWorked,clipCut:state.cutWorked,clipFXLibrary:state.clipFXLibraryCount===121,clipFXAdded:state.clipFXAdded,clipFXStack:state.clipFXStackCount,clipFXOrder:state.clipFXReordered,clipFXOff:state.clipFXDisabled,clipFXBypass:state.clipFXBypass,clipFXLayerMixing:state.clipFXLayerMixingRestored,clipFXGPU:state.clipFXGPU,clipFXSaved:state.clipFXPersisted,clipFXSeparate:state.clipFXIndependent,clipFXRemove:state.clipFXRemoved,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,generatorCount:state.generatorCount===6,sourceOptions:state.generatorOptions?.length===16,extraCount:state.extraGeneratorCount===6,extraDraws:state.extraGeneratorsDrawn?.every(Boolean),extraDistinct:new Set(state.extraGeneratorHashes||[]).size===6,extraGrid:state.extraGridSources?.every(Boolean),otherClipDefault:state.otherClipDefault,paramsRestored:state.paramsRestored,paramsSaved:state.paramsSaved,paramsReset:state.paramsReset,sourceDraws:state.newGeneratorsDrawn?.every(Boolean),sourceDistinct:new Set(state.generatorHashes||[]).size===6,sourceGrid:state.newGridSources?.every(Boolean),library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
  if(state.errors?.length)fail('Shader/UI errors: '+JSON.stringify(state.errors));
  await win.close();
 }
