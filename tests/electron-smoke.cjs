@@ -290,17 +290,22 @@ async function run(){
      // Verify the main renderer uses the actual new blend mode, not only a saved UI label.
      const canvas=document.getElementById('visualizer');
      const mainCanvasCtx=canvas.getContext('2d');
-     const proto=Object.getPrototypeOf(mainCanvasCtx);
-     const descriptor=Object.getOwnPropertyDescriptor(proto,'globalCompositeOperation');
-     let blendWasApplied=false;
+     let owner=Object.getPrototypeOf(mainCanvasCtx),descriptor=null;
+     while(owner&&!descriptor){
+       descriptor=Object.getOwnPropertyDescriptor(owner,'globalCompositeOperation');
+       owner=Object.getPrototypeOf(owner);
+     }
+     let blendWasApplied=false,observedCount=0;
      if(descriptor?.get&&descriptor?.set){
        Object.defineProperty(mainCanvasCtx,'globalCompositeOperation',{
          configurable:true,
          get(){return descriptor.get.call(this);},
-         set(value){if(value==='multiply')blendWasApplied=true;return descriptor.set.call(this,value);}
+         set(value){observedCount++;if(value==='multiply')blendWasApplied=true;return descriptor.set.call(this,value);}
        });
      }
-     await new Promise(resolve=>setTimeout(resolve,300));
+     await new Promise(resolve=>setTimeout(resolve,1150));
+     out.blendObservedCount=observedCount;
+     out.blendAccessorFound=Boolean(descriptor?.set);
      out.blendUsedInRenderer=blendWasApplied;
      if(Object.hasOwn(mainCanvasCtx,'globalCompositeOperation'))delete mainCanvasCtx.globalCompositeOperation;
      document.getElementById('fx-browser-open').click();
