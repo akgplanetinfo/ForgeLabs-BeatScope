@@ -215,3 +215,51 @@ test('old clip data migrates without effects and does not destroy previous gener
  assert.equal(migrated.layers[0].clips[0].fxBypass,false);
  assert.equal(migrated.layers[0].clips[0].params.speed,2.3);
 });
+
+test('layer FX chain is independent from clip FX chain and persists correctly',()=>{
+ let c=C.createComposition();
+ c=C.setLayerEffects(c,0,[{id:'fx-066',wet:.4,strength:1.8},{id:'fx-120',wet:.8,strength:.65,disabled:true}]);
+ c=C.setClipEffects(c,0,0,[{id:'fx-003',wet:.2,strength:1.2}]);
+ assert.deepEqual(c.layers[0].fxStack.map(f=>f.id),['fx-066','fx-120']);
+ assert.equal(c.layers[0].fxStack[0].wet,.4);
+ assert.deepEqual(c.layers[1].fxStack,[]);
+ assert.deepEqual(c.layers[0].clips[0].fxStack.map(f=>f.id),['fx-003']);
+ const active=C.activeLayers(c)[0];
+ assert.deepEqual(active.layerFxStack.map(f=>f.id),['fx-066','fx-120']);
+ assert.equal(active.fxStack[0].id,'fx-003');
+ c=C.setLayerEffects(c,0,undefined,true);
+ assert.equal(c.layers[0].fxBypass,true);
+ assert.equal(c.layers[0].fxStack.length,2);
+ assert.equal(C.activeLayers(c)[0].layerFxBypass,true);
+ assert.equal(C.activeLayers(c)[0].fxBypass,false);
+ const roundtrip=C.normalize(JSON.parse(JSON.stringify(c)));
+ assert.equal(roundtrip.layers[0].fxBypass,true);
+ assert.deepEqual(roundtrip.layers[0].fxStack,c.layers[0].fxStack);
+ assert.equal(roundtrip.layers[1].fxBypass,false);
+});
+test('layer FX survives scene changes and clip movement without being copied to another layer',()=>{
+ let c=C.createComposition();
+ c=C.setLayerEffects(c,2,[{id:'fx-017',wet:.6,strength:1.1}]);
+ c=C.putClip(c,2,6,'laser');
+ c=C.launch(c,2,6);
+ c=C.launchScene(c,0);
+ c=C.moveClip(c,2,6,4,6);
+ assert.equal(c.layers[2].fxStack[0].id,'fx-017');
+ assert.deepEqual(c.layers[4].fxStack,[]);
+ c=C.selectLayer(c,4);
+ assert.equal(c.layers[2].fxStack[0].id,'fx-017');
+ assert.equal(c.layers[4].fxStack.length,0);
+});
+test('layer FX rejects malformed entries and migrates old saved layers to empty FX lists',()=>{
+ const c=C.createComposition();
+ c.layers[0].fxStack=[{id:'fx-000'},{id:'fx-058',wet:-50,strength:900},{id:'fx-039',disabled:true},{id:'fx-001'},{id:'fx-120'}];
+ c.layers[0].fxBypass=true;
+ const n=C.normalize(c);
+ assert.deepEqual(n.layers[0].fxStack.map(e=>e.id),['fx-058','fx-039','fx-001']);
+ assert.equal(n.layers[0].fxStack[0].wet,0);
+ assert.equal(n.layers[0].fxStack[0].strength,2);
+ assert.equal(n.layers[0].fxBypass,true);
+ const old=C.createComposition();delete old.layers[0].fxStack;delete old.layers[0].fxBypass;
+ assert.deepEqual(C.normalize(old).layers[0].fxStack,[]);
+ assert.equal(C.normalize(old).layers[0].fxBypass,false);
+});

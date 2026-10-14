@@ -5,7 +5,7 @@
 })(typeof window!=='undefined'?window:typeof globalThis!=='undefined'?globalThis:null,function(){
  'use strict';
  const SOURCES=Object.freeze(['bars','wave','orbit','particles','tunnel','plasma','rings','grid','laser','starfield','hexfield','digitalrain','ribbon','mandala','fireflies','electric']);
- const ROWS=8,COLUMNS=8,MAX_CLIP_FX=3;
+ const ROWS=8,COLUMNS=8,MAX_CLIP_FX=3,MAX_LAYER_FX=3;
  function normalizeFxStack(stack){
    if(!Array.isArray(stack))return [];
    return stack.filter(entry=>entry&&typeof entry==='object'&&/^fx-\d{3}$/.test(entry.id)&&Number(entry.id.slice(3))>=1&&Number(entry.id.slice(3))<=120).slice(0,MAX_CLIP_FX).map(entry=>({
@@ -28,7 +28,7 @@
  }
  function createComposition(){
    return {selectedLayer:0,selectedSlot:0,layers:Array.from({length:ROWS},(_,i)=>({
-     name:'Layer '+(i+1),opacity:1,muted:false,solo:false,
+     name:'Layer '+(i+1),opacity:1,muted:false,solo:false,fxStack:[],fxBypass:false,
      activeSlot:i===0?0:-1,
      clips:Array.from({length:COLUMNS},(_,j)=>j<4?{source:SOURCES[(j+i)%4],params:sanitizeParams(null),fxStack:[],fxBypass:false}:null)
    }))};
@@ -46,6 +46,8 @@
      if(typeof src.opacity==='number'&&Number.isFinite(src.opacity))dest.opacity=Math.min(1,Math.max(0,src.opacity));
      if(typeof src.muted==='boolean')dest.muted=src.muted;
      if(typeof src.solo==='boolean')dest.solo=src.solo;
+     dest.fxStack=normalizeFxStack(src.fxStack);
+     dest.fxBypass=src.fxBypass===true;
      if(Array.isArray(src.clips)){
        dest.clips=Array.from({length:COLUMNS},(_,j)=>{
          const clip=src.clips[j];
@@ -67,6 +69,14 @@
    if(typeof patch.opacity==='number'&&Number.isFinite(patch.opacity))layer.opacity=Math.max(0,Math.min(1,patch.opacity));
    if(typeof patch.name==='string'&&patch.name.trim())layer.name=patch.name.trim().slice(0,36);
    return composition;
+ }
+ function setLayerEffects(input,index,stack,bypass){
+   const c=normalize(input);
+   if(!validInt(index,ROWS))return c;
+   const layer=c.layers[index];
+   if(stack!==undefined)layer.fxStack=normalizeFxStack(stack);
+   if(typeof bypass==='boolean')layer.fxBypass=bypass;
+   return c;
  }
  function selectLayer(input,index){
    const c=normalize(input);if(validInt(index,ROWS))c.selectedLayer=index;return c;
@@ -185,8 +195,8 @@
  function activeLayers(input){
    const c=normalize(input),hasSolo=c.layers.some(l=>l.solo);
    return c.layers.map((l,index)=>({index,...l})).filter(l=>l.activeSlot>=0&&!l.muted&&l.opacity>0&&(!hasSolo||l.solo)&&l.clips[l.activeSlot])
-    .map(l=>({index:l.index,source:l.clips[l.activeSlot].source,opacity:l.opacity,slot:l.activeSlot,params:sanitizeParams(l.clips[l.activeSlot].params),fxStack:normalizeFxStack(l.clips[l.activeSlot].fxStack),fxBypass:l.clips[l.activeSlot].fxBypass===true}))
+    .map(l=>({index:l.index,source:l.clips[l.activeSlot].source,opacity:l.opacity,layerFxStack:normalizeFxStack(l.fxStack),layerFxBypass:l.fxBypass===true,slot:l.activeSlot,params:sanitizeParams(l.clips[l.activeSlot].params),fxStack:normalizeFxStack(l.clips[l.activeSlot].fxStack),fxBypass:l.clips[l.activeSlot].fxBypass===true}))
     .reverse(); // topmost layer = Layer 1, rendered last
  }
- return {ROWS,COLUMNS,MAX_CLIP_FX,SOURCES,DEFAULT_PARAMS,PARAM_LIMITS,sanitizeParams,normalizeFxStack,createComposition,normalize,selectLayer,selectClip,getClip,pasteClip,removeClip,duplicateClip,moveClip,launchScene,layerAction,putClip,updateClipParams,setClipEffects,launch,stop,activeLayers};
+ return {ROWS,COLUMNS,MAX_CLIP_FX,MAX_LAYER_FX,SOURCES,DEFAULT_PARAMS,PARAM_LIMITS,sanitizeParams,normalizeFxStack,createComposition,normalize,selectLayer,selectClip,getClip,pasteClip,removeClip,duplicateClip,moveClip,launchScene,layerAction,putClip,updateClipParams,setClipEffects,setLayerEffects,launch,stop,activeLayers};
 });

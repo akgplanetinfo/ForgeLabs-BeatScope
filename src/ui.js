@@ -134,6 +134,103 @@
     });
   }
 
+
+  let layerFxSelected=0;
+  function selectedLayerEffects(){
+    return settings.composition.layers[settings.composition.selectedLayer];
+  }
+  function selectedLayerFXEntry(){
+    return selectedLayerEffects()?.fxStack?.[layerFxSelected]||null;
+  }
+  function refreshLayerFX(){
+    const layer=selectedLayerEffects();
+    const stack=layer?.fxStack||[];
+    if(layerFxSelected>=stack.length)layerFxSelected=Math.max(0,stack.length-1);
+    $('vj-lfx-target').textContent=layer?layer.name+' · minden klip':'Nincs réteg';
+    $('vj-lfx-count').textContent=stack.length+'/'+Composition.MAX_LAYER_FX;
+    $('vj-lfx-add').disabled=!layer||stack.length>=Composition.MAX_LAYER_FX;
+    $('vj-lfx-library').disabled=!layer;
+    $('vj-lfx-bypass').disabled=!layer;
+    $('vj-lfx-bypass').textContent=layer?.fxBypass?'FX kikapcsolva':'FX bekapcsolva';
+    $('vj-lfx-bypass').setAttribute('aria-pressed',String(!!layer?.fxBypass));
+    $('vj-lfx-bypass').classList.toggle('off',!!layer?.fxBypass);
+    const list=$('vj-lfx-stack');list.replaceChildren();
+    if(!stack.length)list.textContent='Ehhez a réteghez még nincs effekt.';
+    for(let index=0;index<stack.length;index++){
+      const entry=stack[index],definition=FX.byId(entry.id);
+      if(!definition)continue;
+      const line=document.createElement('div');line.className='vj-cfx-item'+(index===layerFxSelected?' selected':'');
+      const choose=fxButton(definition.name,'vj-cfx-name'+(entry.disabled?' disabled':''),()=>{layerFxSelected=index;refreshLayerFX();});
+      const toggle=fxButton(entry.disabled?'○':'●','',()=>changeLayerFX(index,{disabled:!entry.disabled}));
+      toggle.title=entry.disabled?'Réteg FX bekapcsolása':'Réteg FX kikapcsolása';
+      const up=fxButton('↑','',()=>moveLayerFX(index,-1));up.disabled=index===0;
+      const down=fxButton('↓','',()=>moveLayerFX(index,1));down.disabled=index===stack.length-1;
+      const remove=fxButton('✕','',()=>removeLayerFX(index));
+      line.append(choose,toggle,up,down,remove);list.append(line);
+    }
+    const selected=selectedLayerFXEntry();
+    for(const key of ['wet','strength']){
+      const slider=$('vj-lfx-'+key);
+      slider.disabled=!selected;
+      slider.value=selected?Math.round(selected[key]*100):100;
+      $('vj-lfx-'+key+'-value').textContent=slider.value+'%';
+    }
+  }
+  function commitLayerFX(stack,bypass){
+    const index=settings.composition.selectedLayer;
+    settings.composition=Composition.setLayerEffects(settings.composition,index,stack,bypass);
+    refreshLayerFX();persist();
+  }
+  function changeLayerFX(index,patch){
+    const layer=selectedLayerEffects();
+    if(!layer?.fxStack?.[index])return;
+    const stack=layer.fxStack.map(x=>({...x}));
+    stack[index]={...stack[index],...patch};
+    commitLayerFX(stack);
+  }
+  function moveLayerFX(index,offset){
+    const layer=selectedLayerEffects();
+    if(!layer||index+offset<0||index+offset>=layer.fxStack.length)return;
+    const stack=layer.fxStack.map(x=>({...x}));
+    [stack[index],stack[index+offset]]=[stack[index+offset],stack[index]];
+    layerFxSelected=index+offset;commitLayerFX(stack);
+  }
+  function removeLayerFX(index){
+    const layer=selectedLayerEffects();if(!layer)return;
+    const stack=layer.fxStack.map(x=>({...x}));
+    stack.splice(index,1);
+    layerFxSelected=Math.max(0,Math.min(layerFxSelected,stack.length-1));
+    commitLayerFX(stack);
+  }
+  function bindLayerFX(){
+    const picker=$('vj-lfx-library');
+    for(const category of [...new Set(FX.LIBRARY.map(e=>e.category))]){
+      const group=document.createElement('optgroup');group.label=category;
+      for(const definition of FX.LIBRARY.filter(e=>e.category===category)){
+        const option=document.createElement('option');option.value=definition.id;option.textContent=definition.name;
+        group.append(option);
+      }
+      picker.append(group);
+    }
+    $('vj-lfx-add').addEventListener('click',()=>{
+      const layer=selectedLayerEffects(),definition=FX.byId(picker.value);
+      if(!layer||!definition)return;
+      if(layer.fxStack.length>=Composition.MAX_LAYER_FX){notify('Ebben a részben legfeljebb három réteg FX adható hozzá.',true);return;}
+      const stack=[...layer.fxStack,{id:definition.id,wet:1,strength:1,disabled:false}];
+      layerFxSelected=stack.length-1;commitLayerFX(stack);
+    });
+    $('vj-lfx-bypass').addEventListener('click',()=>{
+      const layer=selectedLayerEffects();if(!layer)return;
+      commitLayerFX(undefined,!layer.fxBypass);
+    });
+    for(const key of ['wet','strength']){
+      $('vj-lfx-'+key).addEventListener('input',()=>{
+        if(!selectedLayerFXEntry())return;
+        changeLayerFX(layerFxSelected,{[key]:Number($('vj-lfx-'+key).value)/100});
+      });
+    }
+    refreshLayerFX();
+  }
   function selectedFX(){
     const clip=selectedCell().clip;
     return clip?.fxStack?.[clipFxSelected]||null;
@@ -363,7 +460,7 @@
       }
       root.append(row);
     }
-    refreshClipParams();refreshClipFX();updateClipToolbar();
+    refreshClipParams();refreshClipFX();refreshLayerFX();updateClipToolbar();
   }
   function setSourceLabel(){
     const active=(sourceMode==='mic'&&!!micStream)||(sourceMode==='file'&&!UI.audio.paused&&!UI.audio.ended);
@@ -776,7 +873,8 @@
     for(const layer of Composition.activeLayers(settings.composition)){
       const p=Composition.sanitizeParams(layer.params);
       const chain=layer.fxBypass?[]:(layer.fxStack||[]).filter(fx=>!fx.disabled);
-      const buffer=chain.length?prepareLayerFX(layer.index):null;
+      const layerChain=layer.layerFxBypass?[]:(layer.layerFxStack||[]).filter(fx=>!fx.disabled);
+      const buffer=(chain.length||layerChain.length)?prepareLayerFX(layer.index):null;
       const originalCtx=ctx;
       const oldFreq=freq,oldBins=bins,oldWave=wave;
       let saved=false;
@@ -803,10 +901,26 @@
           ctx=originalCtx;
           let drawable=buffer.source;
           try{
-            if(buffer.processor.draw(buffer.source,chain,t,{...freq,rms}))drawable=buffer.output;
+            if(chain.length&&buffer.processor.draw(drawable,chain,t,{...freq,rms}))
+              drawable=buffer.output;
+            if(layerChain.length){
+              // Apply layer FX after this clip's FX, and before the global composition FX.
+              // A second processor is only needed when both effect stages are active.
+              let processor=buffer.processor,output=buffer.output;
+              if(chain.length){
+                if(!buffer.layerProcessor){
+                  buffer.layerOutput=document.createElement('canvas');
+                  buffer.layerProcessor=FX.renderer(buffer.layerOutput);
+                  if(!buffer.layerProcessor)throw new Error('Nem hozható létre a layer WebGL2 processzor.');
+                }
+                processor=buffer.layerProcessor;output=buffer.layerOutput;
+              }
+              if(processor.draw(drawable,layerChain,t,{...freq,rms}))
+                drawable=output;
+            }
           }catch(e){
             layerFxFailed.add(layer.index);
-            notify('Klip FX rajzolási hiba a '+(layer.index+1)+'. rétegen: '+e.message,true);
+            notify('Réteg vagy klip FX rajzolási hiba a '+(layer.index+1)+'. rétegen: '+e.message,true);
           }
           ctx.save();
           ctx.globalAlpha=layer.opacity;ctx.globalCompositeOperation='screen';
@@ -846,6 +960,7 @@
 
     bindClipParams();
     bindClipFX();
+    bindLayerFX();
     $('window-min').addEventListener('click',()=>window.beatAPI?.windowAction('minimize'));
     $('window-max').addEventListener('click',()=>window.beatAPI?.windowAction('toggle-maximize'));
     $('window-close').addEventListener('click',()=>window.beatAPI?.windowAction('close'));

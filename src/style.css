@@ -133,3 +133,13 @@
 .vj-cfx-sliders output{float:right;color:#73e5b9}
 .vj-cfx-sliders input[type=range]{display:block;width:100%;margin:10px 0 0}
 @media(max-height:790px){.vj-clip-effects{padding:7px;gap:5px}.vj-cfx-stack{max-height:82px}}
+
+/* Alpha 6: independent per-layer GPU effect stack */
+.vj-layer-effects{border-color:#4b548a;background:linear-gradient(115deg,#191d3c,#112342)}
+.vj-layer-effects .vj-cfx-heading strong{color:#d4c0ff}
+.vj-layer-effects #vj-lfx-target{color:#a4b6ed}
+.vj-layer-effects .vj-cfx-item.selected{border-color:#b7a0ef}
+.vj-layer-effects #vj-lfx-bypass{background:#303c70;border:1px solid #686eba;color:#e1dfff}
+.vj-layer-effects #vj-lfx-bypass.off{background:#50243e;border-color:#86506f;color:#ffcae6}
+.vj-layer-effects #vj-lfx-add{border-color:#7771ae;color:#e2d5ff;background:#303756}
+@media(max-height:790px){.vj-layer-effects{gap:5px}}

@@ -112,3 +112,11 @@ Az aktív/kiemelt kliphez külön FX-lánc rendelhető a CLIP FX CHAIN panelen. 
 A hatás renderelése **rétegenként**, a kompozícióba keverés előtt történik, igény szerint létrehozott WebGL2 processzorral. A teljes kompozíció korábbi globális FX-lánca külön megmarad és utána fut. A GPU-feldolgozás hibájánál a réteg nyers vizuálját próbálja megjeleníteni. A klip FX-lánca egyelőre három effektig bővíthető, és minden réteg számára legfeljebb egy WebGL-feldolgozót tart fenn.
 
 Ez részkiadás; az egymástól független több deck, clip/Layer/Composition FX-könyvtár egyablakos vezérlése, videófájl-import és tetszőleges hosszúságú láncok később érkeznek.
+
+## v0.4.0-alpha.6 — 6. rész: Layer FX (rétegenkénti effektláncok)
+
+A kiválasztott réteg a CLIP DECK területén külön **LAYER FX CHAIN** panelt kapott. 120 effektváltozat közül választható legfeljebb 3 effekt a mostani részkiadásban; Dry/Wet, Strength, sorrend, be-/kikapcsolás, eltávolítás és Bypass állítható, mind tartósan mentve. A réteg effektei **minden rajta lejátszott klipre** érvényesek, és nem másolódnak át másik rétegbe klipáthelyezéskor.
+
+Feldolgozási sorrend: **Clip FX → Layer FX → Composition FX**. A réteg FX a klip saját GPU-feldolgozása után, de a többi réteggel való keverés előtt fut. A GPU processzorokat igény szerint hozza létre; nem aktív FX esetén az eddigi rajzolási út működik. Az előző verziók klipjei és rétegei automatikusan üres layer FX lánccal töltődnek vissza.
+
+Ez még mindig részleges VJ-rendszer, nem teljes Resolume-helyettesítő; a hosszabb effektsorok, médiaimport, csoportok, blend mode és deckek későbbi mérföldkövek.

@@ -63,7 +63,7 @@
       <div class="control-line"><label for="bars-count">Oszlopok</label><output id="bars-val">56</output></div>
       <input type="range" id="bars-count" min="16" max="128" value="56" step="8" />
       <label class="check-row"><input id="show-grid" type="checkbox" checked /><span>Finom háttérrács</span></label>
-      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α5</span></div>
+      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α6</span></div>
     </aside>
     <main class="workspace">
       <div class="workspace-top">
@@ -131,6 +131,22 @@
           <label>Scale <output id="vj-scale-value">100%</output><input id="vj-scale" aria-label="Klip mérete" type="range" min="40" max="200" value="100" step="5"/></label>
           <label>Rotation <output id="vj-rotation-value">0°</output><input id="vj-rotation" aria-label="Klip forgatása" type="range" min="-180" max="180" value="0" step="5"/></label>
           <label>Audio Reactivity <output id="vj-audio-value">100%</output><input id="vj-audio" aria-label="Klip hangérzékenysége" type="range" min="0" max="200" value="100" step="5"/></label>
+        </div>
+      </section>
+      <section class="vj-clip-effects vj-layer-effects" id="vj-layer-effects" aria-label="Rétegenkénti effektláncok">
+        <div class="vj-cfx-heading">
+          <div><strong>LAYER FX CHAIN</strong><small id="vj-lfx-target">Layer 1 · teljes réteg</small></div>
+          <span id="vj-lfx-count">0/3</span>
+          <button type="button" id="vj-lfx-bypass" aria-pressed="false">FX bekapcsolva</button>
+        </div>
+        <div class="vj-cfx-add">
+          <select id="vj-lfx-library" aria-label="Réteghez hozzáadandó effekt"><option value="">Válassz effektet…</option></select>
+          <button type="button" id="vj-lfx-add">+ Hozzáadás</button>
+        </div>
+        <div id="vj-lfx-stack" class="vj-cfx-stack" aria-label="A kiválasztott réteg effektlánca"></div>
+        <div class="vj-cfx-sliders">
+          <label>Dry / Wet <output id="vj-lfx-wet-value">100%</output><input type="range" id="vj-lfx-wet" min="0" max="100" value="100" aria-label="Réteg FX keverési aránya"/></label>
+          <label>Strength <output id="vj-lfx-strength-value">100%</output><input type="range" id="vj-lfx-strength" min="0" max="200" value="100" aria-label="Réteg FX erőssége"/></label>
         </div>
       </section>
       <section class="vj-clip-effects" id="vj-clip-effects" aria-label="Klipenkénti effektláncok">
