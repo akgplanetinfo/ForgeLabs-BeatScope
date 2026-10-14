@@ -162,3 +162,12 @@
 .vj-mix-hint{font-size:9px;color:#80a9bb;line-height:1.4}
 @media(max-width:1100px){.vj-mix-settings{grid-template-columns:1fr 1fr}}
 @media(max-height:750px){.vj-mix{gap:5px;padding:7px 10px}.vj-mix-hint{display:none}}
+
+
+/* Alpha 8: imported image/video clip controls */
+#vj-import-media{background:#244e65;color:#a9fce4;border:1px solid #4ac7b0;border-radius:7px;font-size:10px;font-weight:750;padding:7px 9px;white-space:nowrap;cursor:pointer}
+#vj-import-media:hover{background:#286978}
+#vj-import-media:disabled{opacity:.5;cursor:wait}
+.vj-clip.media-clip{background:linear-gradient(135deg,#493557,#265669);border:1px solid #7a89cd;color:#f1dfff}
+.vj-clip.media-clip.playing{background:linear-gradient(135deg,#436f7d,#177988);border-color:#99f9d9;color:#fff}
+@media(max-width:1300px){.vj-deck-actions #clip-source-picker{max-width:115px}.vj-deck-actions #vj-import-media{font-size:9px;padding:6px}}

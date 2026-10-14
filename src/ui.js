@@ -85,9 +85,86 @@
     $('vj-layer-down').addEventListener('click',()=>shiftSelectedLayer(1));
     refreshLayerMixer();
   }
-  const SOURCE_NAMES={bars:'Spectrum Bars',wave:'Waveform',orbit:'Orbit Pulse',particles:'Particles',...Generators.NAMES,...ExtraGenerators.NAMES};
+  const SOURCE_NAMES={bars:'Spectrum Bars',wave:'Waveform',orbit:'Orbit Pulse',particles:'Particles',media:'Importált média',...Generators.NAMES,...ExtraGenerators.NAMES};
   const PARAM_KEYS=['speed','scale','rotation','audio'];
   let clipClipboard=null,draggedClip=null;
+
+  const mediaPlayers=new Map();
+  const mediaURL=id=>'beatscope-media://local/'+id; // ID validated and generated in Electron main.
+  function mediaType(id){return /\.(mp4|webm|mov|m4v)$/.test(id)?'video':'image';}
+  function stopMediaPlayer(item){
+    if(item.type==='video'){
+      item.element.pause();
+      item.element.removeAttribute('src');
+      item.element.load();
+    }
+  }
+  function syncMediaPlayers(){
+    const active=Composition.activeLayers(settings.composition);
+    const wanted=new Map(active.filter(l=>l.source==='media').map(l=>[l.index,l]));
+    for(const [index,item] of mediaPlayers){
+      const layer=wanted.get(index);
+      if(!layer||item.id!==layer.mediaId||item.slot!==layer.slot){
+        stopMediaPlayer(item);
+        mediaPlayers.delete(index);
+      }
+    }
+    for(const [index,layer] of wanted){
+      if(mediaPlayers.has(index))continue;
+      if(!Composition.MEDIA_ID.test(layer.mediaId))continue;
+      const type=mediaType(layer.mediaId);
+      const element=document.createElement(type==='video'?'video':'img');
+      const item={type,id:layer.mediaId,slot:layer.slot,element};
+      mediaPlayers.set(index,item);
+      element.onerror=()=>notify('Nem sikerült megnyitni: '+(layer.mediaName||'média')+'. Ellenőrizd a formátumot.',true);
+      if(type==='video'){
+        element.muted=true;element.defaultMuted=true;element.loop=true;
+        element.playsInline=true;element.autoplay=true;element.preload='auto';
+        element.crossOrigin='anonymous';
+      }else{
+        element.crossOrigin='anonymous';
+      }
+      element.src=mediaURL(layer.mediaId);
+      if(type==='video')element.play().catch(err=>notify('A videó nem indul: '+err.message,true));
+    }
+  }
+  function drawImportedMedia(layer){
+    const item=mediaPlayers.get(layer.index);
+    if(!item||item.id!==layer.mediaId)return;
+    const element=item.element;
+    if(item.type==='video'){
+      if(element.readyState<2||!element.videoWidth)return;
+      const p=Composition.sanitizeParams(layer.params);
+      if(Math.abs(element.playbackRate-p.speed)>.02)element.playbackRate=p.speed;
+    }else if(!element.complete||!element.naturalWidth)return;
+    const width=item.type==='video'?element.videoWidth:element.naturalWidth;
+    const height=item.type==='video'?element.videoHeight:element.naturalHeight;
+    if(!width||!height)return;
+    const scale=Math.max(sceneWidth/width,sceneHeight/height);
+    const dw=width*scale,dh=height*scale;
+    ctx.drawImage(element,(sceneWidth-dw)/2,(sceneHeight-dh)/2,dw,dh);
+  }
+  async function importClipMedia(){
+    const layer=settings.composition.layers[settings.composition.selectedLayer];
+    const requested=settings.composition.selectedSlot;
+    const target=layer.clips[requested]===null?requested:
+      Array.from({length:Composition.COLUMNS},(_,i)=>(requested+i)%Composition.COLUMNS).find(i=>!layer.clips[i]);
+    if(target===undefined){notify('A kiválasztott réteg tele van. Törölj vagy helyezz át egy klipet.',true);return;}
+    $('vj-import-media').disabled=true;
+    try{
+      const files=await window.beatAPI.importMedia();
+      if(!Array.isArray(files)||!files.length)return;
+      const asset=files[0];
+      if(!Composition.MEDIA_ID.test(asset.id))throw new Error('Az importált média azonosítója nem megfelelő.');
+      let updated=Composition.putMediaClip(settings.composition,settings.composition.selectedLayer,target,asset);
+      updated=Composition.launch(updated,updated.selectedLayer,target);
+      settings.composition=updated;
+      clipTouched=true;
+      renderClipGrid();setSourceLabel();persist();
+      notify((asset.type==='video'?'Videó':'Kép')+' importálva: '+asset.name);
+    }catch(e){notify('Importálás sikertelen: '+(e?.message||'ismeretlen hiba'),true);}
+    finally{$('vj-import-media').disabled=false;}
+  }
   function selectedCell(){
     const c=settings.composition;
     const row=c.selectedLayer,slot=c.selectedSlot;
@@ -95,7 +172,7 @@
   }
   function updateClipToolbar(){
     const {row,slot,clip}=selectedCell();
-    $('vj-clip-selection').textContent='Layer '+(row+1)+' · '+(slot+1)+'. hely'+(clip?' · '+SOURCE_NAMES[clip.source]:' · üres');
+    $('vj-clip-selection').textContent='Layer '+(row+1)+' · '+(slot+1)+'. hely'+(clip?' · '+(clip.mediaName||SOURCE_NAMES[clip.source]):' · üres');
     for(const action of ['copy','cut','delete','duplicate'])
       $('vj-'+action).disabled=!clip;
     $('vj-paste').disabled=!clipClipboard;
@@ -145,7 +222,7 @@
   }
   function refreshClipParams(){
     const selected=selectedClipInfo();
-    $('vj-selected-clip').textContent=selected?(selected.layer.name+' · '+SOURCE_NAMES[selected.clip.source]+' · '+(selected.slot+1)+'. klip'):'Válassz egy aktív klipet';
+    $('vj-selected-clip').textContent=selected?(selected.layer.name+' · '+(selected.clip.mediaName||SOURCE_NAMES[selected.clip.source])+' · '+(selected.slot+1)+'. klip'):'Válassz egy aktív klipet';
     const p=selected?Composition.sanitizeParams(selected.clip.params):Composition.DEFAULT_PARAMS;
     const format={speed:v=>v.toFixed(2)+'×',scale:v=>Math.round(v*100)+'%',rotation:v=>Math.round(v)+'°',audio:v=>Math.round(v*100)+'%'};
     for(const key of PARAM_KEYS){
@@ -460,10 +537,10 @@
       for(let slot=0;slot<Composition.COLUMNS;slot++){
         const clip=layer.clips[slot];
         const cell=document.createElement('button');cell.type='button';
-        cell.className='vj-clip'+(clip?' populated':'')+(layer.activeSlot===slot?' playing':'')+(composition.selectedLayer===rowIndex&&composition.selectedSlot===slot?' selected':'');
+        cell.className='vj-clip'+(clip?' populated':'')+(clip?.source==='media'?' media-clip':'')+(layer.activeSlot===slot?' playing':'')+(composition.selectedLayer===rowIndex&&composition.selectedSlot===slot?' selected':'');
         cell.draggable=Boolean(clip);
         cell.dataset.row=String(rowIndex);cell.dataset.slot=String(slot);
-        const label=clip?SOURCE_NAMES[clip.source]:'＋';
+        const label=clip?(clip.mediaName||SOURCE_NAMES[clip.source]):'＋';
         cell.textContent=label;
         cell.title=clip?'Indítás: '+label:'Hozzáadás és indítás: '+SOURCE_NAMES[$('clip-source-picker').value];
         cell.setAttribute('aria-label',layer.name+' / '+(slot+1)+'. klip / '+label);
@@ -494,14 +571,14 @@
           const launched=next.layers[rowIndex].clips[slot];
           clipTouched=true;modeTransition=null;settings.mode=launched.source;
           for(const button of document.querySelectorAll('[data-mode]'))button.classList.toggle('active',button.dataset.mode===launched.source);
-          UI.modeLabel.textContent='LIVE / '+SOURCE_NAMES[launched.source].toUpperCase();
+          UI.modeLabel.textContent='LIVE / '+(launched.mediaName||SOURCE_NAMES[launched.source]).toUpperCase();
           renderClipGrid();setSourceLabel();persist();
         });
         row.append(cell);
       }
       root.append(row);
     }
-    refreshClipParams();refreshClipFX();refreshLayerFX();refreshLayerMixer();updateClipToolbar();
+    refreshClipParams();refreshClipFX();refreshLayerFX();refreshLayerMixer();updateClipToolbar();syncMediaPlayers();
   }
   function setSourceLabel(){
     const active=(sourceMode==='mic'&&!!micStream)||(sourceMode==='file'&&!UI.audio.paused&&!UI.audio.ended);
@@ -638,8 +715,8 @@
   function setPalette(p){if(!presetColors[p])return;
     settings.palette=p;document.querySelectorAll('[data-palette]').forEach(b=>b.classList.toggle('selected',b.dataset.palette===p));persist();
   }
-  function renderMode(mode,t){
-    switch(mode){case 'bars':drawBars(t);break;case 'wave':drawWave(t);break;case 'orbit':drawOrbit(t);break;case 'particles':drawParticles(t);break;
+  function renderMode(mode,t,layer){
+    switch(mode){case 'media':drawImportedMedia(layer);break;case 'bars':drawBars(t);break;case 'wave':drawWave(t);break;case 'orbit':drawOrbit(t);break;case 'particles':drawParticles(t);break;
       default:{
         const props={width:sceneWidth,height:sceneHeight,time:t,bass:freq.bass,mids:freq.mids,highs:freq.highs,rms,intensity:settings.intensity,color:paletteColor};
         if(!Generators.draw(mode,ctx,props))ExtraGenerators.draw(mode,ctx,props);
@@ -936,7 +1013,7 @@
         ctx.rotate(p.rotation*Math.PI/180);
         ctx.scale(p.scale,p.scale);
         ctx.translate(-sceneWidth*.5,-sceneHeight*.5);
-        renderMode(layer.source,t*p.speed);
+        renderMode(layer.source,t*p.speed,layer);
         ctx.restore();saved=false;
         if(buffer){
           ctx=originalCtx;
@@ -989,6 +1066,7 @@
   function setWindowState(state){document.body.classList.toggle('fullscreen',Boolean(state.fullscreen));sizeCanvas();}
   function bind(){
     initFXControls();
+    $('vj-import-media').addEventListener('click',importClipMedia);
     for(const action of ['copy','cut','paste','duplicate','delete']){
       $('vj-'+action).addEventListener('click',()=>editClip(action));
     }
@@ -1057,7 +1135,7 @@
     window.addEventListener('dragover',e=>{e.preventDefault();document.body.classList.add('drag-over');});
     window.addEventListener('dragleave',e=>{if(!e.relatedTarget)document.body.classList.remove('drag-over');});
     window.addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('drag-over');const file=[...e.dataTransfer.files].find(f=>f.type.startsWith('audio/')||/\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(f.name));if(file)loadFile(file);else notify('Húzz ide egy zenefájlt.',true);});
-    window.addEventListener('beforeunload',()=>{stopMic();if(fileURL)URL.revokeObjectURL(fileURL);});
+    window.addEventListener('beforeunload',()=>{stopMic();if(fileURL)URL.revokeObjectURL(fileURL);for(const item of mediaPlayers.values())stopMediaPlayer(item);mediaPlayers.clear();});
     window.addEventListener('resize',sizeCanvas);
   }
   async function init(){

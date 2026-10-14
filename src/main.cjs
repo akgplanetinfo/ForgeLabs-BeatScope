@@ -1,8 +1,11 @@
 'use strict';
-const {app, BrowserWindow, ipcMain, dialog, session, nativeTheme} = require('electron');
+const {app, BrowserWindow, ipcMain, dialog, session, nativeTheme, protocol, net} = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const Composition=require('./composition.js');
+const Media=require('./media-library.cjs');
+const {pathToFileURL}=require('node:url');
+protocol.registerSchemesAsPrivileged([{scheme:'beatscope-media',privileges:{standard:true,secure:true,stream:true,supportFetchAPI:true,corsEnabled:true}}]);
 
 const APP_TITLE = 'ForgeLabs BeatScope';
 const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.15, smooth:0.75, barCount:56, showGrid:true, micDevice:'default', volume:0.85, aiEnabled:false, aiSpeed:'balanced', aiPalette:false, fxStack:[], fxBypass:false, fxAuto:false, fxFavorites:[], composition:Composition.createComposition() });
@@ -71,6 +74,20 @@ function createWindow() {
 }
 app.setAppUserModelId('team.forgelabs.beatscope');
 app.whenReady().then(()=>{
+  // A separate, local-only protocol maps opaque clip IDs to files copied to the user's media library.
+  protocol.handle('beatscope-media',async request=>{
+    const target=Media.resolveURL(request.url,app.getPath('userData'));
+    if(!target)return new Response('Media not found',{status:404});
+    try{
+      const info=await fs.stat(target);
+      if(!info.isFile())return new Response('Media not found',{status:404});
+      const fileResponse=await net.fetch(pathToFileURL(target).toString());
+      const headers=new Headers(fileResponse.headers);
+      headers.set('Access-Control-Allow-Origin','*');
+      headers.set('Content-Type',Media.mimeFor(path.basename(target))||'application/octet-stream');
+      return new Response(fileResponse.body,{status:fileResponse.status,headers});
+    }catch{return new Response('Media not found',{status:404});}
+  });
   // Kamera, GPS, képernyőmegosztás stb. soha nem kap automatikus engedélyt.
   // A mikrofon-hozzáférés csak a felhasználó aktív gombnyomására kérhető.
   session.defaultSession.setPermissionRequestHandler((_webContents,permission,callback,details)=>{
@@ -89,6 +106,19 @@ app.whenReady().then(()=>{
     return true;
   });
   ipcMain.handle('beatscope:window-state',()=>({maximized:!!window?.isMaximized(),fullscreen:!!window?.isFullScreen()}));
+  ipcMain.handle('beatscope:import-media',async ()=>{
+    const result=await dialog.showOpenDialog(window,{
+      title:'Képek és videók importálása',
+      properties:['openFile'],
+      filters:[
+        {name:'Képek és videók',extensions:['png','jpg','jpeg','webp','gif','mp4','webm','m4v','mov']},
+        {name:'Képek',extensions:['png','jpg','jpeg','webp','gif']},
+        {name:'Videók',extensions:['mp4','webm','m4v','mov']}
+      ]
+    });
+    if(result.canceled||!result.filePaths.length)return [];
+    return Media.importMany(result.filePaths.slice(0,1),app.getPath('userData'));
+  });
   ipcMain.handle('beatscope:read-prefs',readPrefs);
   ipcMain.handle('beatscope:write-prefs',(_e,value)=>writePrefs(value));
   ipcMain.handle('beatscope:save-screenshot',async (_e,dataUrl)=>{

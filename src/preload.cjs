@@ -10,5 +10,6 @@ contextBridge.exposeInMainWorld('beatAPI', Object.freeze({
   },
   loadPreferences: ()=>ipcRenderer.invoke('beatscope:read-prefs'),
   savePreferences: (prefs)=>ipcRenderer.invoke('beatscope:write-prefs',prefs),
-  saveScreenshot: (data)=>ipcRenderer.invoke('beatscope:save-screenshot',data)
+  saveScreenshot: (data)=>ipcRenderer.invoke('beatscope:save-screenshot',data),
+  importMedia: ()=>ipcRenderer.invoke('beatscope:import-media')
 }));

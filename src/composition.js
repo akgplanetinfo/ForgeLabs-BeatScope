@@ -5,6 +5,18 @@
 })(typeof window!=='undefined'?window:typeof globalThis!=='undefined'?globalThis:null,function(){
  'use strict';
  const SOURCES=Object.freeze(['bars','wave','orbit','particles','tunnel','plasma','rings','grid','laser','starfield','hexfield','digitalrain','ribbon','mandala','fireflies','electric']);
+ const MEDIA_ID=/^media-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|jpeg|webp|gif|mp4|webm|m4v|mov)$/;
+ function validMedia(clip){return clip?.source==='media'&&typeof clip.mediaId==='string'&&MEDIA_ID.test(clip.mediaId);}
+ function normalizeClip(clip){
+   if(!clip||typeof clip!=='object')return null;
+   if(!SOURCES.includes(clip.source)&&!validMedia(clip))return null;
+   const output={source:clip.source,params:sanitizeParams(clip.params),fxStack:normalizeFxStack(clip.fxStack),fxBypass:clip.fxBypass===true};
+   if(clip.source==='media'){
+     output.mediaId=clip.mediaId;
+     output.mediaName=typeof clip.mediaName==='string'?clip.mediaName.slice(0,90):clip.mediaId;
+   }
+   return output;
+ }
  const ROWS=8,COLUMNS=8,MAX_CLIP_FX=3,MAX_LAYER_FX=3;
  const BLEND_MODES=Object.freeze(['screen','normal','add','multiply','overlay','difference','lighten','darken']);
  const blendMode=m=>BLEND_MODES.includes(m)?m:'screen';
@@ -55,7 +67,7 @@
      if(Array.isArray(src.clips)){
        dest.clips=Array.from({length:COLUMNS},(_,j)=>{
          const clip=src.clips[j];
-         return clip&&typeof clip==='object'&&SOURCES.includes(clip.source)?{source:clip.source,params:sanitizeParams(clip.params),fxStack:normalizeFxStack(clip.fxStack),fxBypass:clip.fxBypass===true}:null;
+         return normalizeClip(clip);
        });
      }
      if(validInt(src.activeSlot,COLUMNS)&&dest.clips[src.activeSlot])dest.activeSlot=src.activeSlot;
@@ -107,12 +119,12 @@
    const c=normalize(input);
    if(!validInt(index,ROWS)||!validInt(slot,COLUMNS))return null;
    const clip=c.layers[index].clips[slot];
-   return clip?{source:clip.source,params:sanitizeParams(clip.params),fxStack:normalizeFxStack(clip.fxStack),fxBypass:clip.fxBypass===true}:null;
+   return normalizeClip(clip);
  }
  function pasteClip(input,index,slot,clip){
    const c=normalize(input);
-   if(!validInt(index,ROWS)||!validInt(slot,COLUMNS)||!clip||!SOURCES.includes(clip.source))return c;
-   c.layers[index].clips[slot]={source:clip.source,params:sanitizeParams(clip.params),fxStack:normalizeFxStack(clip.fxStack),fxBypass:clip.fxBypass===true};
+   if(!validInt(index,ROWS)||!validInt(slot,COLUMNS)||!normalizeClip(clip))return c;
+   c.layers[index].clips[slot]=normalizeClip(clip);
    c.selectedLayer=index;c.selectedSlot=slot;
    return c;
  }
@@ -176,6 +188,15 @@
    }
    return c;
  }
+ function putMediaClip(input,index,slot,media){
+   const c=normalize(input);
+   if(!validInt(index,ROWS)||!validInt(slot,COLUMNS))return c;
+   const clip=normalizeClip({source:'media',mediaId:media?.id,mediaName:media?.name});
+   if(!clip)return c;
+   c.layers[index].clips[slot]=clip;
+   c.selectedLayer=index;c.selectedSlot=slot;
+   return c;
+ }
  function setClipEffects(input,index,slot,stack,bypass){
    const c=normalize(input);
    if(!validInt(index,ROWS)||!validInt(slot,COLUMNS)||!c.layers[index].clips[slot])return c;
@@ -209,8 +230,8 @@
  function activeLayers(input){
    const c=normalize(input),hasSolo=c.layers.some(l=>l.solo);
    return c.layers.map((l,index)=>({index,...l})).filter(l=>l.activeSlot>=0&&!l.muted&&l.opacity>0&&(!hasSolo||l.solo)&&l.clips[l.activeSlot])
-    .map(l=>({index:l.index,source:l.clips[l.activeSlot].source,opacity:l.opacity,blendMode:blendMode(l.blendMode),layerFxStack:normalizeFxStack(l.fxStack),layerFxBypass:l.fxBypass===true,slot:l.activeSlot,params:sanitizeParams(l.clips[l.activeSlot].params),fxStack:normalizeFxStack(l.clips[l.activeSlot].fxStack),fxBypass:l.clips[l.activeSlot].fxBypass===true}))
+    .map(l=>({index:l.index,source:l.clips[l.activeSlot].source,mediaId:l.clips[l.activeSlot].mediaId||null,mediaName:l.clips[l.activeSlot].mediaName||null,opacity:l.opacity,blendMode:blendMode(l.blendMode),layerFxStack:normalizeFxStack(l.fxStack),layerFxBypass:l.fxBypass===true,slot:l.activeSlot,params:sanitizeParams(l.clips[l.activeSlot].params),fxStack:normalizeFxStack(l.clips[l.activeSlot].fxStack),fxBypass:l.clips[l.activeSlot].fxBypass===true}))
     .reverse(); // topmost layer = Layer 1, rendered last
  }
- return {ROWS,COLUMNS,MAX_CLIP_FX,MAX_LAYER_FX,BLEND_MODES,blendMode,canvasBlendMode,SOURCES,DEFAULT_PARAMS,PARAM_LIMITS,sanitizeParams,normalizeFxStack,createComposition,normalize,selectLayer,selectClip,getClip,pasteClip,removeClip,duplicateClip,moveClip,launchScene,layerAction,putClip,updateClipParams,setClipEffects,setLayerEffects,moveLayer,launch,stop,activeLayers};
+ return {ROWS,COLUMNS,MAX_CLIP_FX,MAX_LAYER_FX,BLEND_MODES,blendMode,canvasBlendMode,SOURCES,MEDIA_ID,validMedia,normalizeClip,DEFAULT_PARAMS,PARAM_LIMITS,sanitizeParams,normalizeFxStack,createComposition,normalize,selectLayer,selectClip,getClip,pasteClip,removeClip,duplicateClip,moveClip,launchScene,layerAction,putClip,updateClipParams,setClipEffects,setLayerEffects,moveLayer,putMediaClip,launch,stop,activeLayers};
 });

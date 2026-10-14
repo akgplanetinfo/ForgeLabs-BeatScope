@@ -130,3 +130,15 @@ Keverési módok Canvas-megfeleltetése: Normal → source-over, Add → lighter
 A keverési mód **a réteg aktuális vizuálforrására**, illetve az abból képzett klip+réteg GPU-effektes képére hat, mielőtt a globális kompozíció FX fut. A teszt a nyolc keverési mód különböző képpont-eredményét, a UI-változtatásokat, a mentést és a tényleges rajzolási útvonalat ellenőrzi.
 
 Ez egy lezárt alpha-részkiadás; a médiaklipek, deckek és projektszintű kompozíciómentés további lépések.
+
+## v0.4.0-alpha.8 — 8. rész: importált kép- és videoklipek
+
+A **CLIP DECK** panelen új **+ Kép / videó** gomb található. A felhasználó által kiválasztott fájlt az Electron a helyi felhasználói adatok mappájának **beatscope-media** almappájába másolja, és egy biztonságosan ellenőrzött azonosítóval látja el. A fájl nem kerül felhőbe. A klip a kiválasztott réteg következő üres helyére kerül; a program sosem ír felül automatikusan meglévő klipet. A képek és videók a Scene Launch és klipkezelés részei, és a meglévő klip- és réteg-FX láncokon, réteg-Opacity, Blend Mode, méret és forgatás beállításokon keresztül jelennek meg.
+
+**Képek:** PNG, JPG/JPEG, WebP, GIF. A képet a program a rendelkezésre álló területre középre illeszti, a képarány megtartásával és szükség esetén levágással (cover). **Videók:** MP4, WebM, M4V, MOV, csak a Windows Electron/Chromium által ténylegesen dekódolható kodekekkel. A videók némítva, ismétléssel indulnak, lejátszási sebességük a klip Speed paramétere; külön hangsáv-import vagy videó-hangkeverés még nincs. Nem támogatott kodek esetén a program hibát jelez. A videódekódolás és a 60 FPS nem garantálható minden formátumon és GPU-n.
+
+Az új médiaklip a korábbi beállításfájlba menti a fájl biztonságos azonosítóját és megjelenített nevét, így az alkalmazás újraindítása után is használható. A klipek copy/paste és duplikálás esetén ugyanarra a helyi importált médiafájlra hivatkoznak, nem többszörözik meg a lemezen. A régi 16 generátor változatlanul megmarad. A régi projektek migrációja nem veszít adatot; a médiafájlok fizikai áthelyezését külön későbbi médiakezelő modul oldhatja meg.
+
+Az import a natív Windows fájlválasztóval működik. A rendszer csak előre engedélyezett kiterjesztéseket és legfeljebb 2 GB-os helyi fájlokat fogad el. A renderer nem kap tetszőleges Windows fájlútvonalat, a helyi médiaprotokoll csak a saját médiakönyvtárban található érvényes azonosítókat szolgálja ki. A média importálása offline is működik. Ez a részkiadás még nem tudja a videók In/Out pontjait, visszafelé lejátszását, media relinkinget vagy külső kimenetre exportálását.
+
+A Windowsos teszt az importált PNG-t a valódi Electron fájlválasztó-IPC-n keresztül hozza be, ellenőrzi a tartós fájlt, kirajzolást, klipsorban indítást, másolást és beállítások mentését. A videóformátumok MIME- és adatmodell-ellenőrzést kapnak; eltérő kodekek dekódolási kompatibilitását továbbra is külön gépen szükséges ellenőrizni.

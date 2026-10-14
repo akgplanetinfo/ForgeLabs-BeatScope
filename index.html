@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: beatscope-media:; media-src 'self' blob: beatscope-media:; connect-src 'none'">
   <title>ForgeLabs BeatScope</title>
   <link rel="icon" type="image/png" href="assets/beatscope.png" />
   <link rel="stylesheet" href="src/style.css" />
@@ -63,7 +63,7 @@
       <div class="control-line"><label for="bars-count">Oszlopok</label><output id="bars-val">56</output></div>
       <input type="range" id="bars-count" min="16" max="128" value="56" step="8" />
       <label class="check-row"><input id="show-grid" type="checkbox" checked /><span>Finom háttérrács</span></label>
-      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α7</span></div>
+      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α8</span></div>
     </aside>
     <main class="workspace">
       <div class="workspace-top">
@@ -103,7 +103,7 @@
                 <option value="fireflies">Firefly Cloud</option>
                 <option value="electric">Electric Arcs</option>
               </optgroup>
-            </select><span class="vj-help">Üres hely: hozzáadás · Foglalt hely: indítás</span>
+            </select><button type="button" id="vj-import-media" title="Képek és videók betöltése klipként">+ Kép / videó</button><span class="vj-help">Kijelölt kliphelyre importálás · Képek és videók helyben maradnak</span>
           </div>
         </div>
         <div class="vj-grid-scroll"><div class="vj-grid" id="clip-grid" role="group" aria-label="8 réteg és 8 Scene Launch oszlop"></div></div>
