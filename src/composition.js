@@ -5,7 +5,15 @@
 })(typeof window!=='undefined'?window:typeof globalThis!=='undefined'?globalThis:null,function(){
  'use strict';
  const SOURCES=Object.freeze(['bars','wave','orbit','particles','tunnel','plasma','rings','grid','laser','starfield','hexfield','digitalrain','ribbon','mandala','fireflies','electric']);
- const ROWS=8,COLUMNS=8;
+ const ROWS=8,COLUMNS=8,MAX_CLIP_FX=3;
+ function normalizeFxStack(stack){
+   if(!Array.isArray(stack))return [];
+   return stack.filter(entry=>entry&&typeof entry==='object'&&/^fx-\d{3}$/.test(entry.id)&&Number(entry.id.slice(3))>=1&&Number(entry.id.slice(3))<=120).slice(0,MAX_CLIP_FX).map(entry=>({
+     id:entry.id,wet:Number.isFinite(entry.wet)?Math.max(0,Math.min(1,entry.wet)):1,
+     strength:Number.isFinite(entry.strength)?Math.max(0,Math.min(2,entry.strength)):1,
+     disabled:entry.disabled===true
+   }));
+ }
  const DEFAULT_PARAMS=Object.freeze({speed:1,scale:1,rotation:0,audio:1});
  const PARAM_LIMITS=Object.freeze({speed:[.1,4],scale:[.4,2],rotation:[-180,180],audio:[0,2]});
  function sanitizeParams(input){
@@ -22,7 +30,7 @@
    return {selectedLayer:0,selectedSlot:0,layers:Array.from({length:ROWS},(_,i)=>({
      name:'Layer '+(i+1),opacity:1,muted:false,solo:false,
      activeSlot:i===0?0:-1,
-     clips:Array.from({length:COLUMNS},(_,j)=>j<4?{source:SOURCES[(j+i)%4],params:sanitizeParams(null)}:null)
+     clips:Array.from({length:COLUMNS},(_,j)=>j<4?{source:SOURCES[(j+i)%4],params:sanitizeParams(null),fxStack:[],fxBypass:false}:null)
    }))};
  }
  const validInt=(x,max)=>Number.isInteger(x)&&x>=0&&x<max;
@@ -41,7 +49,7 @@
      if(Array.isArray(src.clips)){
        dest.clips=Array.from({length:COLUMNS},(_,j)=>{
          const clip=src.clips[j];
-         return clip&&typeof clip==='object'&&SOURCES.includes(clip.source)?{source:clip.source,params:sanitizeParams(clip.params)}:null;
+         return clip&&typeof clip==='object'&&SOURCES.includes(clip.source)?{source:clip.source,params:sanitizeParams(clip.params),fxStack:normalizeFxStack(clip.fxStack),fxBypass:clip.fxBypass===true}:null;
        });
      }
      if(validInt(src.activeSlot,COLUMNS)&&dest.clips[src.activeSlot])dest.activeSlot=src.activeSlot;
@@ -75,12 +83,12 @@
    const c=normalize(input);
    if(!validInt(index,ROWS)||!validInt(slot,COLUMNS))return null;
    const clip=c.layers[index].clips[slot];
-   return clip?{source:clip.source,params:sanitizeParams(clip.params)}:null;
+   return clip?{source:clip.source,params:sanitizeParams(clip.params),fxStack:normalizeFxStack(clip.fxStack),fxBypass:clip.fxBypass===true}:null;
  }
  function pasteClip(input,index,slot,clip){
    const c=normalize(input);
    if(!validInt(index,ROWS)||!validInt(slot,COLUMNS)||!clip||!SOURCES.includes(clip.source))return c;
-   c.layers[index].clips[slot]={source:clip.source,params:sanitizeParams(clip.params)};
+   c.layers[index].clips[slot]={source:clip.source,params:sanitizeParams(clip.params),fxStack:normalizeFxStack(clip.fxStack),fxBypass:clip.fxBypass===true};
    c.selectedLayer=index;c.selectedSlot=slot;
    return c;
  }
@@ -139,9 +147,17 @@
  function putClip(input,index,slot,source){
    const c=normalize(input);
    if(validInt(index,ROWS)&&validInt(slot,COLUMNS)&&SOURCES.includes(source)){
-     c.layers[index].clips[slot]={source,params:sanitizeParams(null)};
+     c.layers[index].clips[slot]={source,params:sanitizeParams(null),fxStack:[],fxBypass:false};
      c.selectedLayer=index;c.selectedSlot=slot;
    }
+   return c;
+ }
+ function setClipEffects(input,index,slot,stack,bypass){
+   const c=normalize(input);
+   if(!validInt(index,ROWS)||!validInt(slot,COLUMNS)||!c.layers[index].clips[slot])return c;
+   const clip=c.layers[index].clips[slot];
+   if(stack!==undefined)clip.fxStack=normalizeFxStack(stack);
+   if(typeof bypass==='boolean')clip.fxBypass=bypass;
    return c;
  }
  function updateClipParams(input,index,slot,patch){
@@ -169,8 +185,8 @@
  function activeLayers(input){
    const c=normalize(input),hasSolo=c.layers.some(l=>l.solo);
    return c.layers.map((l,index)=>({index,...l})).filter(l=>l.activeSlot>=0&&!l.muted&&l.opacity>0&&(!hasSolo||l.solo)&&l.clips[l.activeSlot])
-    .map(l=>({index:l.index,source:l.clips[l.activeSlot].source,opacity:l.opacity,slot:l.activeSlot,params:sanitizeParams(l.clips[l.activeSlot].params)}))
+    .map(l=>({index:l.index,source:l.clips[l.activeSlot].source,opacity:l.opacity,slot:l.activeSlot,params:sanitizeParams(l.clips[l.activeSlot].params),fxStack:normalizeFxStack(l.clips[l.activeSlot].fxStack),fxBypass:l.clips[l.activeSlot].fxBypass===true}))
     .reverse(); // topmost layer = Layer 1, rendered last
  }
- return {ROWS,COLUMNS,SOURCES,DEFAULT_PARAMS,PARAM_LIMITS,sanitizeParams,createComposition,normalize,selectLayer,selectClip,getClip,pasteClip,removeClip,duplicateClip,moveClip,launchScene,layerAction,putClip,updateClipParams,launch,stop,activeLayers};
+ return {ROWS,COLUMNS,MAX_CLIP_FX,SOURCES,DEFAULT_PARAMS,PARAM_LIMITS,sanitizeParams,normalizeFxStack,createComposition,normalize,selectLayer,selectClip,getClip,pasteClip,removeClip,duplicateClip,moveClip,launchScene,layerAction,putClip,updateClipParams,setClipEffects,launch,stop,activeLayers};
 });

@@ -19,7 +19,12 @@
   const fxCanvas=document.createElement('canvas');
   fxCanvas.className='fx-overlay';fxCanvas.hidden=true;
   UI.canvas.after(fxCanvas);
-  const ctx=UI.canvas.getContext('2d',{alpha:false});
+  const mainCtx=UI.canvas.getContext('2d',{alpha:false});
+  let ctx=mainCtx;
+  // One GPU processor per concurrently active layer, created only on demand.
+  const layerFxCache=Array.from({length:Composition.ROWS},()=>null);
+  const layerFxFailed=new Set();
+  let clipFxSelected=0;
   const presetColors={
     azure:['#4adcf8','#32a3f2','#9beeff'],mint:['#50f7bb','#1fb6b1','#bbffe0'],
     violet:['#c1a0ff','#7178f5','#f3c1ff'],sunset:['#ffc06c','#ff647c','#ffe2ae'],rainbow:['#45d8fc','#a85fff','#f2bc63']
@@ -127,6 +132,126 @@
       settings.composition=Composition.updateClipParams(settings.composition,s.layerIndex,s.slot,Composition.DEFAULT_PARAMS);
       refreshClipParams();persist();
     });
+  }
+
+  function selectedFX(){
+    const clip=selectedCell().clip;
+    return clip?.fxStack?.[clipFxSelected]||null;
+  }
+  function refreshClipFX(){
+    const {row,slot,clip}=selectedCell();
+    const stack=clip?.fxStack||[];
+    $('vj-cfx-target').textContent='Layer '+(row+1)+' · Clip '+(slot+1)+(clip?' · '+SOURCE_NAMES[clip.source]:' · üres');
+    $('vj-cfx-count').textContent=stack.length+'/'+Composition.MAX_CLIP_FX;
+    $('vj-cfx-library').disabled=!clip;
+    $('vj-cfx-add').disabled=!clip||stack.length>=Composition.MAX_CLIP_FX;
+    $('vj-cfx-bypass').disabled=!clip;
+    $('vj-cfx-bypass').textContent=clip?.fxBypass?'FX kikapcsolva':'FX bekapcsolva';
+    $('vj-cfx-bypass').setAttribute('aria-pressed',String(!!clip?.fxBypass));
+    $('vj-cfx-bypass').classList.toggle('off',!!clip?.fxBypass);
+    const list=$('vj-cfx-stack');list.replaceChildren();
+    if(!clip){list.textContent='Válassz egy klipet a rácsban.';}
+    else if(!stack.length){list.textContent='Még nincs hozzáadott effekt.';}
+    if(clipFxSelected>=stack.length)clipFxSelected=Math.max(0,stack.length-1);
+    for(let index=0;index<stack.length;index++){
+      const entry=stack[index],definition=FX.byId(entry.id);
+      if(!definition)continue;
+      const rowElement=document.createElement('div');rowElement.className='vj-cfx-item'+(index===clipFxSelected?' selected':'');
+      const choose=fxButton(definition.name,'vj-cfx-name'+(entry.disabled?' disabled':''),()=>{clipFxSelected=index;refreshClipFX();});
+      const toggle=fxButton(entry.disabled?'○':'●','',()=>changeClipFX(index,{disabled:!entry.disabled}));
+      toggle.title=entry.disabled?'Effekt bekapcsolása':'Effekt kikapcsolása';
+      const up=fxButton('↑','',()=>moveClipFX(index,-1));up.disabled=index===0;
+      const down=fxButton('↓','',()=>moveClipFX(index,1));down.disabled=index===stack.length-1;
+      const remove=fxButton('✕','',()=>removeClipFX(index));
+      rowElement.append(choose,toggle,up,down,remove);list.append(rowElement);
+    }
+    const selected=selectedFX();
+    for(const [key,unit] of [['wet',1],['strength',2]]){
+      const el=$('vj-cfx-'+key);
+      el.disabled=!selected;
+      el.value=selected?Math.round(selected[key]*100):100;
+      $('vj-cfx-'+key+'-value').textContent=el.value+'%';
+    }
+  }
+  function commitClipFX(stack,bypass){
+    const {row,slot,clip}=selectedCell();if(!clip)return;
+    settings.composition=Composition.setClipEffects(settings.composition,row,slot,stack,bypass);
+    refreshClipFX();persist();
+  }
+  function changeClipFX(index,patch){
+    const clip=selectedCell().clip;if(!clip||!clip.fxStack[index])return;
+    const stack=clip.fxStack.map(x=>({...x}));
+    stack[index]={...stack[index],...patch};
+    commitClipFX(stack);
+  }
+  function moveClipFX(index,offset){
+    const clip=selectedCell().clip;
+    if(!clip||index+offset<0||index+offset>=clip.fxStack.length)return;
+    const next=clip.fxStack.map(x=>({...x}));
+    [next[index],next[index+offset]]=[next[index+offset],next[index]];
+    clipFxSelected=index+offset;commitClipFX(next);
+  }
+  function removeClipFX(index){
+    const clip=selectedCell().clip;if(!clip)return;
+    const next=clip.fxStack.map(x=>({...x}));next.splice(index,1);
+    clipFxSelected=Math.min(clipFxSelected,next.length-1);
+    commitClipFX(next);
+  }
+  function bindClipFX(){
+    const selector=$('vj-cfx-library');
+    for(const category of [...new Set(FX.LIBRARY.map(x=>x.category))]){
+      const group=document.createElement('optgroup');group.label=category;
+      for(const entry of FX.LIBRARY.filter(x=>x.category===category)){
+        const opt=document.createElement('option');opt.value=entry.id;opt.textContent=entry.name;
+        group.append(opt);
+      }
+      selector.append(group);
+    }
+    $('vj-cfx-add').addEventListener('click',()=>{
+      const clip=selectedCell().clip,definition=FX.byId(selector.value);
+      if(!clip||!definition)return;
+      if(clip.fxStack.length>=Composition.MAX_CLIP_FX){notify('Legfeljebb három klip FX használható ebben a részben.',true);return;}
+      const stack=[...clip.fxStack,{id:definition.id,wet:1,strength:1,disabled:false}];
+      clipFxSelected=stack.length-1;commitClipFX(stack);
+    });
+    $('vj-cfx-bypass').addEventListener('click',()=>{
+      const clip=selectedCell().clip;if(!clip)return;
+      commitClipFX(undefined,!clip.fxBypass);
+    });
+    for(const key of ['wet','strength']){
+      const slider=$('vj-cfx-'+key);
+      slider.addEventListener('input',()=>{
+        if(!selectedFX())return;
+        changeClipFX(clipFxSelected,{[key]:Number(slider.value)/100});
+      });
+    }
+    refreshClipFX();
+  }
+  function makeLayerFX(index){
+    const source=document.createElement('canvas');
+    const sourceCtx=source.getContext('2d');
+    const output=document.createElement('canvas');
+    if(!sourceCtx)throw new Error('Canvas 2D nem érhető el.');
+    const processor=FX.renderer(output);
+    if(!processor)throw new Error('WebGL2 nem érhető el.');
+    return {source,sourceCtx,output,processor};
+  }
+  function prepareLayerFX(index){
+    if(layerFxFailed.has(index))return null;
+    try{
+      let buffer=layerFxCache[index];
+      if(!buffer)buffer=layerFxCache[index]=makeLayerFX(index);
+      if(buffer.source.width!==UI.canvas.width||buffer.source.height!==UI.canvas.height){
+        buffer.source.width=UI.canvas.width;buffer.source.height=UI.canvas.height;
+      }
+      buffer.sourceCtx.setTransform(dpr,0,0,dpr,0,0);
+      buffer.sourceCtx.clearRect(0,0,sceneWidth,sceneHeight);
+      return buffer;
+    }catch(e){
+      layerFxFailed.add(index);
+      notify('Klip FX nem érhető el a '+(index+1)+'. rétegen: '+e.message,true);
+      return null;
+    }
   }
   function renderClipGrid(){
     const root=$('clip-grid'),composition=settings.composition;
@@ -238,7 +363,7 @@
       }
       root.append(row);
     }
-    refreshClipParams();updateClipToolbar();
+    refreshClipParams();refreshClipFX();updateClipToolbar();
   }
   function setSourceLabel(){
     const active=(sourceMode==='mic'&&!!micStream)||(sourceMode==='file'&&!UI.audio.paused&&!UI.audio.ended);
@@ -650,8 +775,13 @@
     // Layer 8 is at the bottom, Layer 1 at the top.
     for(const layer of Composition.activeLayers(settings.composition)){
       const p=Composition.sanitizeParams(layer.params);
+      const chain=layer.fxBypass?[]:(layer.fxStack||[]).filter(fx=>!fx.disabled);
+      const buffer=chain.length?prepareLayerFX(layer.index):null;
+      const originalCtx=ctx;
       const oldFreq=freq,oldBins=bins,oldWave=wave;
+      let saved=false;
       try{
+        if(buffer)ctx=buffer.sourceCtx;
         if(p.audio!==1){
           freq={...freq,bass:Math.min(1,freq.bass*p.audio),mids:Math.min(1,freq.mids*p.audio),
             highs:Math.min(1,freq.highs*p.audio),total:Math.min(1,freq.total*p.audio)};
@@ -660,16 +790,32 @@
           if(layer.source==='wave')
             wave=Uint8Array.from(oldWave,v=>Math.max(0,Math.min(255,128+(v-128)*p.audio)));
         }
-        ctx.save();
-        ctx.globalAlpha=layer.opacity;
-        ctx.globalCompositeOperation='screen';
+        ctx.save();saved=true;
+        ctx.globalAlpha=buffer?1:layer.opacity;
+        ctx.globalCompositeOperation=buffer?'source-over':'screen';
         ctx.translate(sceneWidth*.5,sceneHeight*.5);
         ctx.rotate(p.rotation*Math.PI/180);
         ctx.scale(p.scale,p.scale);
         ctx.translate(-sceneWidth*.5,-sceneHeight*.5);
         renderMode(layer.source,t*p.speed);
+        ctx.restore();saved=false;
+        if(buffer){
+          ctx=originalCtx;
+          let drawable=buffer.source;
+          try{
+            if(buffer.processor.draw(buffer.source,chain,t,{...freq,rms}))drawable=buffer.output;
+          }catch(e){
+            layerFxFailed.add(layer.index);
+            notify('Klip FX rajzolási hiba a '+(layer.index+1)+'. rétegen: '+e.message,true);
+          }
+          ctx.save();
+          ctx.globalAlpha=layer.opacity;ctx.globalCompositeOperation='screen';
+          ctx.drawImage(drawable,0,0,sceneWidth,sceneHeight);
+          ctx.restore();
+        }
       }finally{
-        ctx.restore();freq=oldFreq;bins=oldBins;wave=oldWave;
+        if(saved)ctx.restore();
+        ctx=originalCtx;freq=oldFreq;bins=oldBins;wave=oldWave;
       }
     }
     fxAutoUpdate(t,active);
@@ -699,6 +845,7 @@
     });
 
     bindClipParams();
+    bindClipFX();
     $('window-min').addEventListener('click',()=>window.beatAPI?.windowAction('minimize'));
     $('window-max').addEventListener('click',()=>window.beatAPI?.windowAction('toggle-maximize'));
     $('window-close').addEventListener('click',()=>window.beatAPI?.windowAction('close'));

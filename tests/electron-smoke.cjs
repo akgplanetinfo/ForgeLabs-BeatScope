@@ -148,6 +148,48 @@ async function run(){
      await new Promise(resolve=>setTimeout(resolve,460));
      const finalPrefs=await window.beatAPI.loadPreferences();
      out.sceneSaved=finalPrefs?.composition?.selectedSlot===7&&finalPrefs?.composition?.layers?.[0]?.activeSlot===7;
+
+     // Real clip FX: independent per-clip chains, reorder, bypass and GPU processing.
+     const realRenderer=window.BeatFX.renderer;
+     let clipDrawCalls=0,clipRendererCreated=0;
+     window.BeatFX.renderer=function(...args){
+       const renderer=realRenderer(...args);
+       if(renderer){clipRendererCreated++;const oldDraw=renderer.draw;
+         renderer.draw=(...params)=>{clipDrawCalls++;return oldDraw(...params);};
+       }
+       return renderer;
+     };
+     out.clipFXLibraryCount=document.querySelectorAll('#vj-cfx-library option').length;
+     document.querySelectorAll('.vj-layer-row')[2].querySelectorAll('.vj-clip')[6].click();
+     const fxPicker=document.getElementById('vj-cfx-library');
+     fxPicker.value='fx-021';document.getElementById('vj-cfx-add').click();
+     out.clipFXAdded=document.querySelectorAll('.vj-cfx-item').length===1&&document.getElementById('vj-cfx-count').textContent==='1/3';
+     const wetSlider=document.getElementById('vj-cfx-wet');wetSlider.value='35';wetSlider.dispatchEvent(new Event('input',{bubbles:true}));
+     const strengthSlider=document.getElementById('vj-cfx-strength');strengthSlider.value='145';strengthSlider.dispatchEvent(new Event('input',{bubbles:true}));
+     fxPicker.value='fx-073';document.getElementById('vj-cfx-add').click();
+     out.clipFXStackCount=document.querySelectorAll('.vj-cfx-item').length===2;
+     document.querySelectorAll('.vj-cfx-item')[1].querySelectorAll('button')[2].click(); // Move second FX up
+     out.clipFXReordered=document.querySelectorAll('.vj-cfx-item')[0].textContent.includes('fx')===false
+       &&document.querySelectorAll('.vj-cfx-item')[0].textContent.includes(window.BeatFX.byId('fx-073').name);
+     document.querySelectorAll('.vj-cfx-item')[0].querySelectorAll('button')[1].click(); // Disable first FX
+     out.clipFXDisabled=document.querySelectorAll('.vj-cfx-item')[0].querySelector('.vj-cfx-name').classList.contains('disabled');
+     document.getElementById('vj-cfx-bypass').click();
+     out.clipFXBypass=document.getElementById('vj-cfx-bypass').getAttribute('aria-pressed')==='true';
+     document.getElementById('vj-cfx-bypass').click();
+     // Verify the actual composite renderer invokes WebGL GPU processing for the clip.
+     await new Promise(resolve=>setTimeout(resolve,330));
+     out.clipFXGPU=clipRendererCreated>=1&&clipDrawCalls>=1;
+     window.BeatFX.renderer=realRenderer;
+     await new Promise(resolve=>setTimeout(resolve,460));
+     const clipPrefs=await window.beatAPI.loadPreferences();
+     const clipFX=clipPrefs?.composition?.layers?.[2]?.clips?.[6]?.fxStack;
+     out.clipFXPersisted=clipFX?.length===2&&clipFX[0].id==='fx-073'&&clipFX[0].disabled===true
+       &&clipFX[1].id==='fx-021'&&clipFX[1].wet===.35&&clipFX[1].strength===1.45;
+     document.querySelectorAll('.vj-layer-row')[3].querySelectorAll('.vj-clip')[6].click();
+     out.clipFXIndependent=document.querySelectorAll('.vj-cfx-item').length===0;
+     document.querySelectorAll('.vj-layer-row')[2].querySelectorAll('.vj-clip')[6].click();
+     document.querySelectorAll('.vj-cfx-item')[0].querySelectorAll('button')[4].click();
+     out.clipFXRemoved=document.querySelectorAll('.vj-cfx-item').length===1;
      document.getElementById('fx-browser-open').click();
      out.panelOpened=!document.getElementById('fx-drawer').hidden;
      out.searchRows=document.querySelectorAll('.fx-result').length;
@@ -185,7 +227,7 @@ async function run(){
    return out;
  })()`,true);
  console.log('BEATSCOPE ELECTRON SMOKE RESULT '+JSON.stringify(state));
- for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,gridRows:state.gridRows===8,clipCells:state.clipCells===64,sceneButtons:state.sceneButtons,sceneLaunch:state.sceneLaunchWorks,sceneSaved:state.sceneSaved,clipMenu:state.contextMenuOpen,clipPasted:state.pastedClip,clipParameters:state.pastedParams,clipDuplicated:state.duplicateCreated,clipDeleted:state.deleteWorked,clipCut:state.cutWorked,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,generatorCount:state.generatorCount===6,sourceOptions:state.generatorOptions?.length===16,extraCount:state.extraGeneratorCount===6,extraDraws:state.extraGeneratorsDrawn?.every(Boolean),extraDistinct:new Set(state.extraGeneratorHashes||[]).size===6,extraGrid:state.extraGridSources?.every(Boolean),otherClipDefault:state.otherClipDefault,paramsRestored:state.paramsRestored,paramsSaved:state.paramsSaved,paramsReset:state.paramsReset,sourceDraws:state.newGeneratorsDrawn?.every(Boolean),sourceDistinct:new Set(state.generatorHashes||[]).size===6,sourceGrid:state.newGridSources?.every(Boolean),library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
+ for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,gridRows:state.gridRows===8,clipCells:state.clipCells===64,sceneButtons:state.sceneButtons,sceneLaunch:state.sceneLaunchWorks,sceneSaved:state.sceneSaved,clipMenu:state.contextMenuOpen,clipPasted:state.pastedClip,clipParameters:state.pastedParams,clipDuplicated:state.duplicateCreated,clipDeleted:state.deleteWorked,clipCut:state.cutWorked,clipFXLibrary:state.clipFXLibraryCount===121,clipFXAdded:state.clipFXAdded,clipFXStack:state.clipFXStackCount,clipFXOrder:state.clipFXReordered,clipFXOff:state.clipFXDisabled,clipFXBypass:state.clipFXBypass,clipFXGPU:state.clipFXGPU,clipFXSaved:state.clipFXPersisted,clipFXSeparate:state.clipFXIndependent,clipFXRemove:state.clipFXRemoved,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,generatorCount:state.generatorCount===6,sourceOptions:state.generatorOptions?.length===16,extraCount:state.extraGeneratorCount===6,extraDraws:state.extraGeneratorsDrawn?.every(Boolean),extraDistinct:new Set(state.extraGeneratorHashes||[]).size===6,extraGrid:state.extraGridSources?.every(Boolean),otherClipDefault:state.otherClipDefault,paramsRestored:state.paramsRestored,paramsSaved:state.paramsSaved,paramsReset:state.paramsReset,sourceDraws:state.newGeneratorsDrawn?.every(Boolean),sourceDistinct:new Set(state.generatorHashes||[]).size===6,sourceGrid:state.newGridSources?.every(Boolean),library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
  if(state.errors?.length)fail('Shader/UI errors: '+JSON.stringify(state.errors));
  await win.close();
 }

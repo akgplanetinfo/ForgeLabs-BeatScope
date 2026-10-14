@@ -108,3 +108,28 @@
 .vj-clip-menu button:disabled{opacity:.3}
 @media(max-height:780px){.vj-deck{flex-basis:200px}.vj-clip-toolbar button{padding:4px 5px;font-size:8px}}
 @media(max-width:1150px){.vj-scene-row{grid-template-columns:158px repeat(8,minmax(57px,1fr))}.vj-clip-toolbar{flex-wrap:wrap}}
+
+
+/* v0.4 Alpha 5 — independent clip FX chains */
+.vj-clip-effects{flex:0 0 auto;min-width:0;border:1px solid #315876;border-radius:12px;background:linear-gradient(115deg,#14263b,#10253b);padding:11px 13px;display:flex;flex-direction:column;gap:9px}
+.vj-cfx-heading{display:flex;align-items:center;gap:10px;min-width:0}
+.vj-cfx-heading>div{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.vj-cfx-heading strong{color:#c5ffe5;font-size:10px;letter-spacing:1px}
+.vj-cfx-heading small{color:#89bdd2;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#vj-cfx-count{font-size:10px;color:#9ccde8;font-variant-numeric:tabular-nums}
+#vj-cfx-bypass{background:#174d51;border:1px solid #3ca493;color:#d2ffea;border-radius:6px;font-size:10px;padding:7px}
+#vj-cfx-bypass.off{background:#4b2937;color:#ffbdc7;border-color:#814357}
+.vj-cfx-add{display:flex;gap:7px;min-width:0}
+.vj-cfx-add select{flex:1;min-width:0;background:#071c2e;color:#c4ebf7;border:1px solid #365a77;border-radius:6px;font-size:10px;padding:7px}
+.vj-cfx-add button{padding:7px 10px;border:1px solid #46a99e;color:#b9ffed;background:#19465a;border-radius:6px;font-size:10px;white-space:nowrap}
+.vj-cfx-stack{display:flex;flex-direction:column;gap:4px;color:#85aac2;font-size:10px;max-height:130px;overflow:auto}
+.vj-cfx-item{display:flex;align-items:center;gap:5px;padding:4px;border:1px solid #2c4b65;border-radius:7px;background:#0c2338}
+.vj-cfx-item.selected{border-color:#5bcac3}
+.vj-cfx-item button{background:#1b3b50;color:#b4deed;border:1px solid #35536a;padding:6px;border-radius:5px;font-size:10px}
+.vj-cfx-item button.vj-cfx-name{background:transparent;border:0;text-align:left;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+.vj-cfx-name.disabled{text-decoration:line-through;opacity:.5}
+.vj-cfx-sliders{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vj-cfx-sliders label{font-size:10px;color:#9fc4d7}
+.vj-cfx-sliders output{float:right;color:#73e5b9}
+.vj-cfx-sliders input[type=range]{display:block;width:100%;margin:10px 0 0}
+@media(max-height:790px){.vj-clip-effects{padding:7px;gap:5px}.vj-cfx-stack{max-height:82px}}

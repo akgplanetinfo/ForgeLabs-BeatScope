@@ -170,3 +170,48 @@ test('selected clip slot persists after normalization and defaults safely',()=>{
  assert.equal(C.normalize(c).selectedSlot,5);
  assert.equal(C.normalize({selectedSlot:400,layers:c.layers}).selectedSlot,0);
 });
+
+test('clip FX chain holds independent effects and clamps invalid settings',()=>{
+ let c=C.createComposition();
+ c=C.setClipEffects(c,0,0,[{id:'fx-001',wet:.25,strength:1.7,disabled:false},{id:'fx-057',wet:8,strength:-2,disabled:true},{id:'fx-120',wet:.7,strength:1}],false);
+ assert.deepEqual(c.layers[0].clips[0].fxStack.map(x=>x.id),['fx-001','fx-057','fx-120']);
+ assert.equal(c.layers[0].clips[0].fxStack[1].wet,1);
+ assert.equal(c.layers[0].clips[0].fxStack[1].strength,0);
+ assert.equal(c.layers[0].clips[0].fxStack[1].disabled,true);
+ assert.deepEqual(c.layers[0].clips[1].fxStack,[]);
+ const entry=C.activeLayers(c)[0];
+ assert.equal(entry.fxStack.length,3);
+ assert.equal(entry.fxBypass,false);
+ c=C.setClipEffects(c,0,0,undefined,true);
+ assert.equal(c.layers[0].clips[0].fxBypass,true);
+ assert.equal(c.layers[0].clips[0].fxStack.length,3);
+});
+test('clip effects are validated, unknown IDs removed, and stacks capped at 3',()=>{
+ const list=[{id:'fx-000'},{id:'fx-121'},{id:'fake'},{id:'fx-010',wet:NaN,strength:Infinity},{id:'fx-099'},{id:'fx-001'},{id:'fx-120'}];
+ const out=C.normalizeFxStack(list);
+ assert.deepEqual(out.map(x=>x.id),['fx-010','fx-099','fx-001']);
+ assert.deepEqual(out[0],{id:'fx-010',wet:1,strength:1,disabled:false});
+ assert.deepEqual(C.normalizeFxStack(null),[]);
+});
+test('pasting, duplicating and moving preserve FX but do not alias stacks',()=>{
+ let c=C.putClip(C.createComposition(),0,6,'laser');
+ c=C.setClipEffects(c,0,6,[{id:'fx-020',wet:.45,strength:1.8}],true);
+ c=C.pasteClip(c,2,4,C.getClip(c,0,6));
+ assert.equal(C.getClip(c,2,4).fxStack[0].id,'fx-020');
+ assert.equal(C.getClip(c,2,4).fxBypass,true);
+ c=C.setClipEffects(c,2,4,[{id:'fx-064',wet:.8}],false);
+ assert.equal(C.getClip(c,0,6).fxStack[0].id,'fx-020');
+ c=C.duplicateClip(c,0,6);
+ assert.equal(C.getClip(c,0,7).fxStack[0].wet,.45);
+ c=C.moveClip(c,0,6,4,7);
+ assert.equal(C.getClip(c,4,7).fxStack[0].id,'fx-020');
+ assert.equal(C.getClip(c,4,7).fxBypass,true);
+ assert.equal(C.getClip(c,0,6),null);
+});
+test('old clip data migrates without effects and does not destroy previous generator params',()=>{
+ const c=C.createComposition();c.layers[0].clips[0]={source:'rings',params:{speed:2.3,scale:1.6,rotation:0,audio:.3}};
+ const migrated=C.normalize(c);
+ assert.deepEqual(migrated.layers[0].clips[0].fxStack,[]);
+ assert.equal(migrated.layers[0].clips[0].fxBypass,false);
+ assert.equal(migrated.layers[0].clips[0].params.speed,2.3);
+});

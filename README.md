@@ -104,3 +104,11 @@ A 8×8 kliprács felett minden oszlophoz egy **Scene Launch** gomb tartozik. A g
 **Klipkezelés:** bal kattintás indítja és kiválasztja a klipet, jobb kattintás a helyi szerkesztőmenüt nyitja. A kiválasztott klip másolható, kivágható, beilleszthető, duplikálható a következő üres helyre és törölhető. A szerkesztősávon is megtalálhatók ezek a gombok. A szerkesztő gyorsbillentyűi: Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D, Delete (amikor nem egy szövegbeviteli mező aktív). A foglalt klip húzással másik helyre tehető; foglalt célpont esetén helyet cserélnek. Az effekt-/generátorparaméterek a klippel együtt másolódnak.
 
 A v0.4 Alpha 4 továbbra is **részkiadás**. A videóimport, deckváltás, klipenkénti FX és profi időzítési lehetőségek későbbi fejlesztési feladatok. Az automatizált Windows-tesztek a klipkezelést és a mentés visszaolvasását is ellenőrzik.
+
+## v0.4.0-alpha.5 — 5. rész: klipenkénti FX-lánc
+
+Az aktív/kiemelt kliphez külön FX-lánc rendelhető a CLIP FX CHAIN panelen. A 120 eddigi GPU-effekt közül választhatsz; klipenként legfeljebb 3 aktív effekt fér a láncba ebben az első részkiadásban, egyedi Dry/Wet és Strength paraméterekkel, be-/kikapcsolással, sorrendmozgatással, törléssel és teljes klip-FX Bypass-szal. Az effektlánc **a klippel együtt másolódik, duplikálódik és mozgatható**. A program minden klip beállítását és FX-láncát tartósan menti; a v0.4 Alpha 4 adatai automatikusan kompatibilisek.
+
+A hatás renderelése **rétegenként**, a kompozícióba keverés előtt történik, igény szerint létrehozott WebGL2 processzorral. A teljes kompozíció korábbi globális FX-lánca külön megmarad és utána fut. A GPU-feldolgozás hibájánál a réteg nyers vizuálját próbálja megjeleníteni. A klip FX-lánca egyelőre három effektig bővíthető, és minden réteg számára legfeljebb egy WebGL-feldolgozót tart fenn.
+
+Ez részkiadás; az egymástól független több deck, clip/Layer/Composition FX-könyvtár egyablakos vezérlése, videófájl-import és tetszőleges hosszúságú láncok később érkeznek.
