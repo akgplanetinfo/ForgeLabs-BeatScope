@@ -72,7 +72,11 @@
    if(!validInt(index,ROWS)||!validInt(slot,COLUMNS))return c;
    const clip=c.layers[index].clips[slot];
    if(!clip||!patch||typeof patch!=='object')return c;
-   clip.params=sanitizeParams({...clip.params,...patch});
+   const current={...clip.params};
+   for(const key of Object.keys(PARAM_LIMITS)){
+     if(typeof patch[key]==='number'&&Number.isFinite(patch[key]))current[key]=patch[key];
+   }
+   clip.params=sanitizeParams(current);
    return c;
  }
  function launch(input,index,slot){
