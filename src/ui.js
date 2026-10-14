@@ -49,15 +49,27 @@
 
   const tempoClock=BeatClock.createClock({bpm:120,quantize:'off',origin:performance.now()});
   const waitingClips=new Map();
-  let waitingScene=null,lastTempoRefresh=0;
+  let waitingScene=null,lastTempoRefresh=0,waitingTimer=null;
   function waitingCount(){return waitingClips.size+(waitingScene?1:0);}
+  function armWaitingTimer(){
+    if(waitingTimer!==null){clearTimeout(waitingTimer);waitingTimer=null;}
+    if(!waitingCount())return;
+    const due=waitingScene?waitingScene.due:Math.min(...[...waitingClips.values()].map(a=>a.due));
+    waitingTimer=setTimeout(()=>{
+      waitingTimer=null;
+      flushQueued(performance.now());
+      if(waitingCount())armWaitingTimer();
+    },Math.max(1,Math.ceil(due-performance.now())));
+  }
   function clearWaiting(){
     waitingClips.clear();waitingScene=null;
+    if(waitingTimer!==null){clearTimeout(waitingTimer);waitingTimer=null;}
     $('vj-queue-cancel').disabled=true;
   }
   function cancelPendingLayer(row){
     waitingClips.delete(row);
     waitingScene=null;
+    armWaitingTimer();
   }
   function reschedulePending(now){
     const due=tempoClock.next(now);
@@ -65,6 +77,7 @@
     for(const action of waitingClips.values())action.due=due;
     if(tempoClock.quantize==='off')flushQueued(now);
     else if(waitingCount())renderClipGrid();
+    armWaitingTimer();
   }
   function refreshTempoUI(now=performance.now()){
     const count=waitingCount();
@@ -106,7 +119,7 @@
     const due=tempoClock.next(now);
     waitingClips.set(row,{kind:'clip',row,slot,due});
     settings.composition=Composition.selectClip(settings.composition,row,slot);
-    renderClipGrid();refreshTempoUI(now);persist();
+    renderClipGrid();refreshTempoUI(now);armWaitingTimer();persist();
   }
   function scheduleScene(slot){
     const now=performance.now();
@@ -115,7 +128,7 @@
     }
     waitingClips.clear();
     waitingScene={kind:'scene',slot,due:tempoClock.next(now)};
-    renderClipGrid();refreshTempoUI(now);
+    renderClipGrid();refreshTempoUI(now);armWaitingTimer();
   }
   function flushQueued(now){
     let changed=false;
@@ -132,6 +145,7 @@
     }
     if(changed){
       renderClipGrid();setSourceLabel();persist();
+      armWaitingTimer();
     }
     if(changed||!waitingCount())$('vj-queue-cancel').disabled=!waitingCount();
   }

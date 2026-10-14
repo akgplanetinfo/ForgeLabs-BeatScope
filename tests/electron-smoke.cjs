@@ -408,14 +408,16 @@ async function run(){
      const pendingCell=document.querySelectorAll('.vj-layer-row')[0].querySelectorAll('.vj-clip')[beatTarget];
      out.clipQueued=pendingCell.classList.contains('pending')&&!pendingCell.classList.contains('playing')
        &&document.getElementById('vj-queue-cancel').disabled===false;
-     await new Promise(resolve=>setTimeout(resolve,395));
+     await new Promise(resolve=>setTimeout(resolve,700));
      const firedCell=document.querySelectorAll('.vj-layer-row')[0].querySelectorAll('.vj-clip')[beatTarget];
      out.clipFired=firedCell.classList.contains('playing')&&!firedCell.classList.contains('pending');
+     out.clipFiredStatus=document.getElementById('vj-tempo-status').textContent;
      const sceneTarget=[0,1,2,3].find(i=>i!==beatTarget);
      document.querySelectorAll('.vj-scene-trigger')[sceneTarget].click();
      out.sceneQueued=document.querySelectorAll('.vj-scene-trigger')[sceneTarget].classList.contains('pending')
        &&document.querySelectorAll('.vj-layer-row')[0].querySelectorAll('.vj-clip')[sceneTarget].classList.contains('pending');
-     await new Promise(resolve=>setTimeout(resolve,395));
+     await new Promise(resolve=>setTimeout(resolve,700));
+     out.sceneFiredStatus=document.getElementById('vj-tempo-status').textContent;
      out.sceneFired=document.querySelectorAll('.vj-layer-row')[0].querySelectorAll('.vj-clip')[sceneTarget].classList.contains('playing')
        &&document.querySelectorAll('.vj-layer-row')[1].querySelectorAll('.vj-clip')[sceneTarget].classList.contains('playing')
        &&!document.querySelectorAll('.vj-scene-trigger')[sceneTarget].classList.contains('pending');
