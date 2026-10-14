@@ -96,3 +96,11 @@ További **6 új, önálló generátor**: Hex Matrix, Digital Rain, Ribbon Flow,
 A **KLIP PARAMÉTEREK** panel az aktív réteg aktív klipjéhez tartozik: Speed 0,1–4×, Scale 40–200%, Rotation −180°–180° és Audio Reactivity 0–200%. A paraméterek **klipenként külön** vannak tárolva és az Electron-felhasználói beállításokba mentve; egy másik klip beállítása nem írja felül őket. A forgatás/méret a teljes klipre, a sebesség a belső animáció időalapjára, az érzékenység a hangvezérelt paraméterekre hat. Természetesen a Spectrum Bars vagy Waveform pillanatnyi megjelenését a sebesség nem gyorsítja, mert ezeknek nincs önálló időalapú animációja.
 
 A frissített Windowsos Electron grafikus teszt új forrásokat renderel, kipróbálja a kliprács indítását, valamint a paraméterek megőrzését, mentését és visszaállítását.
+
+## v0.4.0-alpha.4 — 4. rész: Scene Launch és klipkezelés
+
+A 8×8 kliprács felett minden oszlophoz egy **Scene Launch** gomb tartozik. A gomb az oszlopban lévő klipeket az összes érintett rétegen egyszerre indítja. Az üres oszlophelyek nem állítják le az addig futó klipeket.
+
+**Klipkezelés:** bal kattintás indítja és kiválasztja a klipet, jobb kattintás a helyi szerkesztőmenüt nyitja. A kiválasztott klip másolható, kivágható, beilleszthető, duplikálható a következő üres helyre és törölhető. A szerkesztősávon is megtalálhatók ezek a gombok. A szerkesztő gyorsbillentyűi: Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D, Delete (amikor nem egy szövegbeviteli mező aktív). A foglalt klip húzással másik helyre tehető; foglalt célpont esetén helyet cserélnek. Az effekt-/generátorparaméterek a klippel együtt másolódnak.
+
+A v0.4 Alpha 4 továbbra is **részkiadás**. A videóimport, deckváltás, klipenkénti FX és profi időzítési lehetőségek későbbi fejlesztési feladatok. Az automatizált Windows-tesztek a klipkezelést és a mentés visszaolvasását is ellenőrzik.

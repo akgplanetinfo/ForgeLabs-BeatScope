@@ -42,12 +42,61 @@
 
   const SOURCE_NAMES={bars:'Spectrum Bars',wave:'Waveform',orbit:'Orbit Pulse',particles:'Particles',...Generators.NAMES,...ExtraGenerators.NAMES};
   const PARAM_KEYS=['speed','scale','rotation','audio'];
+  let clipClipboard=null,draggedClip=null;
+  function selectedCell(){
+    const c=settings.composition;
+    const row=c.selectedLayer,slot=c.selectedSlot;
+    return {row,slot,clip:c.layers[row]?.clips[slot]||null};
+  }
+  function updateClipToolbar(){
+    const {row,slot,clip}=selectedCell();
+    $('vj-clip-selection').textContent='Layer '+(row+1)+' · '+(slot+1)+'. hely'+(clip?' · '+SOURCE_NAMES[clip.source]:' · üres');
+    for(const action of ['copy','cut','delete','duplicate'])
+      $('vj-'+action).disabled=!clip;
+    $('vj-paste').disabled=!clipClipboard;
+    for(const btn of document.querySelectorAll('#vj-clip-menu [data-clip-action]')){
+      const action=btn.dataset.clipAction;
+      btn.disabled=action==='paste'?!clipClipboard:!clip;
+    }
+  }
+  function editClip(action){
+    const {row,slot,clip}=selectedCell();
+    if(action==='copy'||action==='cut'){
+      if(!clip)return;
+      clipClipboard=Composition.getClip(settings.composition,row,slot);
+      if(action==='cut')settings.composition=Composition.removeClip(settings.composition,row,slot);
+    }else if(action==='paste'){
+      if(!clipClipboard)return;
+      settings.composition=Composition.pasteClip(settings.composition,row,slot,clipClipboard);
+    }else if(action==='duplicate'){
+      if(!clip)return;
+      const next=Composition.duplicateClip(settings.composition,row,slot);
+      if(next.selectedSlot===slot){notify('Nincs üres kliphely ebben a rétegben.',true);return;}
+      settings.composition=next;
+    }else if(action==='delete'){
+      if(!clip)return;
+      settings.composition=Composition.removeClip(settings.composition,row,slot);
+    }else return;
+    $('vj-clip-menu').hidden=true;
+    renderClipGrid();setSourceLabel();persist();
+  }
+  function openClipMenu(event,row,slot){
+    event.preventDefault();
+    settings.composition=Composition.selectClip(settings.composition,row,slot);
+    renderClipGrid();persist();
+    const menu=$('vj-clip-menu');
+    menu.hidden=false;
+    menu.style.left=Math.min(event.clientX,window.innerWidth-180)+'px';
+    menu.style.top=Math.min(event.clientY,window.innerHeight-195)+'px';
+    updateClipToolbar();
+  }
   function selectedClipInfo(){
     const layerIndex=settings.composition.selectedLayer;
     const layer=settings.composition.layers[layerIndex];
-    if(!layer||layer.activeSlot<0)return null;
-    const clip=layer.clips[layer.activeSlot];
-    return clip?{layerIndex,slot:layer.activeSlot,clip,layer}:null;
+    if(!layer||!Number.isInteger(settings.composition.selectedSlot))return null;
+    const slot=settings.composition.selectedSlot;
+    const clip=layer.clips[slot];
+    return clip?{layerIndex,slot,clip,layer}:null;
   }
   function refreshClipParams(){
     const selected=selectedClipInfo();
@@ -82,6 +131,21 @@
   function renderClipGrid(){
     const root=$('clip-grid'),composition=settings.composition;
     root.replaceChildren();
+    const scenes=document.createElement('div');scenes.className='vj-scene-row';
+    const header=document.createElement('span');header.textContent='SCENES →';header.className='vj-scene-label';scenes.append(header);
+    for(let slot=0;slot<Composition.COLUMNS;slot++){
+      const btn=document.createElement('button');
+      btn.type='button';btn.className='vj-scene-trigger';
+      btn.dataset.scene=String(slot);btn.textContent='▶ '+(slot+1);
+      btn.title='Scene '+(slot+1)+': az ebben az oszlopban lévő klipek indítása egyszerre';
+      btn.setAttribute('aria-label','Scene '+(slot+1)+' indítása');
+      btn.addEventListener('click',()=>{
+        settings.composition=Composition.launchScene(settings.composition,slot);
+        renderClipGrid();setSourceLabel();persist();
+      });
+      scenes.append(btn);
+    }
+    root.append(scenes);
     for(let rowIndex=0;rowIndex<Composition.ROWS;rowIndex++){
       const layer=composition.layers[rowIndex];
       const row=document.createElement('div');
@@ -133,11 +197,32 @@
       for(let slot=0;slot<Composition.COLUMNS;slot++){
         const clip=layer.clips[slot];
         const cell=document.createElement('button');cell.type='button';
-        cell.className='vj-clip'+(clip?' populated':'')+(layer.activeSlot===slot?' playing':'');
+        cell.className='vj-clip'+(clip?' populated':'')+(layer.activeSlot===slot?' playing':'')+(composition.selectedLayer===rowIndex&&composition.selectedSlot===slot?' selected':'');
+        cell.draggable=Boolean(clip);
+        cell.dataset.row=String(rowIndex);cell.dataset.slot=String(slot);
         const label=clip?SOURCE_NAMES[clip.source]:'＋';
         cell.textContent=label;
         cell.title=clip?'Indítás: '+label:'Hozzáadás és indítás: '+SOURCE_NAMES[$('clip-source-picker').value];
         cell.setAttribute('aria-label',layer.name+' / '+(slot+1)+'. klip / '+label);
+        cell.addEventListener('contextmenu',e=>openClipMenu(e,rowIndex,slot));
+        cell.addEventListener('dragstart',e=>{
+          if(!clip){e.preventDefault();return;}
+          draggedClip={row:rowIndex,slot};
+          e.dataTransfer.effectAllowed='move';
+          e.dataTransfer.setData('text/plain','beatscope-clip');
+        });
+        cell.addEventListener('dragend',()=>{draggedClip=null;});
+        cell.addEventListener('dragover',e=>{
+          if(!draggedClip)return;
+          e.preventDefault();e.stopPropagation();e.dataTransfer.dropEffect='move';
+        });
+        cell.addEventListener('drop',e=>{
+          if(!draggedClip)return;
+          e.preventDefault();e.stopPropagation();
+          const from=draggedClip;draggedClip=null;
+          settings.composition=Composition.moveClip(settings.composition,from.row,from.slot,rowIndex,slot);
+          renderClipGrid();setSourceLabel();persist();
+        });
         cell.addEventListener('click',()=>{
           let next=settings.composition;
           if(!clip)next=Composition.putClip(next,rowIndex,slot,$('clip-source-picker').value);
@@ -153,7 +238,7 @@
       }
       root.append(row);
     }
-    refreshClipParams();
+    refreshClipParams();updateClipToolbar();
   }
   function setSourceLabel(){
     const active=(sourceMode==='mic'&&!!micStream)||(sourceMode==='file'&&!UI.audio.paused&&!UI.audio.ended);
@@ -603,6 +688,16 @@
   function setWindowState(state){document.body.classList.toggle('fullscreen',Boolean(state.fullscreen));sizeCanvas();}
   function bind(){
     initFXControls();
+    for(const action of ['copy','cut','paste','duplicate','delete']){
+      $('vj-'+action).addEventListener('click',()=>editClip(action));
+    }
+    for(const btn of document.querySelectorAll('#vj-clip-menu [data-clip-action]'))
+      btn.addEventListener('click',()=>editClip(btn.dataset.clipAction));
+    window.addEventListener('pointerdown',e=>{
+      const menu=$('vj-clip-menu');
+      if(!menu.hidden&&!menu.contains(e.target))menu.hidden=true;
+    });
+
     bindClipParams();
     $('window-min').addEventListener('click',()=>window.beatAPI?.windowAction('minimize'));
     $('window-max').addEventListener('click',()=>window.beatAPI?.windowAction('toggle-maximize'));
@@ -640,6 +735,12 @@
     UI.seek.addEventListener('pointerup',()=>isSeeking=false);
     UI.seek.addEventListener('input',()=>{if(Number.isFinite(UI.audio.duration)&&UI.audio.duration>0){UI.audio.currentTime=UI.audio.duration*(+UI.seek.value/1000);$('current-time').textContent=math.formatTime(UI.audio.currentTime);}});
     window.addEventListener('keydown',e=>{
+      const typing=e.target instanceof HTMLInputElement||e.target instanceof HTMLSelectElement||e.target instanceof HTMLTextAreaElement;
+      if(!typing&&e.ctrlKey&&!e.altKey&&!e.shiftKey&&['c','v','x','d'].includes(e.key.toLowerCase())){
+        e.preventDefault();editClip({c:'copy',v:'paste',x:'cut',d:'duplicate'}[e.key.toLowerCase()]);return;
+      }
+      if(!typing&&e.key==='Delete'){e.preventDefault();editClip('delete');return;}
+      if(e.key==='Escape'&&!$('vj-clip-menu').hidden){$('vj-clip-menu').hidden=true;return;}
       if(e.ctrlKey&&e.key.toLowerCase()==='o'){e.preventDefault();UI.file.click();return;}
       if(e.key==='F11'){e.preventDefault();window.beatAPI?.windowAction('toggle-fullscreen');return;}
       if(e.ctrlKey&&e.key.toLowerCase()==='e'){e.preventDefault();$('fx-browser-open').click();return;}

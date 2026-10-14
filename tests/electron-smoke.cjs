@@ -123,6 +123,31 @@ async function run(){
        &&prefs?.composition?.layers?.[3]?.clips?.[6]?.params?.speed===.65;
      document.getElementById('vj-reset').click();
      out.paramsReset=document.getElementById('vj-speed').value==='100'&&document.getElementById('vj-rotation').value==='0';
+
+     // Clip editing and scene launch: exercise actual Electron buttons and persisted parameters.
+     document.querySelectorAll('.vj-layer-row')[2].querySelectorAll('.vj-clip')[6].click();
+     const sceneBefore=document.querySelectorAll('.vj-scene-trigger').length;
+     const speedBefore=document.getElementById('vj-speed').value;
+     document.getElementById('vj-copy').click();
+     document.querySelectorAll('.vj-layer-row')[0].querySelectorAll('.vj-clip')[7].dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:40,clientY:80}));
+     out.contextMenuOpen=!document.getElementById('vj-clip-menu').hidden;
+     document.getElementById('vj-paste').click();
+     out.pastedClip=document.querySelectorAll('.vj-layer-row')[0].querySelectorAll('.vj-clip')[7].textContent==='Hex Matrix';
+     out.pastedParams=document.getElementById('vj-speed').value===speedBefore;
+     document.getElementById('vj-duplicate').click();
+     out.duplicateCreated=document.querySelectorAll('.vj-layer-row')[0].querySelectorAll('.vj-clip')[4].textContent==='Hex Matrix';
+     document.getElementById('vj-delete').click();
+     out.deleteWorked=document.querySelectorAll('.vj-layer-row')[0].querySelectorAll('.vj-clip')[4].textContent==='＋';
+     document.querySelectorAll('.vj-layer-row')[0].querySelectorAll('.vj-clip')[7].dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:40,clientY:80}));
+     document.getElementById('vj-cut').click();
+     out.cutWorked=document.querySelectorAll('.vj-layer-row')[0].querySelectorAll('.vj-clip')[7].textContent==='＋';
+     document.querySelectorAll('.vj-layer-row')[0].querySelectorAll('.vj-clip')[7].click();
+     document.querySelectorAll('.vj-scene-trigger')[7].click();
+     out.sceneButtons=sceneBefore===8;
+     out.sceneLaunchWorks=Boolean(document.querySelectorAll('.vj-layer-row')[0].querySelectorAll('.vj-clip')[7].classList.contains('playing'));
+     await new Promise(resolve=>setTimeout(resolve,460));
+     const finalPrefs=await window.beatAPI.loadPreferences();
+     out.sceneSaved=finalPrefs?.composition?.selectedSlot===7&&finalPrefs?.composition?.layers?.[0]?.activeSlot===7;
      document.getElementById('fx-browser-open').click();
      out.panelOpened=!document.getElementById('fx-drawer').hidden;
      out.searchRows=document.querySelectorAll('.fx-result').length;
@@ -160,7 +185,7 @@ async function run(){
    return out;
  })()`,true);
  console.log('BEATSCOPE ELECTRON SMOKE RESULT '+JSON.stringify(state));
- for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,gridRows:state.gridRows===8,clipCells:state.clipCells===64,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,generatorCount:state.generatorCount===6,sourceOptions:state.generatorOptions?.length===16,extraCount:state.extraGeneratorCount===6,extraDraws:state.extraGeneratorsDrawn?.every(Boolean),extraDistinct:new Set(state.extraGeneratorHashes||[]).size===6,extraGrid:state.extraGridSources?.every(Boolean),otherClipDefault:state.otherClipDefault,paramsRestored:state.paramsRestored,paramsSaved:state.paramsSaved,paramsReset:state.paramsReset,sourceDraws:state.newGeneratorsDrawn?.every(Boolean),sourceDistinct:new Set(state.generatorHashes||[]).size===6,sourceGrid:state.newGridSources?.every(Boolean),library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
+ for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,gridRows:state.gridRows===8,clipCells:state.clipCells===64,sceneButtons:state.sceneButtons,sceneLaunch:state.sceneLaunchWorks,sceneSaved:state.sceneSaved,clipMenu:state.contextMenuOpen,clipPasted:state.pastedClip,clipParameters:state.pastedParams,clipDuplicated:state.duplicateCreated,clipDeleted:state.deleteWorked,clipCut:state.cutWorked,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,generatorCount:state.generatorCount===6,sourceOptions:state.generatorOptions?.length===16,extraCount:state.extraGeneratorCount===6,extraDraws:state.extraGeneratorsDrawn?.every(Boolean),extraDistinct:new Set(state.extraGeneratorHashes||[]).size===6,extraGrid:state.extraGridSources?.every(Boolean),otherClipDefault:state.otherClipDefault,paramsRestored:state.paramsRestored,paramsSaved:state.paramsSaved,paramsReset:state.paramsReset,sourceDraws:state.newGeneratorsDrawn?.every(Boolean),sourceDistinct:new Set(state.generatorHashes||[]).size===6,sourceGrid:state.newGridSources?.every(Boolean),library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
  if(state.errors?.length)fail('Shader/UI errors: '+JSON.stringify(state.errors));
  await win.close();
 }

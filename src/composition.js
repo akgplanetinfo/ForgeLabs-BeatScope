@@ -19,7 +19,7 @@
    return out;
  }
  function createComposition(){
-   return {selectedLayer:0,layers:Array.from({length:ROWS},(_,i)=>({
+   return {selectedLayer:0,selectedSlot:0,layers:Array.from({length:ROWS},(_,i)=>({
      name:'Layer '+(i+1),opacity:1,muted:false,solo:false,
      activeSlot:i===0?0:-1,
      clips:Array.from({length:COLUMNS},(_,j)=>j<4?{source:SOURCES[(j+i)%4],params:sanitizeParams(null)}:null)
@@ -30,6 +30,7 @@
    const base=createComposition();
    if(!input||typeof input!=='object'||!Array.isArray(input.layers))return base;
    if(validInt(input.selectedLayer,ROWS))base.selectedLayer=input.selectedLayer;
+   if(validInt(input.selectedSlot,COLUMNS))base.selectedSlot=input.selectedSlot;
    for(let i=0;i<ROWS;i++){
      const src=input.layers[i],dest=base.layers[i];
      if(!src||typeof src!=='object')continue;
@@ -62,9 +63,85 @@
  function selectLayer(input,index){
    const c=normalize(input);if(validInt(index,ROWS))c.selectedLayer=index;return c;
  }
+
+ function selectClip(input,index,slot){
+   const c=normalize(input);
+   if(validInt(index,ROWS)&&validInt(slot,COLUMNS)){
+     c.selectedLayer=index;c.selectedSlot=slot;
+   }
+   return c;
+ }
+ function getClip(input,index,slot){
+   const c=normalize(input);
+   if(!validInt(index,ROWS)||!validInt(slot,COLUMNS))return null;
+   const clip=c.layers[index].clips[slot];
+   return clip?{source:clip.source,params:sanitizeParams(clip.params)}:null;
+ }
+ function pasteClip(input,index,slot,clip){
+   const c=normalize(input);
+   if(!validInt(index,ROWS)||!validInt(slot,COLUMNS)||!clip||!SOURCES.includes(clip.source))return c;
+   c.layers[index].clips[slot]={source:clip.source,params:sanitizeParams(clip.params)};
+   c.selectedLayer=index;c.selectedSlot=slot;
+   return c;
+ }
+ function removeClip(input,index,slot){
+   const c=normalize(input);
+   if(!validInt(index,ROWS)||!validInt(slot,COLUMNS))return c;
+   const layer=c.layers[index];
+   layer.clips[slot]=null;
+   if(layer.activeSlot===slot)layer.activeSlot=-1;
+   c.selectedLayer=index;c.selectedSlot=slot;
+   return c;
+ }
+ function duplicateClip(input,index,slot){
+   const c=normalize(input);
+   if(!validInt(index,ROWS)||!validInt(slot,COLUMNS)||!c.layers[index].clips[slot])return c;
+   const layer=c.layers[index];
+   for(let step=1;step<COLUMNS;step++){
+     const to=(slot+step)%COLUMNS;
+     if(!layer.clips[to]){
+       layer.clips[to]=getClip(c,index,slot);
+       c.selectedLayer=index;c.selectedSlot=to;
+       return c;
+     }
+   }
+   return c;
+ }
+ function moveClip(input,fromLayer,fromSlot,toLayer,toSlot){
+   const c=normalize(input);
+   if(!validInt(fromLayer,ROWS)||!validInt(toLayer,ROWS)||!validInt(fromSlot,COLUMNS)||!validInt(toSlot,COLUMNS))return c;
+   if(fromLayer===toLayer&&fromSlot===toSlot)return c;
+   const a=c.layers[fromLayer],b=c.layers[toLayer],moving=a.clips[fromSlot];
+   if(!moving)return c;
+   const replaced=b.clips[toSlot];
+   const sourceWasPlaying=a.activeSlot===fromSlot;
+   const targetWasPlaying=b.activeSlot===toSlot;
+   a.clips[fromSlot]=replaced;b.clips[toSlot]=moving;
+   if(fromLayer===toLayer){
+     if(sourceWasPlaying)a.activeSlot=toSlot;
+     else if(targetWasPlaying)a.activeSlot=fromSlot;
+   }else{
+     if(sourceWasPlaying)a.activeSlot=-1;
+     if(targetWasPlaying)b.activeSlot=-1;
+     if(sourceWasPlaying)b.activeSlot=toSlot;
+     if(targetWasPlaying&&replaced)a.activeSlot=fromSlot;
+   }
+   c.selectedLayer=toLayer;c.selectedSlot=toSlot;
+   return c;
+ }
+ function launchScene(input,slot){
+   const c=normalize(input);
+   if(!validInt(slot,COLUMNS))return c;
+   for(const layer of c.layers)if(layer.clips[slot])layer.activeSlot=slot;
+   c.selectedSlot=slot;
+   return c;
+ }
  function putClip(input,index,slot,source){
    const c=normalize(input);
-   if(validInt(index,ROWS)&&validInt(slot,COLUMNS)&&SOURCES.includes(source))c.layers[index].clips[slot]={source,params:sanitizeParams(null)};
+   if(validInt(index,ROWS)&&validInt(slot,COLUMNS)&&SOURCES.includes(source)){
+     c.layers[index].clips[slot]={source,params:sanitizeParams(null)};
+     c.selectedLayer=index;c.selectedSlot=slot;
+   }
    return c;
  }
  function updateClipParams(input,index,slot,patch){
@@ -82,7 +159,7 @@
  function launch(input,index,slot){
    const c=normalize(input);
    if(validInt(index,ROWS)&&validInt(slot,COLUMNS)&&c.layers[index].clips[slot]){
-     c.layers[index].activeSlot=slot;c.selectedLayer=index;
+     c.layers[index].activeSlot=slot;c.selectedLayer=index;c.selectedSlot=slot;
    }
    return c;
  }
@@ -95,5 +172,5 @@
     .map(l=>({index:l.index,source:l.clips[l.activeSlot].source,opacity:l.opacity,slot:l.activeSlot,params:sanitizeParams(l.clips[l.activeSlot].params)}))
     .reverse(); // topmost layer = Layer 1, rendered last
  }
- return {ROWS,COLUMNS,SOURCES,DEFAULT_PARAMS,PARAM_LIMITS,sanitizeParams,createComposition,normalize,selectLayer,layerAction,putClip,updateClipParams,launch,stop,activeLayers};
+ return {ROWS,COLUMNS,SOURCES,DEFAULT_PARAMS,PARAM_LIMITS,sanitizeParams,createComposition,normalize,selectLayer,selectClip,getClip,pasteClip,removeClip,duplicateClip,moveClip,launchScene,layerAction,putClip,updateClipParams,launch,stop,activeLayers};
 });

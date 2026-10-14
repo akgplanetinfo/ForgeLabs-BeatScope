@@ -85,3 +85,26 @@
 .vj-ctrl-fields output{float:right;color:#55d9e5;font-size:10px;font-variant-numeric:tabular-nums}
 .vj-ctrl-fields input[type=range]{display:block;margin:9px 0 0;width:100%;height:5px}
 @media(max-width:1200px){.vj-ctrl-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.vj-controls{gap:6px}}
+
+
+/* Alpha 4: editable VJ clip grid and scene launching */
+.vj-deck{flex-basis:282px;max-height:330px}
+.vj-scene-row{display:grid;grid-template-columns:184px repeat(8,minmax(57px,1fr));height:27px;gap:4px;margin-bottom:3px}
+.vj-scene-label{display:flex;align-items:center;padding-left:9px;font-size:9px;letter-spacing:1.4px;font-weight:900;color:#8eb5d5}
+.vj-scene-trigger{background:#1a3854;border:1px solid #365e78;border-radius:5px;color:#a3dff5;font-size:10px;font-weight:750;cursor:pointer}
+.vj-scene-trigger:hover{background:#206485;border-color:#6bc7e0;color:#fff}
+.vj-clip.selected{outline:2px solid #ffd385;outline-offset:-2px}
+.vj-clip[draggable=true]{cursor:grab}
+.vj-clip[draggable=true]:active{cursor:grabbing}
+.vj-clip-toolbar{display:flex;align-items:center;gap:5px;padding:7px 10px;background:#142438;border-top:1px solid #2c4762}
+.vj-clip-toolbar>span{font-size:9px;color:#add1e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:45px}
+.vj-clip-toolbar button{font-size:9px;padding:6px 8px;border-radius:5px;background:#213c56;border:1px solid #3b5b75;color:#d0e7f6;white-space:nowrap}
+.vj-clip-toolbar button:hover{background:#2d5774}
+.vj-clip-toolbar button:disabled{opacity:.3;cursor:not-allowed}
+.vj-clip-menu{position:fixed;z-index:120;width:164px;background:#14263d;border:1px solid #50728d;border-radius:10px;box-shadow:0 18px 50px #000b;padding:5px;display:flex;flex-direction:column;gap:2px}
+.vj-clip-menu[hidden]{display:none}
+.vj-clip-menu button{padding:9px;text-align:left;background:transparent;border:0;border-radius:5px;font-size:11px}
+.vj-clip-menu button:hover{background:#305470}
+.vj-clip-menu button:disabled{opacity:.3}
+@media(max-height:780px){.vj-deck{flex-basis:200px}.vj-clip-toolbar button{padding:4px 5px;font-size:8px}}
+@media(max-width:1150px){.vj-scene-row{grid-template-columns:158px repeat(8,minmax(57px,1fr))}.vj-clip-toolbar{flex-wrap:wrap}}

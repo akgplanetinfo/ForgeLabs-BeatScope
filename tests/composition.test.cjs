@@ -105,3 +105,68 @@ test('legacy clip schema without parameters migrates to defaults',()=>{
  assert.deepEqual(a.params,C.DEFAULT_PARAMS);
  assert.equal(a.slot,0);
 });
+
+test('scene launch starts all populated clips in a column without stopping empty cells',()=>{
+ let c=C.createComposition();
+ c=C.launch(c,1,0);
+ c=C.stop(c,2);
+ c=C.putClip(c,0,6,'mandala');
+ c=C.putClip(c,1,6,'electric');
+ c=C.launchScene(c,6);
+ assert.equal(c.layers[0].activeSlot,6);
+ assert.equal(c.layers[1].activeSlot,6);
+ assert.equal(c.layers[2].activeSlot,-1);
+ assert.equal(c.selectedSlot,6);
+ assert.equal(C.activeLayers(c).length,2);
+});
+test('copy paste and duplication keep independent clip parameters',()=>{
+ let c=C.createComposition();
+ c=C.putClip(c,0,4,'starfield');
+ c=C.updateClipParams(c,0,4,{speed:2.4,scale:1.3,rotation:45,audio:.45});
+ const original=C.getClip(c,0,4);
+ c=C.pasteClip(c,1,7,original);
+ assert.deepEqual(C.getClip(c,1,7),original);
+ c=C.updateClipParams(c,1,7,{speed:.4});
+ assert.equal(C.getClip(c,0,4).params.speed,2.4);
+ assert.equal(C.getClip(c,1,7).params.speed,.4);
+ c=C.duplicateClip(c,0,4);
+ assert.equal(c.selectedSlot,5);
+ assert.deepEqual(C.getClip(c,0,5),original);
+});
+test('delete active clip stops that layer but leaves others running',()=>{
+ let c=C.launch(C.createComposition(),1,0);
+ c=C.removeClip(c,0,0);
+ assert.equal(c.layers[0].activeSlot,-1);
+ assert.equal(c.layers[1].activeSlot,0);
+ assert.equal(C.getClip(c,0,0),null);
+ assert.equal(C.activeLayers(c).length,1);
+});
+test('drag move or swap relocates clips without losing settings and active playback',()=>{
+ let c=C.createComposition();
+ c=C.putClip(c,0,4,'tunnel');
+ c=C.updateClipParams(c,0,4,{speed:2.7});
+ c=C.launch(c,0,4);
+ c=C.moveClip(c,0,4,1,7);
+ assert.equal(C.getClip(c,1,7).source,'tunnel');
+ assert.equal(C.getClip(c,1,7).params.speed,2.7);
+ assert.equal(C.getClip(c,0,4),null);
+ assert.equal(c.layers[0].activeSlot,-1);
+ assert.equal(c.layers[1].activeSlot,7);
+ c=C.moveClip(c,1,7,1,0);
+ assert.equal(c.layers[1].activeSlot,0);
+ assert.equal(C.getClip(c,1,0).source,'tunnel');
+ assert.equal(C.getClip(c,1,7).source,'wave');
+});
+test('invalid clip location and unknown clipboard source cause no data damage',()=>{
+ const c=C.createComposition();
+ assert.deepEqual(C.pasteClip(c,0,4,{source:'evil'}),c);
+ assert.deepEqual(C.removeClip(c,99,4),c);
+ assert.deepEqual(C.moveClip(c,1,1,99,7),c);
+ assert.deepEqual(C.launchScene(c,-1),c);
+ assert.deepEqual(C.selectClip(c,-1,3),c);
+});
+test('selected clip slot persists after normalization and defaults safely',()=>{
+ let c=C.selectClip(C.createComposition(),3,5);
+ assert.equal(C.normalize(c).selectedSlot,5);
+ assert.equal(C.normalize({selectedSlot:400,layers:c.layers}).selectedSlot,0);
+});

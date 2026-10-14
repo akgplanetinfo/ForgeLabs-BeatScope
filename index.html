@@ -63,7 +63,7 @@
       <div class="control-line"><label for="bars-count">Oszlopok</label><output id="bars-val">56</output></div>
       <input type="range" id="bars-count" min="16" max="128" value="56" step="8" />
       <label class="check-row"><input id="show-grid" type="checkbox" checked /><span>Finom háttérrács</span></label>
-      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α3</span></div>
+      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α4</span></div>
     </aside>
     <main class="workspace">
       <div class="workspace-top">
@@ -85,7 +85,7 @@
 
       <section class="vj-deck" id="vj-deck" aria-label="VJ rétegek és klipek">
         <div class="vj-deck-header">
-          <div><strong>CLIP DECK</strong><small>8 réteg × 8 klip · 16 vizuálgenerátor</small></div>
+          <div><strong>CLIP DECK</strong><small>8 réteg × 8 klip · Scene Launch · Clip Editing</small></div>
           <div class="vj-deck-actions"><label for="clip-source-picker">Új klip:</label>
             <select id="clip-source-picker" aria-label="Új klip forrása">
               <option value="bars">Spectrum Bars</option><option value="wave">Waveform</option><option value="orbit">Orbit Pulse</option><option value="particles">Particles</option>
@@ -106,9 +106,24 @@
             </select><span class="vj-help">Üres hely: hozzáadás · Foglalt hely: indítás</span>
           </div>
         </div>
-        <div class="vj-grid-scroll"><div class="vj-grid" id="clip-grid" role="group" aria-label="8 réteg, összesen 64 kliphely"></div></div>
+        <div class="vj-grid-scroll"><div class="vj-grid" id="clip-grid" role="group" aria-label="8 réteg és 8 Scene Launch oszlop"></div></div>
+        <div class="vj-clip-toolbar" aria-label="Klip szerkesztése">
+          <span id="vj-clip-selection">Nincs kiválasztott klip</span>
+          <button type="button" id="vj-copy" title="Klip másolása (Ctrl+C)">Másolás</button>
+          <button type="button" id="vj-cut" title="Klip kivágása (Ctrl+X)">Kivágás</button>
+          <button type="button" id="vj-paste" title="Klip beillesztése (Ctrl+V)">Beillesztés</button>
+          <button type="button" id="vj-duplicate" title="Klip duplikálása (Ctrl+D)">Duplikálás</button>
+          <button type="button" id="vj-delete" title="Klip törlése (Delete)">Törlés</button>
+        </div>
       </section>
 
+      <div id="vj-clip-menu" class="vj-clip-menu" hidden role="menu" aria-label="Klip helyi menü">
+        <button type="button" data-clip-action="copy" role="menuitem">Másolás</button>
+        <button type="button" data-clip-action="cut" role="menuitem">Kivágás</button>
+        <button type="button" data-clip-action="paste" role="menuitem">Beillesztés</button>
+        <button type="button" data-clip-action="duplicate" role="menuitem">Duplikálás</button>
+        <button type="button" data-clip-action="delete" role="menuitem">Törlés</button>
+      </div>
       <section class="vj-controls" id="vj-controls" aria-label="Kiválasztott klip generátorparaméterei">
         <div class="vj-ctrl-head"><div><strong>KLIP PARAMÉTEREK</strong><small id="vj-selected-clip">Layer 1 · Spectrum Bars</small></div><button id="vj-reset" type="button" title="Klipparaméterek alaphelyzetbe">↺ Alaphelyzet</button></div>
         <div class="vj-ctrl-fields">
