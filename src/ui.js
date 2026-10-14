@@ -6,6 +6,7 @@
   const FX=window.BeatFX;
   const Composition=window.BeatComposition;
   const Generators=window.BeatGenerators;
+  const ExtraGenerators=window.BeatExtraGenerators;
   let fxRenderer=null,fxDisabled=false,fxSelected=-1,fxFavFilter=false,fxAICount=0,fxLastSwitch=0,fxRecent=[];
 
   const UI={
@@ -39,7 +40,45 @@
     saveTimer=setTimeout(()=>window.beatAPI?.savePreferences({...settings}).catch(()=>notify('A beállításokat nem sikerült elmenteni.',true)),300);
   }
 
-  const SOURCE_NAMES={bars:'Spectrum Bars',wave:'Waveform',orbit:'Orbit Pulse',particles:'Particles',...Generators.NAMES};
+  const SOURCE_NAMES={bars:'Spectrum Bars',wave:'Waveform',orbit:'Orbit Pulse',particles:'Particles',...Generators.NAMES,...ExtraGenerators.NAMES};
+  const PARAM_KEYS=['speed','scale','rotation','audio'];
+  function selectedClipInfo(){
+    const layerIndex=settings.composition.selectedLayer;
+    const layer=settings.composition.layers[layerIndex];
+    if(!layer||layer.activeSlot<0)return null;
+    const clip=layer.clips[layer.activeSlot];
+    return clip?{layerIndex,slot:layer.activeSlot,clip,layer}:null;
+  }
+  function refreshClipParams(){
+    const selected=selectedClipInfo();
+    $('vj-selected-clip').textContent=selected?(selected.layer.name+' · '+SOURCE_NAMES[selected.clip.source]+' · '+(selected.slot+1)+'. klip'):'Válassz egy aktív klipet';
+    const p=selected?Composition.sanitizeParams(selected.clip.params):Composition.DEFAULT_PARAMS;
+    const format={speed:v=>v.toFixed(2)+'×',scale:v=>Math.round(v*100)+'%',rotation:v=>Math.round(v)+'°',audio:v=>Math.round(v*100)+'%'};
+    for(const key of PARAM_KEYS){
+      const range=$('vj-'+key),out=$('vj-'+key+'-value');
+      range.value=key==='rotation'?p[key]:Math.round(p[key]*100);
+      range.disabled=!selected;
+      out.textContent=format[key](p[key]);
+    }
+    $('vj-reset').disabled=!selected;
+  }
+  function bindClipParams(){
+    for(const key of PARAM_KEYS){
+      const input=$('vj-'+key);
+      input.addEventListener('input',()=>{
+        const s=selectedClipInfo();if(!s)return;
+        const v=key==='rotation'?+input.value:+input.value/100;
+        settings.composition=Composition.updateClipParams(settings.composition,s.layerIndex,s.slot,{[key]:v});
+        refreshClipParams();
+        persist();
+      });
+    }
+    $('vj-reset').addEventListener('click',()=>{
+      const s=selectedClipInfo();if(!s)return;
+      settings.composition=Composition.updateClipParams(settings.composition,s.layerIndex,s.slot,Composition.DEFAULT_PARAMS);
+      refreshClipParams();persist();
+    });
+  }
   function renderClipGrid(){
     const root=$('clip-grid'),composition=settings.composition;
     root.replaceChildren();
@@ -114,6 +153,7 @@
       }
       root.append(row);
     }
+    refreshClipParams();
   }
   function setSourceLabel(){
     const active=(sourceMode==='mic'&&!!micStream)||(sourceMode==='file'&&!UI.audio.paused&&!UI.audio.ended);
@@ -252,7 +292,12 @@
   }
   function renderMode(mode,t){
     switch(mode){case 'bars':drawBars(t);break;case 'wave':drawWave(t);break;case 'orbit':drawOrbit(t);break;case 'particles':drawParticles(t);break;
-      default:Generators.draw(mode,ctx,{width:sceneWidth,height:sceneHeight,time:t,bass:freq.bass,mids:freq.mids,highs:freq.highs,rms,intensity:settings.intensity,color:paletteColor});break;}
+      default:{
+        const props={width:sceneWidth,height:sceneHeight,time:t,bass:freq.bass,mids:freq.mids,highs:freq.highs,rms,intensity:settings.intensity,color:paletteColor};
+        if(!Generators.draw(mode,ctx,props))ExtraGenerators.draw(mode,ctx,props);
+        break;
+      }
+    }
   }
   function paletteColor(index,total,alpha=1){
     const colors=presetColors[settings.palette];
@@ -485,7 +530,8 @@
   function animate(t){
     requestAnimationFrame(animate);
     const active=(sourceMode==='mic'&&!!micStream)||(sourceMode==='file'&&!UI.audio.paused&&!UI.audio.ended);
-    if(!active&&t-lastFrame<85)return;
+    const hasVisuals=Composition.activeLayers(settings.composition).length>0;
+    if(!active&&t-lastFrame<(hasVisuals?33:85))return;
     lastFrame=t;
     if(!sceneWidth||UI.canvas.clientWidth!==sceneWidth||UI.canvas.clientHeight!==sceneHeight)sizeCanvas();
     if(active&&analyser&&audioCtx){
@@ -518,10 +564,28 @@
     backdrop(t);
     // Layer 8 is at the bottom, Layer 1 at the top.
     for(const layer of Composition.activeLayers(settings.composition)){
-      ctx.save();ctx.globalAlpha=layer.opacity;
-      ctx.globalCompositeOperation='screen';
-      renderMode(layer.source,t);
-      ctx.restore();
+      const p=Composition.sanitizeParams(layer.params);
+      const oldFreq=freq,oldBins=bins,oldWave=wave;
+      try{
+        if(p.audio!==1){
+          freq={...freq,bass:Math.min(1,freq.bass*p.audio),mids:Math.min(1,freq.mids*p.audio),
+            highs:Math.min(1,freq.highs*p.audio),total:Math.min(1,freq.total*p.audio)};
+          if(layer.source==='bars')
+            bins=Uint8Array.from(oldBins,v=>Math.round(Math.min(255,v*p.audio)));
+          if(layer.source==='wave')
+            wave=Uint8Array.from(oldWave,v=>Math.max(0,Math.min(255,128+(v-128)*p.audio)));
+        }
+        ctx.save();
+        ctx.globalAlpha=layer.opacity;
+        ctx.globalCompositeOperation='screen';
+        ctx.translate(sceneWidth*.5,sceneHeight*.5);
+        ctx.rotate(p.rotation*Math.PI/180);
+        ctx.scale(p.scale,p.scale);
+        ctx.translate(-sceneWidth*.5,-sceneHeight*.5);
+        renderMode(layer.source,t*p.speed);
+      }finally{
+        ctx.restore();freq=oldFreq;bins=oldBins;wave=oldWave;
+      }
     }
     fxAutoUpdate(t,active);
     drawPostFX(t);
@@ -539,6 +603,7 @@
   function setWindowState(state){document.body.classList.toggle('fullscreen',Boolean(state.fullscreen));sizeCanvas();}
   function bind(){
     initFXControls();
+    bindClipParams();
     $('window-min').addEventListener('click',()=>window.beatAPI?.windowAction('minimize'));
     $('window-max').addEventListener('click',()=>window.beatAPI?.windowAction('toggle-maximize'));
     $('window-close').addEventListener('click',()=>window.beatAPI?.windowAction('close'));

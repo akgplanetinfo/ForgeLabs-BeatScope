@@ -2,13 +2,13 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const C=require('../src/composition.js');
-test('8x8 clip grid and ten working generator source types',()=>{
+test('8x8 clip grid and sixteen generator source types',()=>{
  const c=C.createComposition();
  assert.equal(c.layers.length,8);
  for(const l of c.layers)assert.equal(l.clips.length,8);
  assert.equal(C.ROWS*C.COLUMNS,64);
  assert.equal(C.activeLayers(c).length,1);
- assert.deepEqual(C.SOURCES,['bars','wave','orbit','particles','tunnel','plasma','rings','grid','laser','starfield']);
+ assert.deepEqual(C.SOURCES,['bars','wave','orbit','particles','tunnel','plasma','rings','grid','laser','starfield','hexfield','digitalrain','ribbon','mandala','fireflies','electric']);
 });
 test('launch multiple layers, preserve other layers while switching clips',()=>{
  let c=C.createComposition();
@@ -81,4 +81,27 @@ test('new generators can be saved, relaunched and survive normalized project pre
     assert.equal(c.layers[i].activeSlot,6);
   }
   assert.equal(C.activeLayers(c).length,6);
+});
+
+test('independent saved parameters per clip and clamp invalid values',()=>{
+ let c=C.createComposition();
+ c=C.putClip(c,0,6,'mandala');
+ c=C.putClip(c,1,6,'electric');
+ c=C.updateClipParams(c,0,6,{speed:2.75,scale:1.55,rotation:-70,audio:.25});
+ c=C.updateClipParams(c,1,6,{speed:.4,scale:.8,rotation:135,audio:1.85});
+ const n=C.normalize(JSON.parse(JSON.stringify(c)));
+ assert.deepEqual(n.layers[0].clips[6].params,{speed:2.75,scale:1.55,rotation:-70,audio:.25});
+ assert.deepEqual(n.layers[1].clips[6].params,{speed:.4,scale:.8,rotation:135,audio:1.85});
+ c=C.updateClipParams(n,0,6,{speed:999,scale:-1,rotation:999,audio:NaN});
+ assert.deepEqual(c.layers[0].clips[6].params,{speed:4,scale:.4,rotation:180,audio:.25});
+ assert.equal(n.layers[0].clips[6].params.speed,2.75);
+});
+test('legacy clip schema without parameters migrates to defaults',()=>{
+ const c=C.createComposition();
+ c.layers[0].clips[0]={source:'bars'};
+ const n=C.normalize(c);
+ assert.deepEqual(n.layers[0].clips[0].params,C.DEFAULT_PARAMS);
+ const a=C.activeLayers(n)[0];
+ assert.deepEqual(a.params,C.DEFAULT_PARAMS);
+ assert.equal(a.slot,0);
 });

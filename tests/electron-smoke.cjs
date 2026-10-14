@@ -34,6 +34,7 @@ async function run(){
 
      out.generatorOptions=[...document.querySelectorAll('#clip-source-picker option')].map(o=>o.value);
      out.generatorCount=window.BeatGenerators?.IDS?.length??0;
+     out.extraGeneratorCount=window.BeatExtraGenerators?.IDS?.length??0;
      out.newGeneratorsDrawn=[];
      out.generatorHashes=[];
      for(const source of window.BeatGenerators.IDS){
@@ -64,6 +65,59 @@ async function run(){
        const cell=newRow.querySelectorAll('.vj-clip')[5];
        out.newGridSources.push(cell?.classList.contains('playing')&&cell.textContent===window.BeatGenerators.NAMES[source]);
      }
+
+     out.extraGeneratorsDrawn=[];
+     out.extraGeneratorHashes=[];
+     for(const source of window.BeatExtraGenerators.IDS){
+       const canv=document.createElement('canvas');canv.width=420;canv.height=240;
+       const context=canv.getContext('2d',{willReadFrequently:true});
+       context.fillStyle='#091626';context.fillRect(0,0,420,240);
+       const drawn=window.BeatExtraGenerators.draw(source,context,{
+         width:420,height:240,time:4150,bass:.43,mids:.31,highs:.22,intensity:1.1,
+         color:(i,n,a=1)=>'rgba('+[80,190,245].map((v,k)=>k===i%3?Math.min(255,v+7*i):v).join(',')+','+a+')'
+       });
+       const img=context.getImageData(0,0,420,240).data;
+       let changed=0,hash=2166136261;
+       for(let i=0;i<img.length;i+=32){
+         if(img[i]!==9||img[i+1]!==22||img[i+2]!==38)changed++;
+         hash=Math.imul(hash^img[i],16777619);
+         hash=Math.imul(hash^img[i+1],16777619);
+       }
+       out.extraGeneratorsDrawn.push(Boolean(drawn)&&changed>20);
+       out.extraGeneratorHashes.push(hash>>>0);
+     }
+     out.extraGridSources=[];
+     for(const [i,source] of window.BeatExtraGenerators.IDS.entries()){
+       document.getElementById('clip-source-picker').value=source;
+       document.querySelectorAll('.vj-layer-row')[i+2].querySelectorAll('.vj-clip')[6].click();
+       const newRow=document.querySelectorAll('.vj-layer-row')[i+2];
+       const cell=newRow.querySelectorAll('.vj-clip')[6];
+       out.extraGridSources.push(cell?.classList.contains('playing')&&cell.textContent===window.BeatExtraGenerators.NAMES[source]);
+     }
+     // Two different clips must retain distinct parameters and be saved to Electron settings.
+     document.querySelectorAll('.vj-layer-row')[2].querySelectorAll('.vj-clip')[6].click();
+     const speed=document.getElementById('vj-speed');
+     speed.value='260';speed.dispatchEvent(new Event('input',{bubbles:true}));
+     const scale=document.getElementById('vj-scale');
+     scale.value='155';scale.dispatchEvent(new Event('input',{bubbles:true}));
+     const rotation=document.getElementById('vj-rotation');
+     rotation.value='-75';rotation.dispatchEvent(new Event('input',{bubbles:true}));
+     const audio=document.getElementById('vj-audio');
+     audio.value='40';audio.dispatchEvent(new Event('input',{bubbles:true}));
+     document.querySelectorAll('.vj-layer-row')[3].querySelectorAll('.vj-clip')[6].click();
+     out.otherClipDefault=document.getElementById('vj-speed').value==='100'&&document.getElementById('vj-audio').value==='100';
+     speed.value='65';speed.dispatchEvent(new Event('input',{bubbles:true}));
+     document.querySelectorAll('.vj-layer-row')[2].querySelectorAll('.vj-clip')[6].click();
+     out.paramsRestored=Number(document.getElementById('vj-speed').value)===260
+       &&Number(document.getElementById('vj-scale').value)===155
+       &&Number(document.getElementById('vj-rotation').value)===-75
+       &&Number(document.getElementById('vj-audio').value)===40;
+     await new Promise(resolve=>setTimeout(resolve,550));
+     const prefs=await window.beatAPI.loadPreferences();
+     out.paramsSaved=prefs?.composition?.layers?.[2]?.clips?.[6]?.params?.speed===2.6
+       &&prefs?.composition?.layers?.[3]?.clips?.[6]?.params?.speed===.65;
+     document.getElementById('vj-reset').click();
+     out.paramsReset=document.getElementById('vj-speed').value==='100'&&document.getElementById('vj-rotation').value==='0';
      document.getElementById('fx-browser-open').click();
      out.panelOpened=!document.getElementById('fx-drawer').hidden;
      out.searchRows=document.querySelectorAll('.fx-result').length;
@@ -101,7 +155,7 @@ async function run(){
    return out;
  })()`,true);
  console.log('BEATSCOPE ELECTRON SMOKE RESULT '+JSON.stringify(state));
- for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,gridRows:state.gridRows===8,clipCells:state.clipCells===64,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,generatorCount:state.generatorCount===6,sourceOptions:state.generatorOptions?.length===10,sourceDraws:state.newGeneratorsDrawn?.every(Boolean),sourceDistinct:new Set(state.generatorHashes||[]).size===6,sourceGrid:state.newGridSources?.every(Boolean),library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
+ for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,gridRows:state.gridRows===8,clipCells:state.clipCells===64,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,generatorCount:state.generatorCount===6,sourceOptions:state.generatorOptions?.length===16,extraCount:state.extraGeneratorCount===6,extraDraws:state.extraGeneratorsDrawn?.every(Boolean),extraDistinct:new Set(state.extraGeneratorHashes||[]).size===6,extraGrid:state.extraGridSources?.every(Boolean),otherClipDefault:state.otherClipDefault,paramsRestored:state.paramsRestored,paramsSaved:state.paramsSaved,paramsReset:state.paramsReset,sourceDraws:state.newGeneratorsDrawn?.every(Boolean),sourceDistinct:new Set(state.generatorHashes||[]).size===6,sourceGrid:state.newGridSources?.every(Boolean),library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
  if(state.errors?.length)fail('Shader/UI errors: '+JSON.stringify(state.errors));
  await win.close();
 }

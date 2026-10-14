@@ -88,3 +88,11 @@ Elkészült a 8 réteg × 8 kliphely (64 hely) kezelőfelülete és az alapvető
 Hat különálló Canvas2D-algoritmus: **Neon Tunnel, Plasma Flow, Pulse Rings, Perspective Grid, Laser Fan, Warp Starfield**. A korábbi négy generátor változatlan marad, összesen **10 különböző vizuálforrás** választható az „Új klip” menüből, majd indítható a 8×8-as kliprácsban. Minden új forrás animálódik hang nélkül is, hang esetén a basszus, közép és magas tartományra reagál, és ugyanúgy részt vesz a több rétegből álló kompozícióban és a meglévő GPU FX-láncban.
 
 Az Alpha 2-ben még nincs új médiaimport, önálló klipszintű effektlánc vagy MIDI-kimenet. A Windows/Electron grafikus teszt megrajzolja mind a hat új generátort, összehasonlítja az eredményüket, és a kliprácsban is elindítja őket. Az Alpha 1 beállításai és rétegei kompatibilisek maradnak.
+
+## v0.4.0-alpha.3 — 3. rész: vizuálforrások és klipparaméterek
+
+További **6 új, önálló generátor**: Hex Matrix, Digital Rain, Ribbon Flow, Mandala Bloom, Firefly Cloud és Electric Arcs. Így a korábbi forrásokkal együtt 16 választható generátor működik.
+
+A **KLIP PARAMÉTEREK** panel az aktív réteg aktív klipjéhez tartozik: Speed 0,1–4×, Scale 40–200%, Rotation −180°–180° és Audio Reactivity 0–200%. A paraméterek **klipenként külön** vannak tárolva és az Electron-felhasználói beállításokba mentve; egy másik klip beállítása nem írja felül őket. A forgatás/méret a teljes klipre, a sebesség a belső animáció időalapjára, az érzékenység a hangvezérelt paraméterekre hat. Természetesen a Spectrum Bars vagy Waveform pillanatnyi megjelenését a sebesség nem gyorsítja, mert ezeknek nincs önálló időalapú animációja.
+
+A frissített Windowsos Electron grafikus teszt új forrásokat renderel, kipróbálja a kliprács indítását, valamint a paraméterek megőrzését, mentését és visszaállítását.
