@@ -4,12 +4,13 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 const Composition=require('./composition.js');
 const BeatClock=require('./beat-clock.js');
+const AutoScenes=require('./auto-scenes.js');
 const Media=require('./media-library.cjs');
 const {pathToFileURL}=require('node:url');
 protocol.registerSchemesAsPrivileged([{scheme:'beatscope-media',privileges:{standard:true,secure:true,stream:true,supportFetchAPI:true,corsEnabled:true}}]);
 
 const APP_TITLE = 'ForgeLabs BeatScope';
-const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.15, smooth:0.75, barCount:56, showGrid:true, micDevice:'default', volume:0.85, aiEnabled:false, aiSpeed:'balanced', aiPalette:false, fxStack:[], fxBypass:false, fxAuto:false, fxFavorites:[], composition:Composition.createComposition(), bpm:120, quantize:'off' });
+const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.15, smooth:0.75, barCount:56, showGrid:true, micDevice:'default', volume:0.85, aiEnabled:false, aiSpeed:'balanced', aiPalette:false, fxStack:[], fxBypass:false, fxAuto:false, fxFavorites:[], composition:Composition.createComposition(), bpm:120, quantize:'off',autoSceneMode:'sequential',autoSceneBars:4 });
 let window = null;
 const preferencesPath = () => path.join(app.getPath('userData'), 'beatscope-preferences.json');
 function validatePrefs(value) {
@@ -29,6 +30,8 @@ function validatePrefs(value) {
   if (value.composition !== undefined) out.composition=Composition.normalize(value.composition);
   if (typeof value.bpm==='number'&&Number.isFinite(value.bpm))out.bpm=BeatClock.normalizeBpm(value.bpm);
   if (BeatClock.QUANTIZATIONS.includes(value.quantize))out.quantize=value.quantize;
+  if (AutoScenes.MODES.includes(value.autoSceneMode))out.autoSceneMode=value.autoSceneMode;
+  if (AutoScenes.BAR_COUNTS.includes(value.autoSceneBars))out.autoSceneBars=value.autoSceneBars;
   if (typeof value.aiEnabled === 'boolean') out.aiEnabled = value.aiEnabled;
   if (typeof value.aiPalette === 'boolean') out.aiPalette = value.aiPalette;
   if (['calm','balanced','party'].includes(value.aiSpeed)) out.aiSpeed = value.aiSpeed;

@@ -63,7 +63,7 @@
       <div class="control-line"><label for="bars-count">Oszlopok</label><output id="bars-val">56</output></div>
       <input type="range" id="bars-count" min="16" max="128" value="56" step="8" />
       <label class="check-row"><input id="show-grid" type="checkbox" checked /><span>Finom háttérrács</span></label>
-      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α10</span></div>
+      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α11</span></div>
     </aside>
     <main class="workspace">
       <div class="workspace-top">
@@ -99,6 +99,33 @@
           <span class="vj-beat-leds" id="vj-beat-leds" aria-label="Négy ütemjelző"><i></i><i></i><i></i><i></i></span>
           <button type="button" id="vj-queue-cancel" disabled title="Összes várakozó klip- és jelenetindítás törlése">✕ Várakozás törlése</button>
         </div>
+      </section>
+      <section class="vj-auto" id="vj-auto" aria-label="Automatikus BPM-alapú jelenetváltás">
+        <div class="vj-auto-title">
+          <div><strong>AUTO SCENE DIRECTOR</strong><small id="vj-auto-status">Leállítva · a kézi vezérlés aktív</small></div>
+          <button type="button" id="vj-auto-toggle" aria-pressed="false">▶ AUTO START</button>
+        </div>
+        <div class="vj-auto-controls">
+          <label>Váltási mód
+            <select id="vj-auto-mode" aria-label="Automatikus jelenetváltás módja">
+              <option value="sequential">Sorrendben</option>
+              <option value="shuffle">Véletlenszerű (ismétlés nélkül)</option>
+            </select>
+          </label>
+          <label>Váltás ütemköze
+            <select id="vj-auto-bars" aria-label="Hány ütemenként váltson jelenetet">
+              <option value="1">1 bar / 4 beat</option>
+              <option value="2">2 bar / 8 beat</option>
+              <option value="4" selected>4 bar / 16 beat</option>
+              <option value="8">8 bar / 32 beat</option>
+            </select>
+          </label>
+          <div class="vj-auto-actions">
+            <button type="button" id="vj-scene-prev" title="Előző, nem üres jelenet">← Előző</button>
+            <button type="button" id="vj-scene-next" title="Következő, nem üres jelenet">Következő →</button>
+          </div>
+        </div>
+        <small class="vj-auto-hint">Csak kitöltött jelenetek között vált. A kézi klip- vagy jelenetindítás leállítja az automatikát.</small>
       </section>
       <section class="vj-deck" id="vj-deck" aria-label="VJ rétegek és klipek">
         <div class="vj-deck-header">
@@ -267,6 +294,7 @@
   <script src="src/ai-director.js"></script>
   <script src="src/video-timing.js"></script>
   <script src="src/beat-clock.js"></script>
+  <script src="src/auto-scenes.js"></script>
   <script src="src/composition.js"></script>
   <script src="src/generators.js"></script>
   <script src="src/generators-extra.js"></script>

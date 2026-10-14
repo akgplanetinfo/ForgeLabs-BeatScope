@@ -7,6 +7,7 @@
   const Composition=window.BeatComposition;
   const VideoTiming=window.BeatVideoTiming;
   const BeatClock=window.BeatClock;
+  const AutoScenes=window.BeatAutoScenes;
   const Generators=window.BeatGenerators;
   const ExtraGenerators=window.BeatExtraGenerators;
   let fxRenderer=null,fxDisabled=false,fxSelected=-1,fxFavFilter=false,fxAICount=0,fxLastSwitch=0,fxRecent=[];
@@ -31,7 +32,7 @@
     azure:['#4adcf8','#32a3f2','#9beeff'],mint:['#50f7bb','#1fb6b1','#bbffe0'],
     violet:['#c1a0ff','#7178f5','#f3c1ff'],sunset:['#ffc06c','#ff647c','#ffe2ae'],rainbow:['#45d8fc','#a85fff','#f2bc63']
   };
-  const settings={mode:'bars',palette:'azure',intensity:1.15,smooth:0.75,barCount:56,showGrid:true,micDevice:'default',volume:0.85,aiEnabled:false,aiSpeed:'balanced',aiPalette:false,fxStack:[],fxBypass:false,fxAuto:false,fxFavorites:[],composition:Composition.createComposition(),bpm:120,quantize:'off'};
+  const settings={mode:'bars',palette:'azure',intensity:1.15,smooth:0.75,barCount:56,showGrid:true,micDevice:'default',volume:0.85,aiEnabled:false,aiSpeed:'balanced',aiPalette:false,fxStack:[],fxBypass:false,fxAuto:false,fxFavorites:[],composition:Composition.createComposition(),bpm:120,quantize:'off',autoSceneMode:'sequential',autoSceneBars:4};
   let audioCtx=null,analyser=null,fileAnalyser=null,micSource=null,micStream=null,sourceNode=null,sourceMode='none',fileURL=null;
   let bins=new Uint8Array(1024),wave=new Uint8Array(2048),freq={bass:0,mids:0,highs:0,total:0,dominantHz:0};
   let rms=0,peak=0,pulse=0,lastPulse=0,sceneWidth=0,sceneHeight=0,dpr=1,lastMeters=0;
@@ -107,10 +108,12 @@
     return true;
   }
   function launchSceneNow(slot){
+    lastSceneSlot=slot;
     settings.composition=Composition.launchScene(settings.composition,slot);
     clipTouched=true;
   }
   function scheduleClip(row,slot){
+    stopAutoScenes();
     const now=performance.now();
     if(tempoClock.quantize==='off'){
       launchClipNow(row,slot);renderClipGrid();setSourceLabel();persist();return;
@@ -122,6 +125,7 @@
     renderClipGrid();refreshTempoUI(now);armWaitingTimer();persist();
   }
   function scheduleScene(slot){
+    stopAutoScenes();
     const now=performance.now();
     if(tempoClock.quantize==='off'){
       clearWaiting();launchSceneNow(slot);renderClipGrid();setSourceLabel();persist();return;
@@ -154,7 +158,7 @@
       const bpm=BeatClock.normalizeBpm(Number(event.target.value));
       tempoClock.setBpm(bpm,performance.now());
       settings.bpm=bpm;
-      reschedulePending(performance.now());refreshTempoUI();persist();
+      reschedulePending(performance.now());resetAutoDeadline();refreshTempoUI();persist();
     });
     $('vj-quantize').addEventListener('change',event=>{
       const quant=tempoClock.setQuantize(event.target.value);
@@ -165,18 +169,107 @@
       const now=performance.now(),result=tempoClock.tap(now);
       if(result!==null){
         settings.bpm=result;
-        reschedulePending(now);persist();
+        reschedulePending(now);resetAutoDeadline(now);persist();
       }
       refreshTempoUI(now);
     });
     $('vj-beat-reset').addEventListener('click',()=>{
       const now=performance.now();tempoClock.reset(now);
-      reschedulePending(now);refreshTempoUI(now);
+      reschedulePending(now);resetAutoDeadline(now);refreshTempoUI(now);
     });
     $('vj-queue-cancel').addEventListener('click',()=>{
       clearWaiting();renderClipGrid();refreshTempoUI();
     });
     refreshTempoUI();
+  }
+
+  let autoEnabled=false,autoTimer=null,autoDue=0,lastSceneSlot=-1;
+  function refreshAutoUI(now=performance.now()){
+    const remaining=autoEnabled?Math.max(0,(autoDue-now)/1000):0;
+    const slots=AutoScenes.sceneSlots(settings.composition);
+    const next=slots.length&&autoEnabled?
+      (settings.autoSceneMode==='shuffle'?'?':AutoScenes.chooseSlot(slots,lastSceneSlot,'sequential')):null;
+    $('vj-auto-status').textContent=autoEnabled?
+      ('Aktív · '+slots.length+' jelenet · következő '+(next===null?'–':next==='?'?'?':next+1)+' · '+remaining.toFixed(1)+' s'):
+      ('Leállítva · '+slots.length+' használható jelenet');
+    $('vj-auto-toggle').textContent=autoEnabled?'■ AUTO STOP':'▶ AUTO START';
+    $('vj-auto-toggle').setAttribute('aria-pressed',String(autoEnabled));
+    $('vj-auto-toggle').classList.toggle('active',autoEnabled);
+    $('vj-auto-mode').value=settings.autoSceneMode;
+    $('vj-auto-bars').value=String(settings.autoSceneBars);
+    $('vj-scene-prev').disabled=!slots.length;
+    $('vj-scene-next').disabled=!slots.length;
+  }
+  function clearAutoTimer(){
+    if(autoTimer!==null){clearTimeout(autoTimer);autoTimer=null;}
+  }
+  function stopAutoScenes(){
+    const wasEnabled=autoEnabled;
+    autoEnabled=false;autoDue=0;clearAutoTimer();
+    if(wasEnabled)refreshAutoUI();
+  }
+  function armAutoTimer(){
+    clearAutoTimer();
+    if(!autoEnabled)return;
+    autoTimer=setTimeout(()=>{
+      autoTimer=null;
+      tickAutoScenes(performance.now());
+    },Math.max(1,Math.ceil(autoDue-performance.now())));
+  }
+  function resetAutoDeadline(now=performance.now()){
+    if(!autoEnabled)return;
+    autoDue=AutoScenes.nextBoundary(now,tempoClock.origin,tempoClock.bpm,settings.autoSceneBars);
+    armAutoTimer();refreshAutoUI(now);
+  }
+  function tickAutoScenes(now=performance.now()){
+    if(!autoEnabled||now+0.001<autoDue)return;
+    const slots=AutoScenes.sceneSlots(settings.composition);
+    if(!slots.length){
+      stopAutoScenes();
+      notify('Nincs indítható jelenet az automatikus váltáshoz.',true);
+      return;
+    }
+    const target=AutoScenes.chooseSlot(slots,lastSceneSlot,settings.autoSceneMode);
+    if(target!==null){
+      launchSceneNow(target);
+      renderClipGrid();setSourceLabel();persist();
+    }
+    // Drop skipped ticks during heavy rendering; never trigger a burst of scene changes.
+    resetAutoDeadline(performance.now());
+  }
+  function manualAdvanceScene(direction){
+    const slots=AutoScenes.sceneSlots(settings.composition);
+    if(!slots.length){notify('Nincs kitöltött jelenet.',true);return;}
+    const next=direction<0?AutoScenes.previousSlot(slots,lastSceneSlot):
+      AutoScenes.chooseSlot(slots,lastSceneSlot,'sequential');
+    if(next===null)return;
+    clearWaiting();
+    launchSceneNow(next);
+    renderClipGrid();setSourceLabel();persist();
+    if(autoEnabled)resetAutoDeadline();
+  }
+  function bindAutoScenes(){
+    $('vj-auto-toggle').addEventListener('click',()=>{
+      if(autoEnabled){stopAutoScenes();return;}
+      if(!AutoScenes.sceneSlots(settings.composition).length){
+        notify('Az automatikus váltáshoz legalább egy kitöltött jelenet kell.',true);return;
+      }
+      clearWaiting();
+      autoEnabled=true;
+      resetAutoDeadline();
+      renderClipGrid();refreshAutoUI();
+    });
+    $('vj-auto-mode').addEventListener('change',event=>{
+      settings.autoSceneMode=AutoScenes.normalizeMode(event.target.value);
+      refreshAutoUI();persist();
+    });
+    $('vj-auto-bars').addEventListener('change',event=>{
+      settings.autoSceneBars=AutoScenes.normalizeBars(Number(event.target.value));
+      resetAutoDeadline();refreshAutoUI();persist();
+    });
+    $('vj-scene-next').addEventListener('click',()=>manualAdvanceScene(1));
+    $('vj-scene-prev').addEventListener('click',()=>manualAdvanceScene(-1));
+    refreshAutoUI();
   }
   function refreshLayerMixer(){
     const index=settings.composition.selectedLayer,layer=settings.composition.layers[index];
@@ -1229,7 +1322,8 @@
   function animate(t){
     requestAnimationFrame(animate);
     if(waitingCount())flushQueued(t);
-    if(t-lastTempoRefresh>90){lastTempoRefresh=t;refreshTempoUI(t);}
+    if(autoEnabled&&t>=autoDue)tickAutoScenes(t);
+    if(t-lastTempoRefresh>90){lastTempoRefresh=t;refreshTempoUI(t);if(autoEnabled)refreshAutoUI(t);}
     const active=(sourceMode==='mic'&&!!micStream)||(sourceMode==='file'&&!UI.audio.paused&&!UI.audio.ended);
     const hasVisuals=Composition.activeLayers(settings.composition).length>0;
     if(!active&&t-lastFrame<(hasVisuals?33:85))return;
@@ -1344,6 +1438,7 @@
   function bind(){
     initFXControls();
     bindTempo();
+    bindAutoScenes();
     $('vj-import-media').addEventListener('click',importClipMedia);
     for(const action of ['copy','cut','paste','duplicate','delete']){
       $('vj-'+action).addEventListener('click',()=>editClip(action));
@@ -1425,7 +1520,9 @@
     settings.composition=Composition.normalize(settings.composition);
     settings.bpm=tempoClock.setBpm(settings.bpm,performance.now());
     settings.quantize=tempoClock.setQuantize(settings.quantize);
-    refreshTempoUI();
+    settings.autoSceneMode=AutoScenes.normalizeMode(settings.autoSceneMode);
+    settings.autoSceneBars=AutoScenes.normalizeBars(settings.autoSceneBars);
+    refreshAutoUI();refreshTempoUI();
     renderClipGrid();
     fxSelected=settings.fxStack.length?0:-1;
     refreshFXStack();drawFXCatalog();

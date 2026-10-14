@@ -1,0 +1,53 @@
+'use strict';
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const Auto=require('../src/auto-scenes.js');
+const C=require('../src/composition.js');
+test('default auto scene values, accepted bar intervals and mode choices',()=>{
+ assert.deepEqual(Auto.MODES,['sequential','shuffle']);
+ assert.deepEqual(Auto.BAR_COUNTS,[1,2,4,8]);
+ assert.equal(Auto.normalizeMode('shuffle'),'shuffle');
+ assert.equal(Auto.normalizeMode('evil'),'sequential');
+ assert.equal(Auto.normalizeBars(1),1);
+ assert.equal(Auto.normalizeBars(8),8);
+ assert.equal(Auto.normalizeBars('8'),4);
+ assert.equal(Auto.normalizeBars(0),4);
+ assert.equal(Auto.intervalMs(120,1),2000);
+ assert.equal(Auto.intervalMs(240,2),2000);
+ assert.equal(Auto.intervalMs(120,8),16000);
+});
+test('auto scene sequence skips empty columns and wraps around',()=>{
+ const c=C.createComposition();
+ c.layers.forEach(layer=>layer.clips=Array(8).fill(null));
+ c.layers[0].clips[0]={source:'bars'};
+ c.layers[4].clips[3]={source:'laser'};
+ c.layers[7].clips[6]={source:'wave'};
+ const slots=Auto.sceneSlots(c);
+ assert.deepEqual(slots,[0,3,6]);
+ assert.equal(Auto.chooseSlot(slots,-1),0);
+ assert.equal(Auto.chooseSlot(slots,0),3);
+ assert.equal(Auto.chooseSlot(slots,3),6);
+ assert.equal(Auto.chooseSlot(slots,6),0);
+ assert.equal(Auto.previousSlot(slots,0),6);
+ assert.equal(Auto.previousSlot(slots,6),3);
+ assert.deepEqual(Auto.sceneSlots({layers:[]}),[]);
+ assert.equal(Auto.chooseSlot([],0),null);
+ assert.equal(Auto.previousSlot([],0),null);
+});
+test('shuffle excludes current scene when multiple are available',()=>{
+ const slots=[1,4,7];
+ assert.equal(Auto.chooseSlot(slots,4,'shuffle',()=>0),1);
+ assert.equal(Auto.chooseSlot(slots,4,'shuffle',()=>.999),7);
+ assert.equal(Auto.chooseSlot(slots,4,'shuffle',()=>.5),7);
+ assert.equal(Auto.chooseSlot([4],4,'shuffle',()=>0),4);
+ assert.equal(Auto.chooseSlot([1,1,-1,20,7],1,'sequential'),7);
+});
+test('auto scheduling hits next bar boundary, never earlier or as a burst',()=>{
+ assert.equal(Auto.nextBoundary(0,0,120,1),2000);
+ assert.equal(Auto.nextBoundary(2000,0,120,1),4000);
+ assert.equal(Auto.nextBoundary(1999,0,120,1),2000);
+ assert.equal(Auto.nextBoundary(3300,100,240,2),4100);
+ assert.equal(Auto.nextBoundary(5300,100,240,2),6100);
+ assert.equal(Auto.nextBoundary(3590,0,120,4),8000);
+ assert.equal(Auto.nextBoundary(8000,0,120,4),16000);
+});

@@ -170,3 +170,8 @@ BPM-, kvantálás- vagy fázismódosításkor a program újraszámolja a sorban 
 A kvantálást a BeatScope saját, stabil `performance.now()` óraalapja vezérli, és a klipek a rajzolási ciklusban indulnak. A megjelenítés és a fájl-/videólejátszás időzítésének pontossága a Windows ütemezőjétől és a videó dekódolásától függ; professzionális MIDI/Link/DJ beatgrid szinkron, automatikus ritmusfelismerés és sample-pontos indítás még nincs. A meglévő 16 generátor, klipmédia-import, Loop/In/Out/Speed, Clip FX, Layer FX és globális FX továbbra is működik.
 
 A tesztek validálják az ütemhatárok időszámítását, Tap Tempo becslést, a Windowsos Electron UI-n keresztül a sorba állított klip/jelenet késleltetett indítását, a várakozás törlését, a régi azonnali módot és a beállítások mentését.
+
+
+## v0.4.0-alpha.11 — Auto Scene Director
+
+Új, BPM-alapú automatikus jelenetváltás: Sorrendi vagy Shuffle mód, 1/2/4/8 bar időköz, kitöltetlen jelenetek kihagyása, Start/Stop, Előző/Következő, visszaszámlálás. A kézi klip- vagy Scene Launch megállítja az automatikát. BPM- és ütemfázis-változáskor újraszámolja a következő ütemhatárt. A választott mód és időköz mentődik, az aktív automatikus váltás újraindítás után nem indul magától. A rendszer offline működik belső BPM-órával.

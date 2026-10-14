@@ -215,3 +215,21 @@
 .vj-scene-trigger.pending{color:#ffe79a;background:#614922}
 .vj-clip.pending{color:#ffe3a2;background:#564a29}
 @media(max-width:1150px){.vj-tempo{gap:5px}.vj-tempo-controls{gap:5px}.vj-tempo-controls button{padding:6px}}
+
+
+/* v0.4 alpha 11: BPM-driven Auto Scene Director */
+.vj-auto{flex:0 0 auto;border:1px solid #42557c;border-radius:12px;background:linear-gradient(105deg,#182b44,#252843);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.vj-auto-title{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.vj-auto-title>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.vj-auto-title strong{font-size:11px;letter-spacing:.8px;color:#c6c0ff}
+.vj-auto-title small{font-size:10px;color:#b1b7df;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#vj-auto-toggle{padding:7px 12px;border-radius:7px;border:1px solid #7165ab;color:#e2dcff;background:#38345b;font-weight:750;font-size:10px;white-space:nowrap}
+#vj-auto-toggle.active{background:#18564d;border-color:#45b595;color:#d4fff0}
+.vj-auto-controls{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.vj-auto-controls label{display:flex;flex-direction:column;gap:4px;color:#bbc9e8;font-size:10px;min-width:135px;flex:1}
+.vj-auto-controls select{border:1px solid #59638b;border-radius:6px;background:#14263e;color:#e1efff;padding:7px;font-size:10px;width:100%}
+.vj-auto-actions{display:flex;gap:5px}
+.vj-auto-actions button{padding:7px 9px;border:1px solid #586b95;background:#27395e;color:#e2ebff;border-radius:6px;font-size:10px;white-space:nowrap}
+.vj-auto-actions button:disabled{opacity:.3}
+.vj-auto-hint{font-size:9px;color:#96aacc}
+@media(max-height:760px){.vj-auto{padding:7px;gap:5px}.vj-auto-hint{display:none}}
