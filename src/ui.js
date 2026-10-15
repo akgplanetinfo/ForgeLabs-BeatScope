@@ -43,6 +43,7 @@
   let frameCanvas=document.createElement('canvas'),frameLastSent=0,outputFrameError=false,frameBusy=false;
   frameCanvas.width=960;frameCanvas.height=540;
   const liveOutput=window.BeatLiveOutput.createController(window.beatAPI,()=>frameCanvas,()=>{});
+  window.__beatRtcDebug=()=>({...liveOutput.debug(),transport:settings.outputTransport,outputState});
   let outputSent=0,outputSkipped=0,outputFpsLast=performance.now(),outputFpsCount=0;
   function refreshOutputQuality(){
     for(const [key,id] of [['outputResolution','output-resolution'],['outputFps','output-fps'],['outputQuality','output-quality']])
