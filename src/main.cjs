@@ -11,7 +11,7 @@ const {pathToFileURL}=require('node:url');
 protocol.registerSchemesAsPrivileged([{scheme:'beatscope-media',privileges:{standard:true,secure:true,stream:true,supportFetchAPI:true,corsEnabled:true}}]);
 
 const APP_TITLE = 'ForgeLabs BeatScope';
-const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.15, smooth:0.75, barCount:56, showGrid:true, micDevice:'default', volume:0.85, aiEnabled:false, aiSpeed:'balanced', aiPalette:false, fxStack:[], fxBypass:false, fxAuto:false, fxFavorites:[], composition:Composition.createComposition(), bpm:120, quantize:'off',autoSceneMode:'sequential',autoSceneBars:4 });
+const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.15, smooth:0.75, barCount:56, showGrid:true, micDevice:'default', volume:0.85, aiEnabled:false, aiSpeed:'balanced', aiPalette:false, fxStack:[], fxBypass:false, fxAuto:false, fxFavorites:[], composition:Composition.createComposition(), bpm:120, quantize:'off',autoSceneMode:'sequential',autoSceneBars:4, ...Output.DEFAULT_CONFIG });
 let window = null;
 let previewWindow=null,outputWindow=null;
 let selectedDisplayId=null,lastFrame=null,lastFrameSent=0;
@@ -35,6 +35,7 @@ function validatePrefs(value) {
   if (BeatClock.QUANTIZATIONS.includes(value.quantize))out.quantize=value.quantize;
   if (AutoScenes.MODES.includes(value.autoSceneMode))out.autoSceneMode=value.autoSceneMode;
   if (AutoScenes.BAR_COUNTS.includes(value.autoSceneBars))out.autoSceneBars=value.autoSceneBars;
+  Object.assign(out,Output.normalizeConfig(value));
   if (typeof value.aiEnabled === 'boolean') out.aiEnabled = value.aiEnabled;
   if (typeof value.aiPalette === 'boolean') out.aiPalette = value.aiPalette;
   if (['calm','balanced','party'].includes(value.aiSpeed)) out.aiSpeed = value.aiSpeed;
@@ -205,7 +206,7 @@ app.whenReady().then(()=>{
   ipcMain.on('beatscope:push-frame',(event,frame)=>{
     if(!trustedController(event)||!Output.validFrame(frame))return;
     const now=Date.now();
-    if(now-lastFrameSent<56)return; // Cap IPC traffic and memory churn.
+    if(now-lastFrameSent<30)return; // Hard 33 FPS ceiling even if renderer misbehaves.
     lastFrameSent=now;lastFrame=frame;
     for(const view of [previewWindow,outputWindow]){
       if(view&&!view.isDestroyed()&&!view.webContents.isDestroyed()&&!view.webContents.isLoading())

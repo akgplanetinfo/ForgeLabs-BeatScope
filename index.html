@@ -63,7 +63,7 @@
       <div class="control-line"><label for="bars-count">Oszlopok</label><output id="bars-val">56</output></div>
       <input type="range" id="bars-count" min="16" max="128" value="56" step="8" />
       <label class="check-row"><input id="show-grid" type="checkbox" checked /><span>Finom háttérrács</span></label>
-      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α12</span></div>
+      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α13</span></div>
     </aside>
     <main class="workspace">
       <div class="workspace-top">
@@ -80,7 +80,27 @@
           <button type="button" id="open-output">▣ VJ Output indítása</button>
           <button type="button" id="close-output" disabled>Kimenet leállítása</button>
         </div>
-        <small>Előnézet: külön ablak. Másodlagos kijelző: teljes képernyős kimenet. Kilépés a kimenetből: Esc.</small>
+        <div class="output-quality-controls">
+          <label>Felbontás
+            <select id="output-resolution" aria-label="Kimeneti továbbítás felbontása">
+              <option value="540">960 × 540 (gyors)</option>
+              <option value="720">1280 × 720 (HD)</option>
+              <option value="1080">1920 × 1080 (Full HD)</option>
+            </select>
+          </label>
+          <label>Képfrissítés
+            <select id="output-fps" aria-label="Kimeneti képfrissítés célértéke">
+              <option value="12">12 FPS</option><option value="24">24 FPS</option><option value="30">30 FPS</option>
+            </select>
+          </label>
+          <label>JPEG-minőség
+            <select id="output-quality" aria-label="Kimeneti JPEG képminősége">
+              <option value="65">65% – takarékos</option><option value="80" selected>80% – normál</option><option value="90">90% – részletes</option>
+            </select>
+          </label>
+          <span id="output-performance" aria-live="off">Tényleges: – FPS · nincs kimenet</span>
+        </div>
+        <small>Az aszinkron képkódolás kihagyja a felgyülemlő képkockákat. A Full HD felskálázás lehet; valódi sebesség a géptől függ. Esc: kimenet bezárása.</small>
       </section>
       <div class="visual-shell" id="visual-shell">
         <div class="visual-head"><div class="visual-tag"><span class="small-status-dot" id="live-dot"></span><span id="mode-label">SPECTRUM / REAL TIME</span></div><div class="visual-options"><span id="sample-info">FFT 2048 · Várakozás</span><span class="signal-badge" id="source-tag">NO INPUT</span></div></div>

@@ -32,7 +32,7 @@
     azure:['#4adcf8','#32a3f2','#9beeff'],mint:['#50f7bb','#1fb6b1','#bbffe0'],
     violet:['#c1a0ff','#7178f5','#f3c1ff'],sunset:['#ffc06c','#ff647c','#ffe2ae'],rainbow:['#45d8fc','#a85fff','#f2bc63']
   };
-  const settings={mode:'bars',palette:'azure',intensity:1.15,smooth:0.75,barCount:56,showGrid:true,micDevice:'default',volume:0.85,aiEnabled:false,aiSpeed:'balanced',aiPalette:false,fxStack:[],fxBypass:false,fxAuto:false,fxFavorites:[],composition:Composition.createComposition(),bpm:120,quantize:'off',autoSceneMode:'sequential',autoSceneBars:4};
+  const settings={mode:'bars',palette:'azure',intensity:1.15,smooth:0.75,barCount:56,showGrid:true,micDevice:'default',volume:0.85,aiEnabled:false,aiSpeed:'balanced',aiPalette:false,fxStack:[],fxBypass:false,fxAuto:false,fxFavorites:[],composition:Composition.createComposition(),bpm:120,quantize:'off',autoSceneMode:'sequential',autoSceneBars:4,outputResolution:540,outputFps:12,outputQuality:80};
   let audioCtx=null,analyser=null,fileAnalyser=null,micSource=null,micStream=null,sourceNode=null,sourceMode='none',fileURL=null;
   let bins=new Uint8Array(1024),wave=new Uint8Array(2048),freq={bass:0,mids:0,highs:0,total:0,dominantHz:0};
   let rms=0,peak=0,pulse=0,lastPulse=0,sceneWidth=0,sceneHeight=0,dpr=1,lastMeters=0;
@@ -40,7 +40,21 @@
   const supported=Boolean(window.AudioContext||window.webkitAudioContext);
 
   let outputState={preview:false,output:false,displayId:null,displays:[]};
-  let frameCanvas=null,frameLastSent=0,outputFrameError=false;
+  let frameCanvas=null,frameLastSent=0,outputFrameError=false,frameBusy=false;
+  let outputSent=0,outputSkipped=0,outputFpsLast=performance.now(),outputFpsCount=0;
+  function refreshOutputQuality(){
+    for(const [key,id] of [['outputResolution','output-resolution'],['outputFps','output-fps'],['outputQuality','output-quality']])
+      $(id).value=String(settings[key]);
+  }
+  function outputStatsTick(now=performance.now()){
+    if(now-outputFpsLast<1000)return;
+    const seconds=(now-outputFpsLast)/1000;
+    const measured=(outputFpsCount/seconds).toFixed(1);
+    $('output-performance').textContent=outputState.preview||outputState.output?
+      ('Tényleges: '+measured+' FPS · '+outputSkipped+' kihagyott képkocka'):
+      'Tényleges: – FPS · nincs kimenet';
+    outputFpsLast=now;outputFpsCount=0;
+  }
   function updateOutputUI(next){
     if(!next||typeof next!=='object')return;
     outputState={...outputState,...next};
@@ -71,6 +85,20 @@
   function bindOutputs(){
     window.beatAPI?.onOutputStatus(updateOutputUI);
     $('refresh-displays').addEventListener('click',refreshOutputs);
+    for(const [key,id,valid] of [
+      ['outputResolution','output-resolution',[540,720,1080]],
+      ['outputFps','output-fps',[12,24,30]],
+      ['outputQuality','output-quality',[65,80,90]]
+    ]){
+      $(id).addEventListener('change',event=>{
+        const value=Number(event.target.value);
+        if(!valid.includes(value))return;
+        settings[key]=value;
+        frameLastSent=0;
+        refreshOutputQuality();
+        persist();
+      });
+    }
     for(const kind of ['preview','output']){
       $('open-'+kind).addEventListener('click',async()=>{
         try{
@@ -86,22 +114,50 @@
     refreshOutputs();
   }
   function sendVisualFrame(t){
-    if(!(outputState.preview||outputState.output)||t-frameLastSent<83)return;
+    outputStatsTick(t);
+    if(!(outputState.preview||outputState.output))return;
+    const interval=1000/settings.outputFps;
+    if(t-frameLastSent<interval)return;
+    if(frameBusy){outputSkipped++;return;} // Never queue encoded frames on a busy GPU/CPU.
     frameLastSent=t;
+    frameBusy=true;
+    const fail=e=>{
+      frameBusy=false;
+      if(!outputFrameError){
+        outputFrameError=true;
+        notify('Kimeneti képkódolási hiba: '+(e?.message||'ismeretlen hiba'),true);
+      }
+    };
     try{
       const original=!fxCanvas.hidden?fxCanvas:UI.canvas;
-      if(!original.width||!original.height)return;
-      const scale=Math.min(1,960/original.width,540/original.height);
-      const w=Math.max(1,Math.round(original.width*scale));
-      const h=Math.max(1,Math.round(original.height*scale));
+      if(!original.width||!original.height){frameBusy=false;return;}
+      const h=settings.outputResolution,w=Math.round(h*16/9);
       if(!frameCanvas)frameCanvas=document.createElement('canvas');
-      if(frameCanvas.width!==w||frameCanvas.height!==h){frameCanvas.width=w;frameCanvas.height=h;}
+      if(frameCanvas.width!==w||frameCanvas.height!==h){
+        frameCanvas.width=w;frameCanvas.height=h;
+      }
       const frameCtx=frameCanvas.getContext('2d',{alpha:false});
-      frameCtx.drawImage(original,0,0,w,h);
-      window.beatAPI.pushOutputFrame(frameCanvas.toDataURL('image/jpeg',.8));
-    }catch(e){
-      if(!outputFrameError){outputFrameError=true;notify('Kimeneti képküldési hiba: '+e.message,true);}
-    }
+      frameCtx.fillStyle='#000';frameCtx.fillRect(0,0,w,h);
+      const scale=Math.min(w/original.width,h/original.height);
+      const dw=original.width*scale,dh=original.height*scale;
+      frameCtx.drawImage(original,(w-dw)/2,(h-dh)/2,dw,dh);
+      frameCanvas.toBlob(blob=>{
+        if(!blob||blob.type!=='image/jpeg'){fail(new Error('JPEG kódolás sikertelen.'));return;}
+        const reader=new FileReader();
+        reader.onerror=()=>fail(reader.error);
+        reader.onload=()=>{
+          frameBusy=false;
+          if(!(outputState.preview||outputState.output))return;
+          if(typeof reader.result!=='string'||reader.result.length>6_500_000){
+            fail(new Error('A JPEG-képkocka túl nagy. Csökkentsd a minőséget.'));
+            return;
+          }
+          window.beatAPI.pushOutputFrame(reader.result);
+          outputSent++;outputFpsCount++;
+        };
+        reader.readAsDataURL(blob);
+      },'image/jpeg',settings.outputQuality/100);
+    }catch(e){fail(e);}
   }
   function notify(message,error=false){
     const div=document.createElement('div');div.className='toast'+(error?' error':'');div.textContent=message;
@@ -1589,6 +1645,7 @@
     settings.autoSceneMode=AutoScenes.normalizeMode(settings.autoSceneMode);
     settings.autoSceneBars=AutoScenes.normalizeBars(settings.autoSceneBars);
     refreshAutoUI();refreshTempoUI();
+    refreshOutputQuality();
     renderClipGrid();
     fxSelected=settings.fxStack.length?0:-1;
     refreshFXStack();drawFXCatalog();

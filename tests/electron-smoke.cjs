@@ -541,6 +541,34 @@ async function run(){
   if(!frames||frames.accepted<1||frames.painted<1)fail('Output did not receive or paint frames: '+JSON.stringify(frames));
   if(displays.length===1&&output.isFullScreen())fail('Output hijacked primary monitor in full-screen mode');
  }
+
+ // Validate all three output resolutions in actual BrowserWindows with asynchronous JPEG encoding.
+ const qualityDefaults=await win.webContents.executeJavaScript("({resolution:document.getElementById('output-resolution').value,fps:document.getElementById('output-fps').value,quality:document.getElementById('output-quality').value})");
+ if(qualityDefaults.resolution!=='540'||qualityDefaults.fps!=='12'||qualityDefaults.quality!=='80')
+   fail('Legacy output defaults did not migrate correctly: '+JSON.stringify(qualityDefaults));
+ const readStats=async w=>w?.webContents.executeJavaScript("window.__beatOutputStats?.()");
+ const before720=await readStats(output);
+ await win.webContents.executeJavaScript("(()=>{for(const [id,value] of [['output-resolution','720'],['output-fps','24'],['output-quality','90']]){const select=document.getElementById(id);select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));}})()");
+ await new Promise(resolve=>setTimeout(resolve,1500));
+ const at720=await readStats(output);
+ const preview720=await readStats(preview);
+ if(!at720||at720.sourceWidth!==1280||at720.sourceHeight!==720||
+    !preview720||preview720.sourceWidth!==1280||preview720.sourceHeight!==720)
+   fail('HD frame not decoded in both windows: '+JSON.stringify({at720,preview720}));
+ if(!(at720.accepted>before720.accepted))fail('Async encoder not streaming after quality changes');
+ await win.webContents.executeJavaScript("(()=>{document.getElementById('output-resolution').value='1080';document.getElementById('output-resolution').dispatchEvent(new Event('change',{bubbles:true}));document.getElementById('output-fps').value='30';document.getElementById('output-fps').dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await new Promise(resolve=>setTimeout(resolve,1700));
+ const at1080=await readStats(output);
+ if(!at1080||at1080.sourceWidth!==1920||at1080.sourceHeight!==1080)
+   fail('Full HD output size not delivered: '+JSON.stringify(at1080));
+ const measuredLabel=await win.webContents.executeJavaScript("document.getElementById('output-performance').textContent");
+ if(!measuredLabel.includes('Tényleges:')||!measuredLabel.includes('FPS'))
+   fail('Actual FPS/skip indicator missing: '+measuredLabel);
+ await new Promise(resolve=>setTimeout(resolve,480));
+ const savedQuality=await win.webContents.executeJavaScript("window.beatAPI.loadPreferences()");
+ if(savedQuality.outputResolution!==1080||savedQuality.outputFps!==30||savedQuality.outputQuality!==90)
+   fail('Output resolution/FPS/JPEG settings did not persist: '+JSON.stringify(savedQuality));
+ details.push('HD OUTPUT: 720p in two windows, 1080p decoded; settings persisted, '+measuredLabel);
  if(viewWindows.length!==2)fail('Expected two independent output/preview windows, got '+viewWindows.length);
  const checked=await win.webContents.executeJavaScript("window.beatAPI.outputState()");
  if(!checked.preview||!checked.output)fail('Output status IPC not updated: '+JSON.stringify(checked));
@@ -551,5 +579,5 @@ async function run(){
  details.push('OUTPUT TEST: displays='+displays.length+', preview and VJ output received live frames and closed');
  await win.close();
 }
-const timeout=setTimeout(()=>{fail('Electron renderer smoke test timed out');process.stderr.write(details.join('\n')+'\n');app.exit(1);},68000);
+const timeout=setTimeout(()=>{fail('Electron renderer smoke test timed out');process.stderr.write(details.join('\n')+'\n');app.exit(1);},78000);
 app.whenReady().then(run).then(()=>{clearTimeout(timeout);console.log(details.join('\n'));app.exit(failed?1:0);}).catch(e=>{clearTimeout(timeout);console.error('Smoke crashed:',e.stack);app.exit(1);});

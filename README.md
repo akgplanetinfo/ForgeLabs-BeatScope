@@ -185,3 +185,15 @@ Másodlagos kijelzőn a kimenet a kijelző területét kitölti, teljes képerny
 **Fontos jelenlegi határ:** a végleges frame maximum 960×540 felbontású, 80%-os minőségű JPEG formában jut el IPC-n keresztül a külön ablakokhoz, nagyjából legfeljebb 12 FPS sebességgel; az ablakok arányhelyesen, fekete szélekkel tölthetik ki a kijelzőt. Ez működő első, ellenőrizhető VJ-kimenet, de **nem natív, nagy felbontású, alacsony késleltetésű GPU-kimenet és nem Resolume-szintű 60 FPS**. A minőség és sebesség növeléséhez jövőbeli közvetlen GPU-megosztás vagy MediaStream-alapú továbbítás kell.
 
 Automatizált ellenőrzés: kijelzőlista, előnézet és Output önálló Electron BrowserWindow-ként, mindkét ablak JPEG-képkockákat kap és kirajzol, állapotjelzés, megfelelő bezárás, saját felhasználós Windows EXE csomagolás.
+
+## v0.4.0-alpha.13 — 13. rész: VJ Output HD, FPS és teljesítmény
+
+A **VJ OUTPUT ROUTING** panelen külön választható a kimeneti képméret (**960×540**, **1280×720**, **1920×1080**), a megcélzott frissítés (**12**, **24** vagy **30 FPS**) és a JPEG-képminőség (**65%**, **80%**, **90%**). Az alapértelmezés 540p / 12 FPS / 80%, hogy a régi munkamenetek és lassabb gépek megmaradjanak.
+
+A képkockát a fő alkalmazás Canvas-rétegből vagy globális effektet tartalmazó WebGL-kimenetből a választott 16:9 vászonra helyezi. Az eredeti képarány megmarad; szükség esetén fekete szélek jelennek meg, vagy felskálázza a forrásképet. A választott Full HD méret **nem jelenti automatikusan a vizualizátor natív 1080p renderelését**.
+
+A küldő a korábbi szinkron JPEG `toDataURL` helyett aszinkron `toBlob` → `FileReader` folyamatot használ. **Legfeljebb egy képkockát kódol egyszerre**; ha a kódoló vagy a gép túlterhelt, kihagyja a köztes képkockákat, nem épít fel RAM-ban várakozó sort. A fő Electron-folyamat maximum körülbelül 33 FPS-t enged át, és legfeljebb 6,5 MB-os, JPEG-nek formázott üzeneteket fogad el. A képfogadó továbbra is csak a legfrissebb dekódolható képkockát tartja meg, külön előnézeti és programkimeneti ablakban. A kimeneti panel **tényleges elküldött FPS** és **kihagyott képkocka** számlálót mutat.
+
+A felbontás, megcélzott FPS és minőség a meglévő helyi beállításfájlba kerül; újraindítás után megmarad. A régebbi Alpha 12 felhasználói fájlok automatikusan az eredeti 540p/12/80 értékeket kapják. Az új Windows-teszt tényleges előnézeti és kimeneti ablakot nyit, ellenőrzi a 720p és 1080p JPEG képkockák dekódolt méretét, az FPS-megjelenítést és a mentést.
+
+**Korlát:** az IPC-n továbbított JPEG képkockák nem natív megosztott GPU-textúrák. A 30 FPS megcélzott maximum; az alkalmazás, az effektek, a dekódolás és a grafikus kártya teljesítménye alapján a tényleges FPS kevesebb lehet. Nagy felbontáson és két nyitott kimeneten a késleltetés továbbra is nagyobb lehet a professzionális VJ-rendszerekénél.
