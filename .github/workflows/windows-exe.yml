@@ -2,7 +2,7 @@ name: ForgeLabs BeatScope Windows EXE
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'feature/vj-live-stream-alpha14']
     paths-ignore:
       - '**/*.md'
   workflow_dispatch:

@@ -32,7 +32,7 @@
     azure:['#4adcf8','#32a3f2','#9beeff'],mint:['#50f7bb','#1fb6b1','#bbffe0'],
     violet:['#c1a0ff','#7178f5','#f3c1ff'],sunset:['#ffc06c','#ff647c','#ffe2ae'],rainbow:['#45d8fc','#a85fff','#f2bc63']
   };
-  const settings={mode:'bars',palette:'azure',intensity:1.15,smooth:0.75,barCount:56,showGrid:true,micDevice:'default',volume:0.85,aiEnabled:false,aiSpeed:'balanced',aiPalette:false,fxStack:[],fxBypass:false,fxAuto:false,fxFavorites:[],composition:Composition.createComposition(),bpm:120,quantize:'off',autoSceneMode:'sequential',autoSceneBars:4,outputResolution:540,outputFps:12,outputQuality:80};
+  const settings={mode:'bars',palette:'azure',intensity:1.15,smooth:0.75,barCount:56,showGrid:true,micDevice:'default',volume:0.85,aiEnabled:false,aiSpeed:'balanced',aiPalette:false,fxStack:[],fxBypass:false,fxAuto:false,fxFavorites:[],composition:Composition.createComposition(),bpm:120,quantize:'off',autoSceneMode:'sequential',autoSceneBars:4,outputResolution:540,outputFps:12,outputQuality:80,outputTransport:'jpeg'};
   let audioCtx=null,analyser=null,fileAnalyser=null,micSource=null,micStream=null,sourceNode=null,sourceMode='none',fileURL=null;
   let bins=new Uint8Array(1024),wave=new Uint8Array(2048),freq={bass:0,mids:0,highs:0,total:0,dominantHz:0};
   let rms=0,peak=0,pulse=0,lastPulse=0,sceneWidth=0,sceneHeight=0,dpr=1,lastMeters=0;
@@ -40,18 +40,23 @@
   const supported=Boolean(window.AudioContext||window.webkitAudioContext);
 
   let outputState={preview:false,output:false,displayId:null,displays:[]};
-  let frameCanvas=null,frameLastSent=0,outputFrameError=false,frameBusy=false;
+  let frameCanvas=document.createElement('canvas'),frameLastSent=0,outputFrameError=false,frameBusy=false;
+  frameCanvas.width=960;frameCanvas.height=540;
+  const liveOutput=window.BeatLiveOutput.createController(window.beatAPI,()=>frameCanvas,()=>{});
+  window.__beatRtcDebug=()=>({...liveOutput.debug(),transport:settings.outputTransport,outputState});
   let outputSent=0,outputSkipped=0,outputFpsLast=performance.now(),outputFpsCount=0;
   function refreshOutputQuality(){
     for(const [key,id] of [['outputResolution','output-resolution'],['outputFps','output-fps'],['outputQuality','output-quality']])
       $(id).value=String(settings[key]);
+    $('output-transport').value=settings.outputTransport;
+    $('output-fps').querySelector('[value="60"]').disabled=settings.outputTransport!=='webrtc';
   }
   function outputStatsTick(now=performance.now()){
     if(now-outputFpsLast<1000)return;
     const seconds=(now-outputFpsLast)/1000;
     const measured=(outputFpsCount/seconds).toFixed(1);
     $('output-performance').textContent=outputState.preview||outputState.output?
-      ('Tényleges: '+measured+' FPS · '+outputSkipped+' kihagyott képkocka'):
+      ((settings.outputTransport==='webrtc'?'Kért videófrissítés: ':'Tényleges: ')+measured+' FPS · '+outputSkipped+' kihagyott képkocka'):
       'Tényleges: – FPS · nincs kimenet';
     outputFpsLast=now;outputFpsCount=0;
   }
@@ -77,6 +82,7 @@
     $('open-output').disabled=!!outputState.output||!select.options.length;
     $('output-status').textContent=(outputState.preview?'Előnézet aktív':'Előnézet kikapcsolva')+
       ' · '+(outputState.output?'VJ-kimenet aktív':'VJ-kimenet kikapcsolva');
+    liveOutput.sync(outputState,settings.outputTransport==='webrtc');
   }
   async function refreshOutputs(){
     try{updateOutputUI(await window.beatAPI.outputState());}
@@ -84,17 +90,27 @@
   }
   function bindOutputs(){
     window.beatAPI?.onOutputStatus(updateOutputUI);
+    window.beatAPI?.onStreamSignal(message=>liveOutput.onSignal(message).catch(()=>{}));
+    $('output-transport').addEventListener('change',event=>{
+      if(!['jpeg','webrtc'].includes(event.target.value))return;
+      settings.outputTransport=event.target.value;
+      if(settings.outputTransport==='jpeg'&&settings.outputFps===60)settings.outputFps=30;
+      frameLastSent=0;
+      liveOutput.sync(outputState,settings.outputTransport==='webrtc');
+      refreshOutputQuality();persist();
+    });
     $('refresh-displays').addEventListener('click',refreshOutputs);
     for(const [key,id,valid] of [
       ['outputResolution','output-resolution',[540,720,1080]],
-      ['outputFps','output-fps',[12,24,30]],
+      ['outputFps','output-fps',[12,24,30,60]],
       ['outputQuality','output-quality',[65,80,90]]
     ]){
       $(id).addEventListener('change',event=>{
         const value=Number(event.target.value);
-        if(!valid.includes(value))return;
+        if(!valid.includes(value)||key==='outputFps'&&value===60&&settings.outputTransport!=='webrtc')return;
         settings[key]=value;
         frameLastSent=0;
+        if(settings.outputTransport==='webrtc')liveOutput.restart(outputState);
         refreshOutputQuality();
         persist();
       });
@@ -141,6 +157,12 @@
       const scale=Math.min(w/original.width,h/original.height);
       const dw=original.width*scale,dh=original.height*scale;
       frameCtx.drawImage(original,(w-dw)/2,(h-dh)/2,dw,dh);
+      if(settings.outputTransport==='webrtc'){
+        liveOutput.frameReady();
+        if(liveOutput.isReady(outputState)){
+          frameBusy=false;outputSent++;outputFpsCount++;return;
+        }
+      }
       frameCanvas.toBlob(blob=>{
         if(!blob||blob.type!=='image/jpeg'){fail(new Error('JPEG kódolás sikertelen.'));return;}
         const reader=new FileReader();
@@ -1631,7 +1653,7 @@
     window.addEventListener('dragover',e=>{e.preventDefault();document.body.classList.add('drag-over');});
     window.addEventListener('dragleave',e=>{if(!e.relatedTarget)document.body.classList.remove('drag-over');});
     window.addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('drag-over');const file=[...e.dataTransfer.files].find(f=>f.type.startsWith('audio/')||/\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(f.name));if(file)loadFile(file);else notify('Húzz ide egy zenefájlt.',true);});
-    window.addEventListener('beforeunload',()=>{stopMic();if(fileURL)URL.revokeObjectURL(fileURL);for(const item of mediaPlayers.values())stopMediaPlayer(item);mediaPlayers.clear();});
+    window.addEventListener('beforeunload',()=>{liveOutput.close();stopMic();if(fileURL)URL.revokeObjectURL(fileURL);for(const item of mediaPlayers.values())stopMediaPlayer(item);mediaPlayers.clear();});
     window.addEventListener('resize',sizeCanvas);
   }
   async function init(){
@@ -1646,6 +1668,7 @@
     settings.autoSceneBars=AutoScenes.normalizeBars(settings.autoSceneBars);
     refreshAutoUI();refreshTempoUI();
     refreshOutputQuality();
+    liveOutput.sync(outputState,settings.outputTransport==='webrtc');
     renderClipGrid();
     fxSelected=settings.fxStack.length?0:-1;
     refreshFXStack();drawFXCatalog();

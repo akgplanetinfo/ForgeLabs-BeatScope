@@ -81,6 +81,12 @@
           <button type="button" id="close-output" disabled>Kimenet leállítása</button>
         </div>
         <div class="output-quality-controls">
+          <label>Képátvitel
+            <select id="output-transport" aria-label="VJ képátvitel módja">
+              <option value="jpeg">JPEG – kompatibilis</option>
+              <option value="webrtc">WebRTC – gyorsított (beta)</option>
+            </select>
+          </label>
           <label>Felbontás
             <select id="output-resolution" aria-label="Kimeneti továbbítás felbontása">
               <option value="540">960 × 540 (gyors)</option>
@@ -90,7 +96,7 @@
           </label>
           <label>Képfrissítés
             <select id="output-fps" aria-label="Kimeneti képfrissítés célértéke">
-              <option value="12">12 FPS</option><option value="24">24 FPS</option><option value="30">30 FPS</option>
+              <option value="12">12 FPS</option><option value="24">24 FPS</option><option value="30">30 FPS</option><option value="60">60 FPS (WebRTC)</option>
             </select>
           </label>
           <label>JPEG-minőség
@@ -100,7 +106,7 @@
           </label>
           <span id="output-performance" aria-live="off">Tényleges: – FPS · nincs kimenet</span>
         </div>
-        <small>Az aszinkron képkódolás kihagyja a felgyülemlő képkockákat. A Full HD felskálázás lehet; valódi sebesség a géptől függ. Esc: kimenet bezárása.</small>
+        <small>WebRTC: helyi, közvetlenebb videóátvitel JPEG-képkockák helyett; kapcsolódási hiba esetén JPEG-re vált vissza. A 60 FPS célérték, nem garancia. Esc: kimenet bezárása.</small>
       </section>
       <div class="visual-shell" id="visual-shell">
         <div class="visual-head"><div class="visual-tag"><span class="small-status-dot" id="live-dot"></span><span id="mode-label">SPECTRUM / REAL TIME</span></div><div class="visual-options"><span id="sample-info">FFT 2048 · Várakozás</span><span class="signal-badge" id="source-tag">NO INPUT</span></div></div>
@@ -331,6 +337,7 @@
   <script src="src/generators.js"></script>
   <script src="src/generators-extra.js"></script>
   <script src="src/fx-engine.js"></script>
+  <script src="src/live-output.js"></script>
   <script src="src/ui.js"></script>
 </body>
 </html>

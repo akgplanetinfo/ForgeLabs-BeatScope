@@ -583,6 +583,22 @@ async function run(){
  if(savedQuality.outputResolution!==1080||savedQuality.outputFps!==30||savedQuality.outputQuality!==90)
    fail('Output resolution/FPS/JPEG settings did not persist: '+JSON.stringify(savedQuality));
  details.push('HD OUTPUT: 720p in two windows, 1080p decoded; settings persisted, '+measuredLabel);
+ // Switch from the legacy JPEG relay to the opt-in local WebRTC video track.
+ const beforeRtcOutput=await readStats(output),beforeRtcPreview=await readStats(preview);
+ await win.webContents.executeJavaScript("(()=>{const mode=document.getElementById('output-transport');mode.value='webrtc';mode.dispatchEvent(new Event('change',{bubbles:true}));const fps=document.getElementById('output-fps');fps.value='60';fps.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ const rtcOutput=await waitFrame(output,x=>x.mode==='webrtc'&&x.painted>beforeRtcOutput.painted+1,16000);
+ const rtcPreview=await waitFrame(preview,x=>x.mode==='webrtc'&&x.painted>beforeRtcPreview.painted+1,14000);
+ if(!rtcOutput||rtcOutput.mode!=='webrtc'||rtcOutput.painted<=beforeRtcOutput.painted+1||
+    !rtcPreview||rtcPreview.mode!=='webrtc'||rtcPreview.painted<=beforeRtcPreview.painted+1)
+   fail('WebRTC transport did not produce live frames in both real BrowserWindows: '+JSON.stringify({rtcOutput,rtcPreview,source:await win.webContents.executeJavaScript("window.__beatRtcDebug?.()"),routing:await win.webContents.executeJavaScript("window.beatAPI.outputState()"),supported:await win.webContents.executeJavaScript("({peer:typeof RTCPeerConnection,stream:typeof HTMLCanvasElement.prototype.captureStream})")}));
+ const selectedRtc=await win.webContents.executeJavaScript("({mode:document.getElementById('output-transport').value,fps:document.getElementById('output-fps').value})");
+ if(selectedRtc.mode!=='webrtc'||selectedRtc.fps!=='60')fail('WebRTC/60 FPS UI selection failed: '+JSON.stringify(selectedRtc));
+ // A user can switch back to the unchanged JPEG path without restarting the app.
+ await win.webContents.executeJavaScript("(()=>{const mode=document.getElementById('output-transport');mode.value='jpeg';mode.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ const jpegAgain=await waitFrame(output,x=>x.mode==='jpeg'&&x.painted>rtcOutput.painted,10000);
+ if(!jpegAgain||jpegAgain.mode!=='jpeg'||jpegAgain.painted<=rtcOutput.painted)
+   fail('JPEG fallback after WebRTC did not resume: '+JSON.stringify(jpegAgain));
+ details.push('WEBRTC OUTPUT: preview and output received live video frames; 60 FPS selectable; JPEG fallback restored');
  if(viewWindows.length!==2)fail('Expected two independent output/preview windows, got '+viewWindows.length);
  const checked=await win.webContents.executeJavaScript("window.beatAPI.outputState()");
  if(!checked.preview||!checked.output)fail('Output status IPC not updated: '+JSON.stringify(checked));

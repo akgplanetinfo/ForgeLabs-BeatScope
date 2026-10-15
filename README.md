@@ -201,3 +201,13 @@ A felbontás, megcélzott FPS és minőség a meglévő helyi beállításfájlb
 ## v0.4.0-alpha.13 – Output Quality & Performance
 
 A VJ OUTPUT ROUTING panelen 960×540, 1280×720 és 1920×1080 továbbított képméret, 12/24/30 FPS célérték és 65/80/90% JPEG-minőség állítható. A képkódolás aszinkron; ha egy képkocka feldolgozása tart, az újak nem kerülnek sorba. A kimenet arányhelyesen, fekete kerettel jelenhet meg. A tényleges teljesítmény kijelzett mérése nem garancia az elérhető FPS-re; a natív, GPU-megosztásos, 60 FPS-es megjelenítés továbbra sincs kész. A beállítások helyben mentődnek. A Windows-teszt valós előnézeten ellenőrzi a 720p továbbítást.
+
+## v0.4.0-alpha.14 – választható gyorsított VJ-kimenet (beta)
+
+A VJ OUTPUT ROUTING panelen új **Képátvitel** mező választható: **JPEG – kompatibilis** vagy **WebRTC – gyorsított (beta)**. A WebRTC mód a már összekevert Canvas-kimenet `captureStream(0)` videótrackjét továbbítja az Electron külön előnézeti és programablakaiba, helyi WebRTC kapcsolattal (STUN/TURN és felhőszerver nélkül). A vevő videóelemként jeleníti meg; nem kell minden képkockát `toBlob` → base64 JPEG üzenetté alakítani.
+
+A WebRTC-mód választható célértékei 12/24/30/60 FPS; a régi JPEG-mód legfeljebb 30 FPS célértéket enged a felületen. A 720p/1080p és effektsorrend megmaradt, de a felskálázás és az eszköz teljesítménye továbbra is befolyásolja az eredményt. A **60 FPS nem garantált**; WebRTC esetén a GPU-s videókódolás és -dekódolás képessége gépenként változik, és ez **nem zéró-másolásos GPU-textúramegosztás**.
+
+Amíg az élő videókapcsolat nem kész, illetve sikertelen kapcsolatkor, a vezérlő megtartja az aszinkron JPEG-küldést. A kimenet két külön, sandboxolt Electron-ablakban működik; csak az alkalmazás engedélyezett vezérlője és saját kimeneti ablakai válthatnak SDP/ICE jelzéseket. A régebbi felhasználói beállítások alapértelmezés szerint a stabil JPEG-módban maradnak, a transzportválasztás mentődik.
+
+Tesztelendő valódi kétmonitoros Windows-használatban: előnézet és kimenet, 720p/1080p, 60 FPS cél mellett a mért képkockaszám és a kapcsolat megszakítása.

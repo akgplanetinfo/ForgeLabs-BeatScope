@@ -29,11 +29,11 @@ test('display discovery annotates primary and external without exposing physical
 
 test('selectable HD and Full HD output profiles are validated',()=>{
  assert.deepEqual(Router.RESOLUTIONS,[540,720,1080]);
- assert.deepEqual(Router.FPS_OPTIONS,[12,24,30]);
+ assert.deepEqual(Router.FPS_OPTIONS,[12,24,30,60]);
  assert.deepEqual(Router.QUALITY_OPTIONS,[65,80,90]);
  assert.deepEqual(Router.normalizeConfig({}),Router.DEFAULT_CONFIG);
  assert.deepEqual(Router.normalizeConfig({outputResolution:720,outputFps:24,outputQuality:90}),
-   {outputResolution:720,outputFps:24,outputQuality:90});
+   {outputResolution:720,outputFps:24,outputQuality:90,outputTransport:'jpeg'});
  assert.deepEqual(Router.normalizeConfig({outputResolution:4096,outputFps:300,outputQuality:'65'}),Router.DEFAULT_CONFIG);
  assert.deepEqual(Router.dimensions(540),{width:960,height:540});
  assert.deepEqual(Router.dimensions(720),{width:1280,height:720});
@@ -53,10 +53,24 @@ test('large but bounded HD JPEG frames are accepted, excessive IPC input is reje
 test('video output presets and frame timing are bounded',()=>{
  const r=require('../src/output-manager.cjs');
  assert.deepEqual(r.normalizeConfig(),r.DEFAULT_CONFIG);
- assert.deepEqual(r.normalizeConfig({outputResolution:1080,outputFps:30,outputQuality:90}),{outputResolution:1080,outputFps:30,outputQuality:90});
+ assert.deepEqual(r.normalizeConfig({outputResolution:1080,outputFps:30,outputQuality:90}),{outputResolution:1080,outputFps:30,outputQuality:90,outputTransport:'jpeg'});
  assert.deepEqual(r.normalizeConfig({outputResolution:1234,outputFps:120,outputQuality:-1}),r.DEFAULT_CONFIG);
  assert.deepEqual(r.dimensions(720),{width:1280,height:720});
  assert.deepEqual(r.dimensions(1080),{width:1920,height:1080});
  assert.equal(r.interval(30),1000/30);
  assert.equal(r.interval(12),1000/12);
+});
+
+test('isolated WebRTC messages must be local, bounded and structurally valid',()=>{
+ assert.equal(Router.normalizeConfig({outputTransport:'webrtc',outputFps:60}).outputTransport,'webrtc');
+ assert.equal(Router.normalizeConfig({outputTransport:'invalid'}).outputTransport,'jpeg');
+ assert.equal(Router.interval(60),1000/60);
+ assert.equal(Router.validSignal({type:'ready'}),true);
+ assert.equal(Router.validSignal({type:'reset'}),true);
+ assert.equal(Router.validSignal({type:'answer',sdp:'v=0\r\n'+'a'.repeat(100)}),true);
+ assert.equal(Router.validSignal({type:'candidate',candidate:{candidate:'candidate:1 1 UDP 1 abc 123 typ host',sdpMid:'0',sdpMLineIndex:0}}),true);
+ assert.equal(Router.validSignal({type:'candidate',candidate:{candidate:'x'.repeat(5000)}}),false);
+ assert.equal(Router.validSignal({type:'offer',sdp:'https://evil.test'}),false);
+ assert.equal(Router.validSignal({type:'offer',sdp:'v=0\r\n'+'a'.repeat(120000)}),false);
+ assert.equal(Router.validSignal({type:'url',sdp:'v=0\r\n'+'a'.repeat(100)}),false);
 });
