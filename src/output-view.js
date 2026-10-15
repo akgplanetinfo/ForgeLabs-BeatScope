@@ -51,7 +51,9 @@
   else video.addEventListener('timeupdate',()=>{if(token===frameWatch&&mode==='webrtc'){accepted++;painted++;sourceWidth=video.videoWidth;sourceHeight=video.videoHeight;lastPaintedAt=performance.now();}},{once:false});
  }
  async function acceptOffer(message){
-  stopLive();
+  // ICE candidates can arrive before SDP offer because signaling travels asynchronously.
+  const queuedCandidates=pendingCandidates;
+  stopLive();pendingCandidates=queuedCandidates;
   if(typeof RTCPeerConnection!=='function')throw new Error('WebRTC nem érhető el');
   const peer=new RTCPeerConnection({iceServers:[]});pc=peer;
   peer.onicecandidate=event=>{
