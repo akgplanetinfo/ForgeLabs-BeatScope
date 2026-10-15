@@ -1604,6 +1604,39 @@
     $('window-close').addEventListener('click',()=>window.beatAPI?.windowAction('close'));
     $('fullscreen').addEventListener('click',()=>window.beatAPI?.windowAction('toggle-fullscreen'));
     $('save-image').addEventListener('click',saveImage);
+    let projectBusy=false;
+    async function projectAction(kind){
+      if(projectBusy)return;
+      projectBusy=true;
+      const buttons=['project-new','project-open','project-save'].map($);
+      buttons.forEach(button=>button.disabled=true);
+      $('project-status').textContent='Projektművelet folyamatban…';
+      try{
+        // Prevent a delayed save from overwriting settings just restored by native Electron.
+        if(kind!=='save'){clearTimeout(saveTimer);saveTimer=null;}
+        if(kind==='save'){
+          const result=await window.beatAPI.saveProject({...settings});
+          $('project-status').textContent=result.saved
+            ?'Projekt mentve · '+result.mediaCount+' médiafájllal':'Mentés megszakítva';
+          if(result.saved)notify('Projektfájl mentve.');
+        }else if(kind==='open'){
+          const result=await window.beatAPI.openProject();
+          if(result.restored){location.reload();return;}
+          $('project-status').textContent='Projekt megnyitása megszakítva';
+        }else if(kind==='new'){
+          const result=await window.beatAPI.newProject();
+          if(result.created){location.reload();return;}
+          $('project-status').textContent='Új projekt létrehozása megszakítva';
+        }
+      }catch(error){
+        $('project-status').textContent='Projektművelet sikertelen';
+        notify('Projektkezelési hiba: '+(error?.message||String(error)),true);
+      }finally{projectBusy=false;buttons.forEach(button=>button.disabled=false);}
+    }
+    $('project-save').addEventListener('click',()=>projectAction('save'));
+    $('project-open').addEventListener('click',()=>projectAction('open'));
+    $('project-new').addEventListener('click',()=>projectAction('new'));
+
     window.beatAPI?.onWindowState(setWindowState);
     $('ai-toggle').addEventListener('click',()=>setAI(!settings.aiEnabled));
     $('ai-speed').addEventListener('change',e=>{settings.aiSpeed=e.target.value;aiDirector.reset();persist();updateAIDisplay(settings.aiEnabled?'Sebesség frissítve':undefined);});
