@@ -4,7 +4,7 @@
  const canvas=document.getElementById('screen'),ctx=canvas.getContext('2d',{alpha:false});
  const video=document.getElementById('live-video');
  let accepted=0,painted=0,busy=false,nextFrame=null,sourceWidth=0,sourceHeight=0,decodeMs=0,lastPaintedAt=0;
- let mode='jpeg',pc=null,pendingCandidates=[],frameWatch=0,videoTimeout=null;
+ let mode='jpeg',pc=null,pendingCandidates=[],frameWatch=0,videoTimeout=null,offers=0,answers=0,lastError='';
  const signal=payload=>window.outputBridge?.sendStreamSignal(kind,payload);
  function fit(){
   const w=Math.max(1,innerWidth),h=Math.max(1,innerHeight);
@@ -53,6 +53,7 @@
   else video.addEventListener('timeupdate',()=>{if(token===frameWatch&&mode==='webrtc'){accepted++;painted++;sourceWidth=video.videoWidth;sourceHeight=video.videoHeight;lastPaintedAt=performance.now();}},{once:false});
  }
  async function acceptOffer(message){
+  offers++;
   // ICE candidates can arrive before SDP offer because signaling travels asynchronously.
   const queuedCandidates=pendingCandidates;
   stopLive();pendingCandidates=queuedCandidates;
@@ -81,7 +82,7 @@
   pendingCandidates=[];
   const answer=await peer.createAnswer();
   await peer.setLocalDescription(answer);
-  if(pc===peer)signal({type:'answer',sdp:peer.localDescription.sdp});
+  if(pc===peer){answers++;signal({type:'answer',sdp:peer.localDescription.sdp});}
  }
  window.outputBridge?.onStreamSignal(async message=>{
   if(!message||message.kind!==kind)return;
@@ -92,7 +93,7 @@
     if(pc?.remoteDescription)await pc.addIceCandidate(message.candidate);
     else pendingCandidates.push(message.candidate);
    }
-  }catch{stopLive();signal({type:'failed'});}
+  }catch(error){lastError=error?.message||String(error);stopLive();signal({type:'failed'});}
  });
  window.outputBridge?.onFrame(data=>{
   if(typeof data!=='string'||!data.startsWith('data:image/jpeg;base64,'))return;
@@ -102,7 +103,7 @@
  window.addEventListener('resize',fit);
  window.addEventListener('beforeunload',stopLive);
  fit();
- window.__beatOutputStats=()=>({accepted,painted,width:canvas.width,height:canvas.height,sourceWidth,sourceHeight,decodeMs,lastPaintedAt,mode});
+ window.__beatOutputStats=()=>({accepted,painted,width:canvas.width,height:canvas.height,sourceWidth,sourceHeight,decodeMs,lastPaintedAt,mode,offers,answers,lastError,rtcState:pc?.connectionState||null,iceState:pc?.iceConnectionState||null});
  // The controller must not send an offer before this isolated renderer is listening.
  if(['preview','output'].includes(kind))signal({type:'ready'});
 })();
