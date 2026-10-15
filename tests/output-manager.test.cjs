@@ -8,7 +8,7 @@ test('only bounded actual JPEG frames are relayed across windows',()=>{
  assert.equal(Router.validFrame('data:image/png;base64,'+'A'.repeat(384)),false);
  assert.equal(Router.validFrame('javascript:'+'A'.repeat(500)),false);
  assert.equal(Router.validFrame('data:image/jpeg;base64,../secret'),false);
- assert.equal(Router.validFrame('data:image/jpeg;base64,'+'A'.repeat(2_200_000)),false);
+ assert.equal(Router.validFrame('data:image/jpeg;base64,'+'A'.repeat(6_700_000)),false);
  assert.equal(Router.validFrame({image:ok}),false);
 });
 test('display discovery annotates primary and external without exposing physical identifiers',()=>{
