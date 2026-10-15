@@ -108,6 +108,14 @@
         </div>
         <small>WebRTC: helyi, közvetlenebb videóátvitel JPEG-képkockák helyett; kapcsolódási hiba esetén JPEG-re vált vissza. A 60 FPS célérték, nem garancia. Esc: kimenet bezárása.</small>
       </section>
+      <section class="project-toolbar" aria-label="BeatScope projektek kezelése">
+        <div class="project-toolbar-label"><strong>PROJEKT</strong><small id="project-status" aria-live="polite">Helyi munkamenet · automatikus beállításmentés</small></div>
+        <div class="project-toolbar-actions">
+          <button type="button" id="project-new" title="Új projekt megerősítéssel">+ Új</button>
+          <button type="button" id="project-open" title="Korábbi .beatscope projekt visszatöltése">▤ Megnyitás</button>
+          <button type="button" id="project-save" title="Projekt és hivatkozott képek/videók egy fájlba mentése">⇩ Projekt mentése</button>
+        </div>
+      </section>
       <div class="visual-shell" id="visual-shell">
         <div class="visual-head"><div class="visual-tag"><span class="small-status-dot" id="live-dot"></span><span id="mode-label">SPECTRUM / REAL TIME</span></div><div class="visual-options"><span id="sample-info">FFT 2048 · Várakozás</span><span class="signal-badge" id="source-tag">NO INPUT</span></div></div>
         <canvas id="visualizer" aria-label="Valós idejű zenei vizualizáció"></canvas>
