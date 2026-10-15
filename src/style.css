@@ -262,3 +262,16 @@
 .output-quality-controls label{display:flex;flex-direction:column;gap:4px;font-size:10px;color:#a9cbdc;flex:1;min-width:120px}
 .output-quality-controls select{background:#0c2539;border:1px solid #47728d;color:#ddf7ff;border-radius:6px;padding:7px;font-size:10px;width:100%}
 #output-performance{font:10px system-ui,sans-serif;color:#a0f2d5;min-width:180px}
+
+/* Alpha 15: portable project controls share the VJ workspace but do not shift the live output. */
+.project-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+  padding:12px 14px;margin:0 0 12px;border:1px solid rgba(105,171,208,.27);
+  border-radius:12px;background:rgba(13,29,47,.82)}
+.project-toolbar-label{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.project-toolbar-label strong{font-size:11px;letter-spacing:1.1px;color:#53d8ec}
+.project-toolbar-label small{font-size:11px;color:#b7c8d6}
+.project-toolbar-actions{display:flex;gap:8px;flex-wrap:wrap}
+.project-toolbar-actions button{border:1px solid rgba(117,178,208,.36);color:#e1f5ff;border-radius:8px;
+  background:#13293d;padding:7px 11px;cursor:pointer;font:600 12px system-ui,sans-serif}
+.project-toolbar-actions button:hover{background:#204a60}
+.project-toolbar-actions button:disabled{opacity:.45;cursor:wait}
