@@ -472,8 +472,13 @@ async function run(){
      out.autoStayedStopped=document.querySelectorAll('.vj-layer-row')[0].querySelector('.vj-clip.playing')?.dataset.slot===manualSlot;
      autoMode.value='shuffle';autoMode.dispatchEvent(new Event('change',{bubbles:true}));
      autoBars.value='2';autoBars.dispatchEvent(new Event('change',{bubbles:true}));
-     await new Promise(resolve=>setTimeout(resolve,420));
-     const autoPrefs=await window.beatAPI.loadPreferences();
+     // Preference writes are debounced and serialized; give a loaded CI GPU time to flush.
+     let autoPrefs=null;
+     for(let attempt=0;attempt<12;attempt++){
+       await new Promise(resolve=>setTimeout(resolve,250));
+       autoPrefs=await window.beatAPI.loadPreferences();
+       if(autoPrefs?.autoSceneMode==='shuffle'&&autoPrefs?.autoSceneBars===2)break;
+     }
      out.autoSaved=autoPrefs?.autoSceneMode==='shuffle'&&autoPrefs?.autoSceneBars===2;
      out.autoOffAtEnd=document.getElementById('vj-auto-toggle').getAttribute('aria-pressed')==='false';
      document.getElementById('fx-browser-open').click();
