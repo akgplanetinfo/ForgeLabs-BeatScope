@@ -517,7 +517,39 @@ async function run(){
  if(state.errors?.length)fail('Shader/UI errors: '+JSON.stringify(state.errors));
  if(state.mediaID&&!fs.existsSync(path.join(smokeProfile,'beatscope-media',state.mediaID)))fail('Media asset not copied to local managed library');
  dialog.showOpenDialog=originalDialog;
+ // Open real isolated preview/output BrowserWindows and verify decoded frames from the live renderer.
+ const displays=await win.webContents.executeJavaScript('window.beatAPI.displays()');
+ if(!Array.isArray(displays)||displays.length<1)fail('Output displays not detected');
+ await win.webContents.executeJavaScript("document.getElementById('open-preview').click()");
+ await new Promise(resolve=>setTimeout(resolve,1650));
+ let viewWindows=BrowserWindow.getAllWindows().filter(w=>!w.isDestroyed()&&w.webContents.getURL().includes('output.html'));
+ const preview=viewWindows.find(w=>w.getTitle().includes('Előnézet'));
+ if(!preview)fail('Preview BrowserWindow not created');
+ else{
+  const frames=await preview.webContents.executeJavaScript("window.__beatOutputStats?.()");
+  if(!frames||frames.accepted<1||frames.painted<1)fail('Preview did not receive or paint the final visual: '+JSON.stringify(frames));
+ }
+ const previewActive=await win.webContents.executeJavaScript("document.getElementById('close-preview').disabled===false");
+ if(!previewActive)fail('Preview close control not enabled');
+ await win.webContents.executeJavaScript("document.getElementById('open-output').click()");
+ await new Promise(resolve=>setTimeout(resolve,1650));
+ viewWindows=BrowserWindow.getAllWindows().filter(w=>!w.isDestroyed()&&w.webContents.getURL().includes('output.html'));
+ const output=viewWindows.find(w=>w.getTitle().includes('VJ Output'));
+ if(!output)fail('Separate VJ output BrowserWindow not created');
+ else{
+  const frames=await output.webContents.executeJavaScript("window.__beatOutputStats?.()");
+  if(!frames||frames.accepted<1||frames.painted<1)fail('Output did not receive or paint frames: '+JSON.stringify(frames));
+  if(displays.length===1&&output.isFullScreen())fail('Output hijacked primary monitor in full-screen mode');
+ }
+ if(viewWindows.length!==2)fail('Expected two independent output/preview windows, got '+viewWindows.length);
+ const checked=await win.webContents.executeJavaScript("window.beatAPI.outputState()");
+ if(!checked.preview||!checked.output)fail('Output status IPC not updated: '+JSON.stringify(checked));
+ await win.webContents.executeJavaScript("document.getElementById('close-output').click();document.getElementById('close-preview').click()");
+ await new Promise(resolve=>setTimeout(resolve,550));
+ const closed=await win.webContents.executeJavaScript("window.beatAPI.outputState()");
+ if(closed.preview||closed.output)fail('Output windows were not released on stop');
+ details.push('OUTPUT TEST: displays='+displays.length+', preview and VJ output received live frames and closed');
  await win.close();
 }
-const timeout=setTimeout(()=>{fail('Electron renderer smoke test timed out');process.stderr.write(details.join('\n')+'\n');app.exit(1);},45000);
+const timeout=setTimeout(()=>{fail('Electron renderer smoke test timed out');process.stderr.write(details.join('\n')+'\n');app.exit(1);},68000);
 app.whenReady().then(run).then(()=>{clearTimeout(timeout);console.log(details.join('\n'));app.exit(failed?1:0);}).catch(e=>{clearTimeout(timeout);console.error('Smoke crashed:',e.stack);app.exit(1);});

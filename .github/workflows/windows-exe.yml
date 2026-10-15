@@ -34,7 +34,7 @@ jobs:
 
       - name: Test real Electron UI and GPU shader rendering
         shell: pwsh
-        run: node -e "const cp=require('child_process'); const p=require('electron'); const a=cp.spawnSync(p,['tests/electron-smoke.cjs'],{encoding:'utf8',timeout:50000});process.stdout.write(a.stdout||'');process.stderr.write(a.stderr||'');process.exit(a.status||(!a.error?0:1))"
+        run: node -e "const cp=require('child_process'); const p=require('electron'); const a=cp.spawnSync(p,['tests/electron-smoke.cjs'],{encoding:'utf8',timeout:76000});process.stdout.write(a.stdout||'');process.stderr.write(a.stderr||'');process.exit(a.status||(!a.error?0:1))"
 
       - name: Build Windows installer and portable application
         run: npm run dist:win -- --publish never

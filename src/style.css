@@ -233,3 +233,17 @@
 .vj-auto-actions button:disabled{opacity:.3}
 .vj-auto-hint{font-size:9px;color:#96aacc}
 @media(max-height:760px){.vj-auto{padding:7px;gap:5px}.vj-auto-hint{display:none}}
+
+
+/* Alpha 12: detachable preview and second-monitor output routing */
+.output-router{flex:0 0 auto;border:1px solid #315d76;background:linear-gradient(105deg,#142b38,#102c43);border-radius:12px;padding:9px 12px;display:flex;flex-direction:column;gap:7px}
+.output-router-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.output-router-heading strong{font-size:10px;letter-spacing:1px;color:#b5fff3}
+.output-router-heading small{font-size:10px;color:#94c6d3}
+.output-router-options{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.output-router-options button{background:#1c4a5a;border:1px solid #408496;border-radius:6px;font-size:10px;padding:7px 8px;color:#e1f7ff}
+.output-router-options button:disabled{opacity:.3}
+.output-router-options label{font-size:10px;color:#a8d2e8;display:flex;align-items:center;gap:6px;min-width:210px;flex:1}
+.output-router-options select{min-width:135px;max-width:290px;width:100%;background:#0b2638;color:#dbf5ff;border:1px solid #406981;border-radius:6px;padding:7px;font-size:10px}
+.output-router>small{font-size:9px;color:#8aafc6}
+@media(max-height:750px){.output-router{padding:6px;gap:4px}.output-router>small{display:none}}

@@ -1,10 +1,11 @@
 'use strict';
-const {app, BrowserWindow, ipcMain, dialog, session, nativeTheme, protocol, net} = require('electron');
+const {app, BrowserWindow, ipcMain, dialog, session, nativeTheme, protocol, net, screen} = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const Composition=require('./composition.js');
 const BeatClock=require('./beat-clock.js');
 const AutoScenes=require('./auto-scenes.js');
+const Output=require('./output-manager.cjs');
 const Media=require('./media-library.cjs');
 const {pathToFileURL}=require('node:url');
 protocol.registerSchemesAsPrivileged([{scheme:'beatscope-media',privileges:{standard:true,secure:true,stream:true,supportFetchAPI:true,corsEnabled:true}}]);
@@ -12,6 +13,8 @@ protocol.registerSchemesAsPrivileged([{scheme:'beatscope-media',privileges:{stan
 const APP_TITLE = 'ForgeLabs BeatScope';
 const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.15, smooth:0.75, barCount:56, showGrid:true, micDevice:'default', volume:0.85, aiEnabled:false, aiSpeed:'balanced', aiPalette:false, fxStack:[], fxBypass:false, fxAuto:false, fxFavorites:[], composition:Composition.createComposition(), bpm:120, quantize:'off',autoSceneMode:'sequential',autoSceneBars:4 });
 let window = null;
+let previewWindow=null,outputWindow=null;
+let selectedDisplayId=null,lastFrame=null,lastFrameSent=0;
 const preferencesPath = () => path.join(app.getPath('userData'), 'beatscope-preferences.json');
 function validatePrefs(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Érvénytelen beállítások');
@@ -62,6 +65,78 @@ function writePrefs(input) {
   pendingPrefs=pendingPrefs.catch(()=>{}).then(write);
   return pendingPrefs;
 }
+
+const INDEX_URL=()=>require('node:url').pathToFileURL(path.join(__dirname,'../index.html')).toString();
+function trustedController(event){
+ const url=event?.sender?.getURL?.();
+ return url===INDEX_URL();
+}
+function listDisplays(){
+ const displays=screen.getAllDisplays();
+ return Output.displayOptions(displays,screen.getPrimaryDisplay().id);
+}
+function status(){
+ return {preview:!!previewWindow&&!previewWindow.isDestroyed(),
+         output:!!outputWindow&&!outputWindow.isDestroyed(),
+         displayId:selectedDisplayId,
+         displays:listDisplays()};
+}
+function announceOutputStatus(){
+ for(const wc of BrowserWindow.getAllWindows()){
+   if(wc.isDestroyed())continue;
+   if(wc.webContents.getURL()===INDEX_URL()&&!wc.webContents.isDestroyed())
+     wc.webContents.send('beatscope:output-status',status());
+ }
+}
+function createView(kind,displayId){
+ const existing=kind==='preview'?previewWindow:outputWindow;
+ if(existing&&!existing.isDestroyed()){existing.focus();return existing;}
+ const displays=screen.getAllDisplays();
+ const primary=screen.getPrimaryDisplay();
+ const chosen=kind==='preview'?primary:Output.chooseDisplay(displays,primary.id,displayId);
+ if(!chosen)throw new Error('Nem érhető el kijelző.');
+ const external=kind==='output'&&chosen.id!==primary.id;
+ const bounds=chosen.workArea||chosen.bounds;
+ const width=external?chosen.bounds.width:Math.min(960,Math.max(480,bounds.width-100));
+ const height=external?chosen.bounds.height:Math.min(540,Math.max(300,bounds.height-100));
+ const view=new BrowserWindow({
+   title:kind==='preview'?'BeatScope – Előnézet':'BeatScope – VJ Output',
+   width:kind==='preview'?Math.min(820,width):width,
+   height:kind==='preview'?Math.min(500,height):height,
+   x:external?chosen.bounds.x:undefined,y:external?chosen.bounds.y:undefined,
+   backgroundColor:'#000000',frame:!external,autoHideMenuBar:true,show:false,
+   minWidth:320,minHeight:220,
+   webPreferences:{preload:path.join(__dirname,'output-preload.cjs'),
+     contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:true,backgroundThrottling:false}
+ });
+ if(kind==='preview')previewWindow=view;else{outputWindow=view;selectedDisplayId=chosen.id;}
+ view.webContents.setWindowOpenHandler(()=>({action:'deny'}));
+ view.webContents.on('will-navigate',e=>e.preventDefault());
+ view.webContents.on('before-input-event',(event,input)=>{
+   if(input.type==='keyDown'&&input.key==='Escape'){event.preventDefault();view.close();}
+ });
+ view.on('closed',()=>{
+   if(kind==='preview')previewWindow=null;
+   else{outputWindow=null;selectedDisplayId=null;}
+   announceOutputStatus();
+ });
+ view.webContents.on('did-finish-load',()=>{
+   if(lastFrame&& !view.webContents.isDestroyed())
+     view.webContents.send('beatscope:output-frame',lastFrame);
+ });
+ view.once('ready-to-show',()=>{
+   view.show();
+   if(external){view.setBounds(chosen.bounds);view.setFullScreen(true);}
+ });
+ view.loadFile(path.join(__dirname,'../output.html'),{query:{kind}});
+ announceOutputStatus();
+ return view;
+}
+function closeView(kind){
+ const target=kind==='preview'?previewWindow:outputWindow;
+ if(target&&!target.isDestroyed()){target.close();return true;}
+ return false;
+}
 function createWindow() {
   window = new BrowserWindow({
     title: APP_TITLE, width:1470, height:890, minWidth:890, minHeight:590,
@@ -103,6 +178,44 @@ app.whenReady().then(()=>{
   session.defaultSession.setPermissionCheckHandler((_wc,permission,_origin,details)=>{
     return permission === 'media' && details?.mediaType === 'audio';
   });
+
+  ipcMain.handle('beatscope:displays',event=>{
+    if(!trustedController(event))throw new Error('Nem engedélyezett ablak.');
+    return listDisplays();
+  });
+  ipcMain.handle('beatscope:output-state',event=>{
+    if(!trustedController(event))throw new Error('Nem engedélyezett ablak.');
+    return status();
+  });
+  ipcMain.handle('beatscope:open-view',(event,kind,displayId)=>{
+    if(!trustedController(event)||!['preview','output'].includes(kind))
+      throw new Error('Érvénytelen kimeneti művelet.');
+    if(kind==='output'&&displayId!==undefined&&
+       !screen.getAllDisplays().some(d=>d.id===displayId))
+      throw new Error('A kiválasztott kijelző már nem elérhető.');
+    createView(kind,displayId);
+    return status();
+  });
+  ipcMain.handle('beatscope:close-view',(event,kind)=>{
+    if(!trustedController(event)||!['preview','output'].includes(kind))
+      throw new Error('Érvénytelen kimeneti művelet.');
+    closeView(kind);return status();
+  });
+  ipcMain.on('beatscope:push-frame',(event,frame)=>{
+    if(!trustedController(event)||!Output.validFrame(frame))return;
+    const now=Date.now();
+    if(now-lastFrameSent<56)return; // Cap IPC traffic and memory churn.
+    lastFrameSent=now;lastFrame=frame;
+    for(const view of [previewWindow,outputWindow]){
+      if(view&&!view.isDestroyed()&&!view.webContents.isDestroyed()&&!view.webContents.isLoading())
+        view.webContents.send('beatscope:output-frame',frame);
+    }
+  });
+  screen.on('display-removed',(_event,removed)=>{
+    if(outputWindow&&!outputWindow.isDestroyed()&&selectedDisplayId===removed.id)closeView('output');
+    announceOutputStatus();
+  });
+  screen.on('display-added',announceOutputStatus);
   ipcMain.handle('beatscope:window',(_e,action)=>{
     if (!window || !['minimize','toggle-maximize','close','toggle-fullscreen'].includes(action)) return false;
     if (action==='minimize') window.minimize();

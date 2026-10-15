@@ -175,3 +175,13 @@ A tesztek validálják az ütemhatárok időszámítását, Tap Tempo becslést,
 ## v0.4.0-alpha.11 — Auto Scene Director
 
 Új, BPM-alapú automatikus jelenetváltás: Sorrendi vagy Shuffle mód, 1/2/4/8 bar időköz, kitöltetlen jelenetek kihagyása, Start/Stop, Előző/Következő, visszaszámlálás. A kézi klip- vagy Scene Launch megállítja az automatikát. BPM- és ütemfázis-változáskor újraszámolja a következő ütemhatárt. A választott mód és időköz mentődik, az aktív automatikus váltás újraindítás után nem indul magától. A rendszer offline működik belső BPM-órával.
+
+## v0.4.0-alpha.12 – Preview és második monitoros VJ Output
+
+A BeatScope fő felületén új **VJ OUTPUT ROUTING** panel van: kijelzőlista, kijelzőlista-frissítés, külön előnézeti ablak (nyitás/zárás), VJ-kimeneti ablak (indítás/leállítás). Az Electron tényleges kijelzőlistáját kérdezi le. A külön ablakok a fő alkalmazás által **már összekevert, Clip FX → Layer FX → Composition FX sorrendben készített végleges képet** kapják meg. Egy gépen egyszerre egy preview és egy program-kimeneti ablak használható.
+
+Másodlagos kijelzőn a kimenet a kijelző területét kitölti, teljes képernyőn. Elsődleges/egyetlen képernyőn szándékosan csak normál ablakban indul, nehogy kizárjon a vezérlésből. A kimeneti ablakban az **Escape** billentyű bezárja a kimenetet. Második monitor leválasztásakor az oda kötött kimenet automatikusan bezárul. Az ablakokhoz külön, minimális jogosultságú preload tartozik: nincs belépés a projektadatokhoz, a fájlrendszerhez, sem a mentési parancsokhoz.
+
+**Fontos jelenlegi határ:** a végleges frame maximum 960×540 felbontású, 80%-os minőségű JPEG formában jut el IPC-n keresztül a külön ablakokhoz, nagyjából legfeljebb 12 FPS sebességgel; az ablakok arányhelyesen, fekete szélekkel tölthetik ki a kijelzőt. Ez működő első, ellenőrizhető VJ-kimenet, de **nem natív, nagy felbontású, alacsony késleltetésű GPU-kimenet és nem Resolume-szintű 60 FPS**. A minőség és sebesség növeléséhez jövőbeli közvetlen GPU-megosztás vagy MediaStream-alapú továbbítás kell.
+
+Automatizált ellenőrzés: kijelzőlista, előnézet és Output önálló Electron BrowserWindow-ként, mindkét ablak JPEG-képkockákat kap és kirajzol, állapotjelzés, megfelelő bezárás, saját felhasználós Windows EXE csomagolás.

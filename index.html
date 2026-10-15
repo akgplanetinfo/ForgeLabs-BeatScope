@@ -63,13 +63,25 @@
       <div class="control-line"><label for="bars-count">Oszlopok</label><output id="bars-val">56</output></div>
       <input type="range" id="bars-count" min="16" max="128" value="56" step="8" />
       <label class="check-row"><input id="show-grid" type="checkbox" checked /><span>Finom háttérrács</span></label>
-      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α11</span></div>
+      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α12</span></div>
     </aside>
     <main class="workspace">
       <div class="workspace-top">
         <div><div class="eyebrow">AUDIO REACTIVE EXPERIENCE <span>—</span> STUDIO</div><h1>Hangból <em>élmény.</em></h1><p id="subtext">Tölts be egy zenét, vagy használd a mikrofont.</p></div>
         <div class="workspace-actions"><button class="outline-btn fx-launch" id="fx-browser-open" title="120 effekt böngészése">✦ <span>FX könyvtár · 120</span></button><button class="outline-btn" id="save-image" title="Aktuális vizualizáció mentése PNG-ként">⇩ <span>Kép mentése</span></button><button class="outline-btn" id="fullscreen" title="Teljes képernyő (F11)">⛶ <span>Fullscreen</span></button></div>
       </div>
+      <section class="output-router" id="output-router" aria-label="Külön előnézet és második kijelzős VJ-kimenet">
+        <div class="output-router-heading"><strong>VJ OUTPUT ROUTING</strong><small id="output-status">Kimenet kikapcsolva</small></div>
+        <div class="output-router-options">
+          <button type="button" id="open-preview">◫ Előnézeti ablak</button>
+          <button type="button" id="close-preview" disabled>Előnézet bezárása</button>
+          <label>Kijelző <select id="output-display" aria-label="VJ-kimenet kijelzőjének kiválasztása"><option value="">Kijelzők betöltése…</option></select></label>
+          <button type="button" id="refresh-displays" title="Kijelzőlista frissítése">↻</button>
+          <button type="button" id="open-output">▣ VJ Output indítása</button>
+          <button type="button" id="close-output" disabled>Kimenet leállítása</button>
+        </div>
+        <small>Előnézet: külön ablak. Másodlagos kijelző: teljes képernyős kimenet. Kilépés a kimenetből: Esc.</small>
+      </section>
       <div class="visual-shell" id="visual-shell">
         <div class="visual-head"><div class="visual-tag"><span class="small-status-dot" id="live-dot"></span><span id="mode-label">SPECTRUM / REAL TIME</span></div><div class="visual-options"><span id="sample-info">FFT 2048 · Várakozás</span><span class="signal-badge" id="source-tag">NO INPUT</span></div></div>
         <canvas id="visualizer" aria-label="Valós idejű zenei vizualizáció"></canvas>

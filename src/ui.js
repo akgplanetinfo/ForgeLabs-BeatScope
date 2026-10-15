@@ -39,6 +39,70 @@
   let isSeeking=false,saveTimer=null,repeat=false,lastFrame=0,modeTransition=null,lastAIStatus=0,clipTouched=false,initializing=true;
   const supported=Boolean(window.AudioContext||window.webkitAudioContext);
 
+  let outputState={preview:false,output:false,displayId:null,displays:[]};
+  let frameCanvas=null,frameLastSent=0,outputFrameError=false;
+  function updateOutputUI(next){
+    if(!next||typeof next!=='object')return;
+    outputState={...outputState,...next};
+    const select=$('output-display');
+    if(Array.isArray(next.displays)){
+      const selected=String(outputState.displayId??select.value);
+      select.replaceChildren();
+      for(const entry of next.displays){
+        const option=document.createElement('option');
+        option.value=String(entry.id);
+        option.textContent=entry.name+' · '+entry.width+'×'+entry.height;
+        select.append(option);
+      }
+      if([...select.options].some(o=>o.value===selected))select.value=selected;
+      else if(next.displays.length)select.value=String(next.displays.find(d=>!d.primary)?.id??next.displays[0].id);
+    }
+    $('close-preview').disabled=!outputState.preview;
+    $('close-output').disabled=!outputState.output;
+    $('open-preview').disabled=!!outputState.preview;
+    $('open-output').disabled=!!outputState.output||!select.options.length;
+    $('output-status').textContent=(outputState.preview?'Előnézet aktív':'Előnézet kikapcsolva')+
+      ' · '+(outputState.output?'VJ-kimenet aktív':'VJ-kimenet kikapcsolva');
+  }
+  async function refreshOutputs(){
+    try{updateOutputUI(await window.beatAPI.outputState());}
+    catch(e){notify('A kimenetek nem érhetők el: '+e.message,true);}
+  }
+  function bindOutputs(){
+    window.beatAPI?.onOutputStatus(updateOutputUI);
+    $('refresh-displays').addEventListener('click',refreshOutputs);
+    for(const kind of ['preview','output']){
+      $('open-'+kind).addEventListener('click',async()=>{
+        try{
+          const displayId=Number($('output-display').value);
+          updateOutputUI(await window.beatAPI.openView(kind,kind==='output'?displayId:undefined));
+        }catch(e){notify('Kimeneti ablak hiba: '+e.message,true);}
+      });
+      $('close-'+kind).addEventListener('click',async()=>{
+        try{updateOutputUI(await window.beatAPI.closeView(kind));}
+        catch(e){notify('Ablak bezárási hiba: '+e.message,true);}
+      });
+    }
+    refreshOutputs();
+  }
+  function sendVisualFrame(t){
+    if(!(outputState.preview||outputState.output)||t-frameLastSent<83)return;
+    frameLastSent=t;
+    try{
+      const original=!fxCanvas.hidden?fxCanvas:UI.canvas;
+      if(!original.width||!original.height)return;
+      const scale=Math.min(1,960/original.width,540/original.height);
+      const w=Math.max(1,Math.round(original.width*scale));
+      const h=Math.max(1,Math.round(original.height*scale));
+      if(!frameCanvas)frameCanvas=document.createElement('canvas');
+      if(frameCanvas.width!==w||frameCanvas.height!==h){frameCanvas.width=w;frameCanvas.height=h;}
+      const frameCtx=frameCanvas.getContext('2d',{alpha:false});
+      frameCtx.drawImage(original,0,0,w,h);
+      window.beatAPI.pushOutputFrame(frameCanvas.toDataURL('image/jpeg',.8));
+    }catch(e){
+      if(!outputFrameError){outputFrameError=true;notify('Kimeneti képküldési hiba: '+e.message,true);}
+    }
+  }
   function notify(message,error=false){
     const div=document.createElement('div');div.className='toast'+(error?' error':'');div.textContent=message;
     $('toasts').append(div);setTimeout(()=>div.remove(),4200);
@@ -1423,6 +1487,7 @@
     }
     fxAutoUpdate(t,active);
     drawPostFX(t);
+    sendVisualFrame(t);
     updateMeters(t);
   }
   async function saveImage(){
@@ -1437,6 +1502,7 @@
   function setWindowState(state){document.body.classList.toggle('fullscreen',Boolean(state.fullscreen));sizeCanvas();}
   function bind(){
     initFXControls();
+    bindOutputs();
     bindTempo();
     bindAutoScenes();
     $('vj-import-media').addEventListener('click',importClipMedia);
