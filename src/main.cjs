@@ -7,6 +7,7 @@ const BeatClock=require('./beat-clock.js');
 const AutoScenes=require('./auto-scenes.js');
 const Output=require('./output-manager.cjs');
 const Media=require('./media-library.cjs');
+const Projects=require('./project-bundle.cjs');
 const {pathToFileURL}=require('node:url');
 protocol.registerSchemesAsPrivileged([{scheme:'beatscope-media',privileges:{standard:true,secure:true,stream:true,supportFetchAPI:true,corsEnabled:true}}]);
 
@@ -262,6 +263,69 @@ app.whenReady().then(()=>{
   });
   ipcMain.handle('beatscope:read-prefs',readPrefs);
   ipcMain.handle('beatscope:write-prefs',(_e,value)=>writePrefs(value));
+  // Versioned standalone project files. Imported media is copied into managed userData before prefs change.
+  async function backupCurrentProject(){
+    await pendingPrefs.catch(()=>{});
+    const folder=path.join(app.getPath('userData'),'project-backups');
+    await fs.mkdir(folder,{recursive:true});
+    const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+    const target=path.join(folder,'before-project-load-'+stamp+'-'+process.pid+'.json');
+    await fs.writeFile(target,JSON.stringify(await readPrefs(),null,2),'utf8');
+    return target;
+  }
+  ipcMain.handle('beatscope:project-save',async (event,currentSettings)=>{
+    if(!trustedController(event))throw new Error('Nem engedélyezett projektművelet.');
+    const valid=validatePrefs(currentSettings);
+    const selection=await dialog.showSaveDialog(window,{
+      title:'BeatScope projekt mentése (médiával)',
+      defaultPath:'BeatScope-Projekt.beatscope',
+      filters:[{name:'BeatScope projekt',extensions:['beatscope']}]
+    });
+    if(selection.canceled||!selection.filePath)return {saved:false};
+    const archive=await Projects.create(valid,app.getPath('userData'));
+    const target=selection.filePath;
+    const temp=target+'.'+process.pid+'.'+Date.now()+'.tmp';
+    try{await fs.writeFile(temp,archive);await fs.rename(temp,target);}
+    finally{await fs.rm(temp,{force:true}).catch(()=>{});}
+    return {saved:true,mediaCount:Projects.referencedMedia(valid).length,bytes:archive.length};
+  });
+  ipcMain.handle('beatscope:project-open',async event=>{
+    if(!trustedController(event))throw new Error('Nem engedélyezett projektművelet.');
+    const selection=await dialog.showOpenDialog(window,{
+      title:'BeatScope projekt megnyitása',
+      properties:['openFile'],
+      filters:[{name:'BeatScope projekt',extensions:['beatscope']}]
+    });
+    if(selection.canceled||!selection.filePaths?.[0])return {restored:false};
+    const source=selection.filePaths[0];
+    const stat=await fs.stat(source);
+    if(!stat.isFile()||stat.size>Projects.MAX_ARCHIVE_BYTES)
+      throw new Error('Túl nagy vagy érvénytelen projektfájl.');
+    const parsed=await Projects.parse(await fs.readFile(source));
+    validatePrefs(parsed.settings);
+    const confirm=await dialog.showMessageBox(window,{
+      type:'warning',title:'Projekt megnyitása',
+      message:'Betöltöd ezt a BeatScope-projektet?',
+      detail:'Az aktuális munkamenet beállításait lecseréli. Előtte helyi biztonsági mentést készítünk. A projektbe csomagolt médiát a saját felhasználói tárhelyedre másoljuk.',
+      buttons:['Mégse','Betöltés'],defaultId:0,cancelId:0,noLink:true
+    });
+    if(confirm.response!==1)return {restored:false};
+    await backupCurrentProject();
+    return Projects.restore(parsed,app.getPath('userData'),validatePrefs,writePrefs);
+  });
+  ipcMain.handle('beatscope:project-new',async event=>{
+    if(!trustedController(event))throw new Error('Nem engedélyezett projektművelet.');
+    const confirm=await dialog.showMessageBox(window,{
+      type:'question',title:'Új BeatScope-projekt',
+      message:'Új, alapbeállítású projektet indítasz?',
+      detail:'Az aktuális munkamenet beállításait lecseréli. Előtte helyi biztonsági mentés készül. A korábban importált médiafájlokat nem töröljük.',
+      buttons:['Mégse','Új projekt'],defaultId:0,cancelId:0,noLink:true
+    });
+    if(confirm.response!==1)return {created:false};
+    await backupCurrentProject();
+    await writePrefs({...DEFAULT_PREFS,composition:Composition.createComposition()});
+    return {created:true};
+  });
   ipcMain.handle('beatscope:save-screenshot',async (_e,dataUrl)=>{
     if (typeof dataUrl !== 'string'||dataUrl.length>22_000_000||!/^data:image\/png;base64,[a-zA-Z0-9+/=]+$/.test(dataUrl)) throw new Error('Érvénytelen PNG adat');
     const result = await dialog.showSaveDialog(window,{title:'Kép mentése',defaultPath:'BeatScope-'+new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.png',filters:[{name:'PNG kép',extensions:['png']}]});
