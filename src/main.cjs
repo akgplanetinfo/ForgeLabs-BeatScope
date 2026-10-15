@@ -15,6 +15,7 @@ const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.
 let window = null;
 let previewWindow=null,outputWindow=null;
 let selectedDisplayId=null,lastFrame=null,lastFrameSent=0,streamOwner=null;
+const signalDiagnostics={seen:0,invalid:0,missingView:0,controllerForwarded:0,viewForwarded:0,rejected:0};
 const preferencesPath = () => path.join(app.getPath('userData'), 'beatscope-preferences.json');
 function validatePrefs(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Érvénytelen beállítások');
@@ -80,7 +81,7 @@ function status(){
  return {preview:!!previewWindow&&!previewWindow.isDestroyed(),
          output:!!outputWindow&&!outputWindow.isDestroyed(),
          displayId:selectedDisplayId,
-         displays:listDisplays()};
+         displays:listDisplays(),signalDiagnostics:{...signalDiagnostics}};
 }
 function announceOutputStatus(){
  for(const wc of BrowserWindow.getAllWindows()){
@@ -208,16 +209,19 @@ app.whenReady().then(()=>{
   // Relay SDP/ICE messages only between this app's controller and its own isolated output views.
   // Never expose arbitrary IPC destinations or accept network URLs from untrusted renderers.
   ipcMain.on('beatscope:stream-signal',(event,kind,payload)=>{
-    if(!['preview','output'].includes(kind)||!Output.validSignal(payload))return;
+    signalDiagnostics.seen++;
+    if(!['preview','output'].includes(kind)||!Output.validSignal(payload)){signalDiagnostics.invalid++;return;}
     const view=kind==='preview'?previewWindow:outputWindow;
-    if(!view||view.isDestroyed()||view.webContents.isDestroyed())return;
+    if(!view||view.isDestroyed()||view.webContents.isDestroyed()){signalDiagnostics.missingView++;return;}
     if(event.sender===window?.webContents){
-      if(!trustedController(event)||event.sender!==streamOwner||!['offer','candidate','reset'].includes(payload.type))return;
+      if(!trustedController(event)||event.sender!==streamOwner||!['offer','candidate','reset'].includes(payload.type)){signalDiagnostics.rejected++;return;}
+      signalDiagnostics.controllerForwarded++;
       view.webContents.send('beatscope:stream-signal',{kind,...payload});
     }else if(event.sender===view.webContents){
-      if(!['ready','answer','candidate','failed'].includes(payload.type)||!streamOwner||streamOwner.isDestroyed())return;
+      if(!['ready','answer','candidate','failed'].includes(payload.type)||!streamOwner||streamOwner.isDestroyed()){signalDiagnostics.rejected++;return;}
+      signalDiagnostics.viewForwarded++;
       streamOwner.send('beatscope:stream-signal',{kind,...payload});
-    }
+    }else signalDiagnostics.rejected++;
   });
   ipcMain.on('beatscope:push-frame',(event,frame)=>{
     if(!trustedController(event)||event.sender!==streamOwner||!Output.validFrame(frame))return;
