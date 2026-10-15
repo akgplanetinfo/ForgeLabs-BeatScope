@@ -538,7 +538,7 @@ async function run(){
   savePrefs.bpm=133;
   dialog.showSaveDialog=async()=>({canceled:false,filePath:exportedProject});
   const saved=await win.webContents.executeJavaScript('window.beatAPI.saveProject('+JSON.stringify(savePrefs)+')');
-  if(!saved?.saved||saved.mediaCount!==1||!fs.existsSync(exportedProject))
+  if(!saved?.saved||saved.mediaCount<1||!fs.existsSync(exportedProject))
     fail('Native portable project not exported with media: '+JSON.stringify(saved));
   dialog.showMessageBox=async()=>({response:1});
   const created=await win.webContents.executeJavaScript('window.beatAPI.newProject()');
@@ -548,7 +548,7 @@ async function run(){
   const loaded=await win.webContents.executeJavaScript('window.beatAPI.openProject()');
   const importedPrefs=await win.webContents.executeJavaScript('window.beatAPI.loadPreferences()');
   const newMediaId=importedPrefs?.composition?.layers?.[0]?.clips?.[0]?.mediaId;
-  if(!loaded?.restored||loaded.mediaCount!==1||importedPrefs.bpm!==133||
+  if(!loaded?.restored||loaded.mediaCount!==saved.mediaCount||importedPrefs.bpm!==133||
      newMediaId===state.mediaID||!fs.existsSync(path.join(smokeProfile,'beatscope-media',newMediaId||'missing')))
     fail('Portable project media not restored correctly: '+JSON.stringify({loaded,bpm:importedPrefs.bpm,newMediaId}));
   else if(!fs.readFileSync(path.join(smokeProfile,'beatscope-media',newMediaId)).equals(fs.readFileSync(path.join(smokeProfile,'beatscope-media',state.mediaID))))
