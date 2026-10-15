@@ -14,7 +14,7 @@ const APP_TITLE = 'ForgeLabs BeatScope';
 const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.15, smooth:0.75, barCount:56, showGrid:true, micDevice:'default', volume:0.85, aiEnabled:false, aiSpeed:'balanced', aiPalette:false, fxStack:[], fxBypass:false, fxAuto:false, fxFavorites:[], composition:Composition.createComposition(), bpm:120, quantize:'off',autoSceneMode:'sequential',autoSceneBars:4, ...Output.DEFAULT_CONFIG });
 let window = null;
 let previewWindow=null,outputWindow=null;
-let selectedDisplayId=null,lastFrame=null,lastFrameSent=0;
+let selectedDisplayId=null,lastFrame=null,lastFrameSent=0,streamOwner=null;
 const preferencesPath = () => path.join(app.getPath('userData'), 'beatscope-preferences.json');
 function validatePrefs(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Érvénytelen beállítások');
@@ -120,6 +120,7 @@ function createView(kind,displayId){
  view.on('closed',()=>{
    if(kind==='preview')previewWindow=null;
    else{outputWindow=null;selectedDisplayId=null;}
+   if(!previewWindow&&!outputWindow)streamOwner=null;
    announceOutputStatus();
  });
  view.webContents.on('did-finish-load',()=>{
@@ -195,6 +196,7 @@ app.whenReady().then(()=>{
     if(kind==='output'&&displayId!==undefined&&
        !screen.getAllDisplays().some(d=>d.id===displayId))
       throw new Error('A kiválasztott kijelző már nem elérhető.');
+    streamOwner=event.sender;
     createView(kind,displayId);
     return status();
   });
@@ -204,7 +206,7 @@ app.whenReady().then(()=>{
     closeView(kind);return status();
   });
   ipcMain.on('beatscope:push-frame',(event,frame)=>{
-    if(!trustedController(event)||!Output.validFrame(frame))return;
+    if(!trustedController(event)||event.sender!==streamOwner||!Output.validFrame(frame))return;
     const now=Date.now();
     if(now-lastFrameSent<30)return; // Hard 33 FPS ceiling even if renderer misbehaves.
     lastFrameSent=now;lastFrame=frame;
