@@ -4,7 +4,7 @@
  const canvas=document.getElementById('screen'),ctx=canvas.getContext('2d',{alpha:false});
  const video=document.getElementById('live-video');
  let accepted=0,painted=0,busy=false,nextFrame=null,sourceWidth=0,sourceHeight=0,decodeMs=0,lastPaintedAt=0;
- let mode='jpeg',pc=null,pendingCandidates=[],frameWatch=0;
+ let mode='jpeg',pc=null,pendingCandidates=[],frameWatch=0,videoTimeout=null;
  const signal=payload=>window.outputBridge?.sendStreamSignal(kind,payload);
  function fit(){
   const w=Math.max(1,innerWidth),h=Math.max(1,innerHeight);
@@ -34,6 +34,7 @@
  }
  function stopLive(){
   mode='jpeg';frameWatch++;
+  if(videoTimeout!==null){clearTimeout(videoTimeout);videoTimeout=null;}
   if(pc){pc.ontrack=null;pc.onicecandidate=null;pc.onconnectionstatechange=null;pc.close();pc=null;}
   video.pause();video.srcObject=null;video.hidden=true;canvas.hidden=false;
   pendingCandidates=[];
@@ -43,6 +44,7 @@
   const next=(_now,metadata)=>{
    if(token!==frameWatch||mode!=='webrtc')return;
    accepted++;painted++;
+   if(videoTimeout!==null){clearTimeout(videoTimeout);videoTimeout=null;}
    sourceWidth=metadata.width||video.videoWidth;sourceHeight=metadata.height||video.videoHeight;
    lastPaintedAt=performance.now();document.body.classList.add('streaming');
    if(typeof video.requestVideoFrameCallback==='function')video.requestVideoFrameCallback(next);
@@ -63,6 +65,10 @@
    if(pc!==peer)return;
    video.srcObject=event.streams[0]||new MediaStream([event.track]);
    video.hidden=false;canvas.hidden=true;mode='webrtc';decodeMs=0;
+   const paintedBefore=painted;
+   videoTimeout=setTimeout(()=>{
+    if(pc===peer&&mode==='webrtc'&&painted===paintedBefore){stopLive();signal({type:'failed'});}
+   },9000);
    video.play().then(watchVideo).catch(()=>{stopLive();signal({type:'failed'});});
   };
   peer.onconnectionstatechange=()=>{
