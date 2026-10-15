@@ -521,23 +521,34 @@ async function run(){
  const displays=await win.webContents.executeJavaScript('window.beatAPI.displays()');
  if(!Array.isArray(displays)||displays.length<1)fail('Output displays not detected');
  await win.webContents.executeJavaScript("document.getElementById('open-preview').click()");
- await new Promise(resolve=>setTimeout(resolve,1650));
+ await new Promise(resolve=>setTimeout(resolve,450));
  let viewWindows=BrowserWindow.getAllWindows().filter(w=>!w.isDestroyed()&&w.webContents.getURL().includes('output.html'));
  const preview=viewWindows.find(w=>w.webContents.getURL().includes('kind=preview'));
+ const readStats=async w=>w?.webContents.executeJavaScript("window.__beatOutputStats?.()");
+ const waitFrame=async(view,predicate,timeoutMs=8500)=>{
+   const until=Date.now()+timeoutMs;
+   let latest=null;
+   do{
+     try{latest=await readStats(view);}catch{}
+     if(latest&&predicate(latest))return latest;
+     await new Promise(resolve=>setTimeout(resolve,250));
+   }while(Date.now()<until);
+   return latest;
+ };
  if(!preview)fail('Preview BrowserWindow not created');
  else{
-  const frames=await preview.webContents.executeJavaScript("window.__beatOutputStats?.()");
+  const frames=await waitFrame(preview,x=>x.accepted>0&&x.painted>0,8500);
   if(!frames||frames.accepted<1||frames.painted<1)fail('Preview did not receive or paint the final visual: '+JSON.stringify(frames));
  }
  const previewActive=await win.webContents.executeJavaScript("document.getElementById('close-preview').disabled===false");
  if(!previewActive)fail('Preview close control not enabled');
  await win.webContents.executeJavaScript("document.getElementById('open-output').click()");
- await new Promise(resolve=>setTimeout(resolve,1650));
+ await new Promise(resolve=>setTimeout(resolve,450));
  viewWindows=BrowserWindow.getAllWindows().filter(w=>!w.isDestroyed()&&w.webContents.getURL().includes('output.html'));
  const output=viewWindows.find(w=>w.webContents.getURL().includes('kind=output'));
  if(!output)fail('Separate VJ output BrowserWindow not created');
  else{
-  const frames=await output.webContents.executeJavaScript("window.__beatOutputStats?.()");
+  const frames=await waitFrame(output,x=>x.accepted>0&&x.painted>0,8500);
   if(!frames||frames.accepted<1||frames.painted<1)fail('Output did not receive or paint frames: '+JSON.stringify(frames));
   if(displays.length===1&&output.isFullScreen())fail('Output hijacked primary monitor in full-screen mode');
  }
@@ -546,19 +557,16 @@ async function run(){
  const qualityDefaults=await win.webContents.executeJavaScript("({resolution:document.getElementById('output-resolution').value,fps:document.getElementById('output-fps').value,quality:document.getElementById('output-quality').value})");
  if(qualityDefaults.resolution!=='540'||qualityDefaults.fps!=='12'||qualityDefaults.quality!=='80')
    fail('Legacy output defaults did not migrate correctly: '+JSON.stringify(qualityDefaults));
- const readStats=async w=>w?.webContents.executeJavaScript("window.__beatOutputStats?.()");
  const before720=await readStats(output);
  await win.webContents.executeJavaScript("(()=>{for(const [id,value] of [['output-resolution','720'],['output-fps','24'],['output-quality','90']]){const select=document.getElementById(id);select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));}})()");
- await new Promise(resolve=>setTimeout(resolve,1500));
- const at720=await readStats(output);
- const preview720=await readStats(preview);
+ const at720=await waitFrame(output,x=>x.sourceWidth===1280&&x.sourceHeight===720,9000);
+ const preview720=await waitFrame(preview,x=>x.sourceWidth===1280&&x.sourceHeight===720,5000);
  if(!at720||at720.sourceWidth!==1280||at720.sourceHeight!==720||
     !preview720||preview720.sourceWidth!==1280||preview720.sourceHeight!==720)
    fail('HD frame not decoded in both windows: '+JSON.stringify({at720,preview720}));
  if(!(at720.accepted>before720.accepted))fail('Async encoder not streaming after quality changes');
  await win.webContents.executeJavaScript("(()=>{document.getElementById('output-resolution').value='1080';document.getElementById('output-resolution').dispatchEvent(new Event('change',{bubbles:true}));document.getElementById('output-fps').value='30';document.getElementById('output-fps').dispatchEvent(new Event('change',{bubbles:true}));})()");
- await new Promise(resolve=>setTimeout(resolve,1700));
- const at1080=await readStats(output);
+ const at1080=await waitFrame(output,x=>x.sourceWidth===1920&&x.sourceHeight===1080,11000);
  if(!at1080||at1080.sourceWidth!==1920||at1080.sourceHeight!==1080)
    fail('Full HD output size not delivered: '+JSON.stringify(at1080));
  const measuredLabel=await win.webContents.executeJavaScript("document.getElementById('output-performance').textContent");
@@ -579,5 +587,5 @@ async function run(){
  details.push('OUTPUT TEST: displays='+displays.length+', preview and VJ output received live frames and closed');
  await win.close();
 }
-const timeout=setTimeout(()=>{fail('Electron renderer smoke test timed out');process.stderr.write(details.join('\n')+'\n');app.exit(1);},78000);
+const timeout=setTimeout(()=>{fail('Electron renderer smoke test timed out');process.stderr.write(details.join('\n')+'\n');app.exit(1);},105000);
 app.whenReady().then(run).then(()=>{clearTimeout(timeout);console.log(details.join('\n'));app.exit(failed?1:0);}).catch(e=>{clearTimeout(timeout);console.error('Smoke crashed:',e.stack);app.exit(1);});
