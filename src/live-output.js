@@ -3,7 +3,7 @@
 (()=>{
  function createController(api,getCanvas,onStateChange){
   const peers=new Map(),pending=new Set(),ready=new Set(),failed=new Set(),timeouts=new Map();
-  let stream=null,track=null,source=null,enabled=false;
+  let stream=null,track=null,source=null,enabled=false,lastError='',sentOffers=0,receivedAnswers=0;
   const kinds=['preview','output'];
   function signal(kind,payload){if(kinds.includes(kind))api.sendStreamSignal(kind,payload);}
   function teardown(kind,notifyView=true){
@@ -46,12 +46,13 @@
     if(peers.get(kind)!==pc)return;
     await pc.setLocalDescription(offer);
     if(peers.get(kind)===pc){
+     sentOffers++;
      signal(kind,{type:'offer',sdp:pc.localDescription.sdp});
      timeouts.set(kind,setTimeout(()=>{
       if(peers.get(kind)===pc&&pc.connectionState!=='connected'){failed.add(kind);teardown(kind);}
      },10000));
     }
-   }catch(error){failed.add(kind);teardown(kind);onStateChange();}
+   }catch(error){lastError=kind+': '+(error?.message||String(error));failed.add(kind);teardown(kind);onStateChange();}
    finally{pending.delete(kind);}
   }
   async function onSignal(message){
@@ -67,6 +68,7 @@
    if(!pc||!enabled)return;
    try{
     if(message.type==='answer'&&pc.signalingState==='have-local-offer'){
+     receivedAnswers++;
      await pc.setRemoteDescription({type:'answer',sdp:message.sdp});
     }else if(message.type==='candidate'&&message.candidate){
      if(pc.remoteDescription)await pc.addIceCandidate(message.candidate);
@@ -76,7 +78,7 @@
      for(const candidate of pc.pendingIce)await pc.addIceCandidate(candidate);
      pc.pendingIce=[];
     }
-   }catch{failed.add(kind);teardown(kind);}
+   }catch(error){lastError='signaling '+kind+': '+(error?.message||String(error));failed.add(kind);teardown(kind);}
   }
   function sync(state,useWebRtc){
    enabled=Boolean(useWebRtc);
@@ -94,7 +96,10 @@
   function isReady(state){return kinds.every(kind=>!state[kind]||peers.get(kind)?.connectionState==='connected');}
   function frameReady(){if(track&&track.readyState==='live'){try{track.requestFrame();}catch{}}}
   function close(){enabled=false;for(const kind of kinds)teardown(kind,false);disposeStream();ready.clear();}
-  return {sync,restart,onSignal,isReady,frameReady,close};
+  function debug(){return {enabled,ready:[...ready],pending:[...pending],failed:[...failed],sentOffers,receivedAnswers,lastError,
+   peers:Object.fromEntries([...peers].map(([kind,pc])=>[kind,{connectionState:pc.connectionState,signalingState:pc.signalingState,ice:pc.iceConnectionState}])),
+   stream:!!stream,track:track?.readyState||null};}
+  return {sync,restart,onSignal,isReady,frameReady,close,debug};
  }
  window.BeatLiveOutput=Object.freeze({createController});
 })();
