@@ -590,7 +590,7 @@ async function run(){
  const rtcPreview=await waitFrame(preview,x=>x.mode==='webrtc'&&x.painted>beforeRtcPreview.painted+1,14000);
  if(!rtcOutput||rtcOutput.mode!=='webrtc'||rtcOutput.painted<=beforeRtcOutput.painted+1||
     !rtcPreview||rtcPreview.mode!=='webrtc'||rtcPreview.painted<=beforeRtcPreview.painted+1)
-   fail('WebRTC transport did not produce live frames in both real BrowserWindows: '+JSON.stringify({rtcOutput,rtcPreview,source:await win.webContents.executeJavaScript("window.__beatRtcDebug?.()"),supported:await win.webContents.executeJavaScript("({peer:typeof RTCPeerConnection,stream:typeof HTMLCanvasElement.prototype.captureStream})")}));
+   fail('WebRTC transport did not produce live frames in both real BrowserWindows: '+JSON.stringify({rtcOutput,rtcPreview,source:await win.webContents.executeJavaScript("window.__beatRtcDebug?.()"),routing:await win.webContents.executeJavaScript("window.beatAPI.outputState()"),supported:await win.webContents.executeJavaScript("({peer:typeof RTCPeerConnection,stream:typeof HTMLCanvasElement.prototype.captureStream})")}));
  const selectedRtc=await win.webContents.executeJavaScript("({mode:document.getElementById('output-transport').value,fps:document.getElementById('output-fps').value})");
  if(selectedRtc.mode!=='webrtc'||selectedRtc.fps!=='60')fail('WebRTC/60 FPS UI selection failed: '+JSON.stringify(selectedRtc));
  // A user can switch back to the unchanged JPEG path without restarting the app.
