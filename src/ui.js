@@ -55,7 +55,7 @@
     const seconds=(now-outputFpsLast)/1000;
     const measured=(outputFpsCount/seconds).toFixed(1);
     $('output-performance').textContent=outputState.preview||outputState.output?
-      ('Tényleges: '+measured+' FPS · '+outputSkipped+' kihagyott képkocka'):
+      ((settings.outputTransport==='webrtc'?'Kért videófrissítés: ':'Tényleges: ')+measured+' FPS · '+outputSkipped+' kihagyott képkocka'):
       'Tényleges: – FPS · nincs kimenet';
     outputFpsLast=now;outputFpsCount=0;
   }
