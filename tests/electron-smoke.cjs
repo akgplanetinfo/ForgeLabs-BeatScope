@@ -521,7 +521,47 @@ async function run(){
  for(const [name,ok] of Object.entries({canvas:state.canvas,uiReady:state.uiReady,mediaImportButton:state.importButton,mediaImported:state.mediaImported,mediaIDValid:typeof state.mediaID==='string'&&state.mediaID.startsWith('media-')&&state.mediaID.endsWith('.png'),mediaPersisted:state.mediaPersisted,mediaGrid:state.mediaGridLabel,mediaImageDrawn:state.mediaCanvasRendered,mediaCss:state.mediaImageClassified,mediaCopied:state.mediaCopied,beatPanel:state.beatPanel,clipQueued:state.clipQueued,clipFired:state.clipFired,sceneQueued:state.sceneQueued,sceneFired:state.sceneFired,cancelQueued:state.cancelWasQueued,queueCancelled:state.queueCancelled,instantFallback:state.instantFallback,tempoSaved:state.tempoSaved,beatIndicators:state.beatIndicators,autoControls:state.autoControls,autoStarted:state.autoStarted,autoCountdown:state.autoCountdown,autoAdvanced:state.autoAdvanced,autoStillOn:state.autoStillOn,autoNextWorks:state.autoNextWorks,autoPreviousWorks:state.autoPreviousWorks,manualOverridesAuto:state.manualOverridesAuto,autoStayedStopped:state.autoStayedStopped,autoSaved:state.autoSaved,autoOffAtEnd:state.autoOffAtEnd,videoDecoded:state.videoDecoded,videoFrames:state.videoFrameRendered,videoPanel:state.videoPanelEnabled,videoSpeed:state.videoSpeedLinked,videoLoopDisabled:state.videoLoopOff,videoRestart:state.videoRestartAtIn,videoStopOut:state.videoStopsAtOut,videoLoopResume:state.videoLoopResumes,videoPause:state.videoPauseButton,videoContinue:state.videoContinueButton,videoSaved:state.videoSaved,videoSeek:state.videoSeekUsable,gridRows:state.gridRows===8,clipCells:state.clipCells===64,sceneButtons:state.sceneButtons,sceneLaunch:state.sceneLaunchWorks,sceneSaved:state.sceneSaved,clipMenu:state.contextMenuOpen,clipPasted:state.pastedClip,clipParameters:state.pastedParams,clipDuplicated:state.duplicateCreated,clipDeleted:state.deleteWorked,clipCut:state.cutWorked,clipFXLibrary:state.clipFXLibraryCount===121,clipFXAdded:state.clipFXAdded,clipFXStack:state.clipFXStackCount,clipFXOrder:state.clipFXReordered,clipFXOff:state.clipFXDisabled,clipFXBypass:state.clipFXBypass,clipFXLayerMixing:state.clipFXLayerMixingRestored,clipFXGPU:state.clipFXGPU,clipFXSaved:state.clipFXPersisted,clipFXSeparate:state.clipFXIndependent,clipFXRemove:state.clipFXRemoved,layerFXLibrary:state.layerFXLibraryCount===121,layerFXAdded:state.layerFXAdded,layerFXReordered:state.layerFXReordered,layerFXDisabled:state.layerFXDisabled,layerFXBypass:state.layerFXBypass,layerFXGPU:state.layerFXGPU,layerFXOrder:state.layerFXOrder,layerFXSaved:state.layerFXSaved,layerFXSeparate:state.layerFXSeparate,layerFXDelete:state.layerFXDelete,blendCount:state.mixModes?.length===8,blendPixelResults:state.mixPixelDistinct,blendUI:state.mixModeSelected,blendOpacity:state.mixOpacitySynced,blendReorder:state.layerReordered,blendFxCarried:state.layerFXMoved,blendSaved:state.blendPersisted,blendRestore:state.layerRestoreIndex,blendRendered:state.blendUsedInRenderer,layer1:state.layer1ClipStarted,layer2:state.layer2ClipStarted,mute:state.muteToggled,solo:state.soloToggled,generatorCount:state.generatorCount===6,sourceOptions:state.generatorOptions?.length===16,extraCount:state.extraGeneratorCount===6,extraDraws:state.extraGeneratorsDrawn?.every(Boolean),extraDistinct:new Set(state.extraGeneratorHashes||[]).size===6,extraGrid:state.extraGridSources?.every(Boolean),otherClipDefault:state.otherClipDefault,paramsRestored:state.paramsRestored,paramsSaved:state.paramsSaved,paramsReset:state.paramsReset,sourceDraws:state.newGeneratorsDrawn?.every(Boolean),sourceDistinct:new Set(state.generatorHashes||[]).size===6,sourceGrid:state.newGridSources?.every(Boolean),library:state.library===120,director:state.director,panelOpened:state.panelOpened,searchRows:state.searchRows===120,stackRows:state.stackRows>=1,autopilot:state.autopilot==='true',webgl2:state.webgl2,shaders:state.shaderVariantsTested===120,threeLayers:state.threeLayersWorked===true,errors:state.errors?.length===0})){if(!ok)fail(name+': '+JSON.stringify(state[name]));}
  if(state.errors?.length)fail('Shader/UI errors: '+JSON.stringify(state.errors));
  if(state.mediaID&&!fs.existsSync(path.join(smokeProfile,'beatscope-media',state.mediaID)))fail('Media asset not copied to local managed library');
- dialog.showOpenDialog=originalDialog;
+ // Project export/import: exercise real Electron handlers, safe media inclusion and user confirmation.
+ const exportedProject=path.join(smokeProfile,'show-save-test.beatscope');
+ const originalSaveDialog=dialog.showSaveDialog;
+ const originalMessageDialog=dialog.showMessageBox;
+ try{
+  const projectButtons=await win.webContents.executeJavaScript("['project-new','project-open','project-save'].every(id=>Boolean(document.getElementById(id)))");
+  if(!projectButtons)fail('Project toolbar buttons missing from rendered studio.');
+  // Force one imported media clip into the portable project without perturbing the live UI.
+  const savePrefs=await win.webContents.executeJavaScript("window.beatAPI.loadPreferences()");
+  savePrefs.composition.layers[0].clips[0]={
+    source:'media',mediaId:state.mediaID,mediaName:'smoke image',
+    params:{speed:1,scale:1,rotation:0,audio:1},fxStack:[],fxBypass:false
+  };
+  savePrefs.composition.layers[0].activeSlot=0;
+  savePrefs.bpm=133;
+  dialog.showSaveDialog=async()=>({canceled:false,filePath:exportedProject});
+  const saved=await win.webContents.executeJavaScript('window.beatAPI.saveProject('+JSON.stringify(savePrefs)+')');
+  if(!saved?.saved||saved.mediaCount!==1||!fs.existsSync(exportedProject))
+    fail('Native portable project not exported with media: '+JSON.stringify(saved));
+  dialog.showMessageBox=async()=>({response:1});
+  const created=await win.webContents.executeJavaScript('window.beatAPI.newProject()');
+  const resetPrefs=await win.webContents.executeJavaScript('window.beatAPI.loadPreferences()');
+  if(!created.created||resetPrefs.bpm!==120)fail('New project did not reset persisted defaults.');
+  dialog.showOpenDialog=async()=>({canceled:false,filePaths:[exportedProject]});
+  const loaded=await win.webContents.executeJavaScript('window.beatAPI.openProject()');
+  const importedPrefs=await win.webContents.executeJavaScript('window.beatAPI.loadPreferences()');
+  const newMediaId=importedPrefs?.composition?.layers?.[0]?.clips?.[0]?.mediaId;
+  if(!loaded?.restored||loaded.mediaCount!==1||importedPrefs.bpm!==133||
+     newMediaId===state.mediaID||!fs.existsSync(path.join(smokeProfile,'beatscope-media',newMediaId||'missing')))
+    fail('Portable project media not restored correctly: '+JSON.stringify({loaded,bpm:importedPrefs.bpm,newMediaId}));
+  else if(!fs.readFileSync(path.join(smokeProfile,'beatscope-media',newMediaId)).equals(fs.readFileSync(path.join(smokeProfile,'beatscope-media',state.mediaID))))
+    fail('Restored project media differs from original.');
+  const backups=fs.readdirSync(path.join(smokeProfile,'project-backups')).filter(n=>n.endsWith('.json'));
+  if(backups.length<2)fail('Project load/new did not create settings recovery points.');
+  details.push('PROJECT TEST: local project archive saved and loaded, media hashes preserved, defaults and backups checked');
+ }catch(error){fail('Native project integration: '+error.stack);}
+ finally{
+  dialog.showOpenDialog=originalDialog;
+  dialog.showSaveDialog=originalSaveDialog;
+  dialog.showMessageBox=originalMessageDialog;
+ }
  // Open real isolated preview/output BrowserWindows and verify decoded frames from the live renderer.
  const displays=await win.webContents.executeJavaScript('window.beatAPI.displays()');
  if(!Array.isArray(displays)||displays.length<1)fail('Output displays not detected');
