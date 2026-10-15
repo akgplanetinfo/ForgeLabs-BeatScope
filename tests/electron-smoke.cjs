@@ -526,7 +526,7 @@ async function run(){
  const displays=await win.webContents.executeJavaScript('window.beatAPI.displays()');
  if(!Array.isArray(displays)||displays.length<1)fail('Output displays not detected');
  await win.webContents.executeJavaScript("document.getElementById('open-preview').click()");
- await new Promise(resolve=>setTimeout(resolve,450));
+ await new Promise(resolve=>setTimeout(resolve,1650));
  let viewWindows=BrowserWindow.getAllWindows().filter(w=>!w.isDestroyed()&&w.webContents.getURL().includes('output.html'));
  const preview=viewWindows.find(w=>w.webContents.getURL().includes('kind=preview'));
  const readStats=async w=>w?.webContents.executeJavaScript("window.__beatOutputStats?.()");
@@ -549,7 +549,7 @@ async function run(){
  const previewActive=await win.webContents.executeJavaScript("document.getElementById('close-preview').disabled===false");
  if(!previewActive)fail('Preview close control not enabled');
  await win.webContents.executeJavaScript("document.getElementById('open-output').click()");
- await new Promise(resolve=>setTimeout(resolve,450));
+ await new Promise(resolve=>setTimeout(resolve,1650));
  viewWindows=BrowserWindow.getAllWindows().filter(w=>!w.isDestroyed()&&w.webContents.getURL().includes('output.html'));
  const output=viewWindows.find(w=>w.webContents.getURL().includes('kind=output'));
  if(!output)fail('Separate VJ output BrowserWindow not created');
