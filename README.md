@@ -211,3 +211,13 @@ A WebRTC-mód választható célértékei 12/24/30/60 FPS; a régi JPEG-mód leg
 Amíg az élő videókapcsolat nem kész, illetve sikertelen kapcsolatkor, a vezérlő megtartja az aszinkron JPEG-küldést. A kimenet két külön, sandboxolt Electron-ablakban működik; csak az alkalmazás engedélyezett vezérlője és saját kimeneti ablakai válthatnak SDP/ICE jelzéseket. A régebbi felhasználói beállítások alapértelmezés szerint a stabil JPEG-módban maradnak, a transzportválasztás mentődik.
 
 Tesztelendő valódi kétmonitoros Windows-használatban: előnézet és kimenet, 720p/1080p, 60 FPS cél mellett a mért képkockaszám és a kapcsolat megszakítása.
+
+## v0.4.0-alpha.15 – 15. rész: BeatScope projektmentés és -visszatöltés
+
+A Studio új **PROJEKT** sávján három vezérlés van: **+ Új**, **Megnyitás**, **Projekt mentése**. A mentés az aktuális 8×8 kompozíciót (a 64 kliphelyet), aktív klipeket, összes Clip/Layer/Composition FX-et, keverési módokat, BPM/kvantálás/AI módokat és kimeneti profilokat őrzi meg. A megnyitás visszaállítja őket, a felület újratöltődik. Az új projekt a rendszer alapbeállításaiból indul.
+
+A `.beatscope` fájl saját, verziózott és tömörített formátum, amelybe a **hivatkozott képek és videók tényleges bájtjai** is bekerülnek (SHA-256 ellenőrzéssel). A betöltött médiák friss helyi azonosítókat kapnak; nem írják felül a meglévő fájlokat. Az importálás előtt megerősítés és helyi `project-backups` beállításmentés készül; sikertelen import esetén az új médiák törlődnek és a korábbi munkamenet megmarad. Sérült, túl nagy vagy nem támogatott projektfájlokat a program elutasít.
+
+**Korlát:** egy projekthez összesen legfeljebb **128 MiB importált média** csomagolható be. Ennél nagyobb videókat egy későbbi streamelt archívumformátumnak kell támogatnia. A zenefájllejátszó külső hangforrása (külön MP3/WAV fájl) és a rendszer mikrofonjának/eszközének futó állapota nem válik önműködő projektmédiává; a megadott hangbemenetet szükség esetén újra ki kell választani. A helyi automatikus munkamenet-mentés változatlanul működik.
+
+Az önálló Windows-alkalmazás, a saját felhasználós telepítés és a korábbi JPEG/WebRTC VJ-kimenet megmarad.
