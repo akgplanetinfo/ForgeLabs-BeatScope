@@ -213,8 +213,8 @@ app.whenReady().then(()=>{
     if(!['preview','output'].includes(kind)||!Output.validSignal(payload)){signalDiagnostics.invalid++;return;}
     const view=kind==='preview'?previewWindow:outputWindow;
     if(!view||view.isDestroyed()||view.webContents.isDestroyed()){signalDiagnostics.missingView++;return;}
-    if(event.sender===window?.webContents){
-      if(!trustedController(event)||event.sender!==streamOwner||!['offer','candidate','reset'].includes(payload.type)){signalDiagnostics.rejected++;return;}
+    if(trustedController(event)&&event.sender===streamOwner){
+      if(!['offer','candidate','reset'].includes(payload.type)){signalDiagnostics.rejected++;return;}
       signalDiagnostics.controllerForwarded++;
       view.webContents.send('beatscope:stream-signal',{kind,...payload});
     }else if(event.sender===view.webContents){
