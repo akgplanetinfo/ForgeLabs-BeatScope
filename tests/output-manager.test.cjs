@@ -49,3 +49,14 @@ test('large but bounded HD JPEG frames are accepted, excessive IPC input is reje
  assert.equal(Router.validFrame(valid),true);
  assert.equal(Router.validFrame('data:image/jpeg;base64,'+'A'.repeat(Router.MAX_FRAME_LENGTH)),false);
 });
+
+test('video output presets and frame timing are bounded',()=>{
+ const r=require('../src/output-manager.cjs');
+ assert.deepEqual(r.normalizeConfig(),r.DEFAULT_CONFIG);
+ assert.deepEqual(r.normalizeConfig({outputResolution:1080,outputFps:30,outputQuality:90}),{outputResolution:1080,outputFps:30,outputQuality:90});
+ assert.deepEqual(r.normalizeConfig({outputResolution:1234,outputFps:120,outputQuality:-1}),r.DEFAULT_CONFIG);
+ assert.deepEqual(r.dimensions(720),{width:1280,height:720});
+ assert.deepEqual(r.dimensions(1080),{width:1920,height:1080});
+ assert.equal(r.interval(30),1000/30);
+ assert.equal(r.interval(12),1000/12);
+});

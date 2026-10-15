@@ -14,7 +14,7 @@ const APP_TITLE = 'ForgeLabs BeatScope';
 const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.15, smooth:0.75, barCount:56, showGrid:true, micDevice:'default', volume:0.85, aiEnabled:false, aiSpeed:'balanced', aiPalette:false, fxStack:[], fxBypass:false, fxAuto:false, fxFavorites:[], composition:Composition.createComposition(), bpm:120, quantize:'off',autoSceneMode:'sequential',autoSceneBars:4, ...Output.DEFAULT_CONFIG });
 let window = null;
 let previewWindow=null,outputWindow=null;
-let selectedDisplayId=null,lastFrame=null,lastFrameSent=0,outputPublisherId=null;
+let selectedDisplayId=null,lastFrame=null,lastFrameSent=0;
 const preferencesPath = () => path.join(app.getPath('userData'), 'beatscope-preferences.json');
 function validatePrefs(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Érvénytelen beállítások');
@@ -86,7 +86,7 @@ function announceOutputStatus(){
  for(const wc of BrowserWindow.getAllWindows()){
    if(wc.isDestroyed())continue;
    if(wc.webContents.getURL()===INDEX_URL()&&!wc.webContents.isDestroyed())
-     wc.webContents.send('beatscope:output-status',{...status(),isPublisher:outputPublisherId===wc.webContents.id});
+     wc.webContents.send('beatscope:output-status',status());
  }
 }
 function createView(kind,displayId){
@@ -120,7 +120,6 @@ function createView(kind,displayId){
  view.on('closed',()=>{
    if(kind==='preview')previewWindow=null;
    else{outputWindow=null;selectedDisplayId=null;}
-   if(!previewWindow&&!outputWindow){outputPublisherId=null;lastFrame=null;}
    announceOutputStatus();
  });
  view.webContents.on('did-finish-load',()=>{
@@ -188,7 +187,7 @@ app.whenReady().then(()=>{
   });
   ipcMain.handle('beatscope:output-state',event=>{
     if(!trustedController(event))throw new Error('Nem engedélyezett ablak.');
-    return {...status(),isPublisher:outputPublisherId===event.sender.id};
+    return status();
   });
   ipcMain.handle('beatscope:open-view',(event,kind,displayId)=>{
     if(!trustedController(event)||!['preview','output'].includes(kind))
@@ -196,19 +195,16 @@ app.whenReady().then(()=>{
     if(kind==='output'&&displayId!==undefined&&
        !screen.getAllDisplays().some(d=>d.id===displayId))
       throw new Error('A kiválasztott kijelző már nem elérhető.');
-    if(outputPublisherId!==null&&outputPublisherId!==event.sender.id)
-      throw new Error('Másik vezérlőablak használja a VJ kimenetet.');
-    outputPublisherId=event.sender.id;
     createView(kind,displayId);
-    return {...status(),isPublisher:true};
+    return status();
   });
   ipcMain.handle('beatscope:close-view',(event,kind)=>{
     if(!trustedController(event)||!['preview','output'].includes(kind))
       throw new Error('Érvénytelen kimeneti művelet.');
-    closeView(kind);return {...status(),isPublisher:outputPublisherId===event.sender.id};
+    closeView(kind);return status();
   });
   ipcMain.on('beatscope:push-frame',(event,frame)=>{
-    if(!trustedController(event)||outputPublisherId!==event.sender.id||!Output.validFrame(frame))return;
+    if(!trustedController(event)||!Output.validFrame(frame))return;
     const now=Date.now();
     if(now-lastFrameSent<30)return; // Hard 33 FPS ceiling even if renderer misbehaves.
     lastFrameSent=now;lastFrame=frame;

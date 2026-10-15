@@ -7,6 +7,7 @@
    if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
  }
  function draw(image){
+   sourceWidth=image.width;sourceHeight=image.height;
    fit();
    ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
    const scale=Math.min(canvas.width/image.width,canvas.height/image.height);
@@ -39,5 +40,5 @@
  });
  window.addEventListener('resize',()=>{fit();});
  fit();
- window.__beatOutputStats=()=>({accepted,painted,width:canvas.width,height:canvas.height,sourceWidth,sourceHeight,decodeMs,lastPaintedAt});
+ window.__beatOutputStats=()=>({accepted,painted,width:canvas.width,height:canvas.height,sourceWidth,sourceHeight,sourceWidth,sourceHeight,decodeMs,lastPaintedAt});
 })();

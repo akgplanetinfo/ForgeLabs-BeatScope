@@ -115,7 +115,7 @@
   }
   function sendVisualFrame(t){
     outputStatsTick(t);
-    if(!(outputState.preview||outputState.output)||outputState.isPublisher===false)return;
+    if(!(outputState.preview||outputState.output))return;
     const interval=1000/settings.outputFps;
     if(t-frameLastSent<interval)return;
     if(frameBusy){outputSkipped++;return;} // Never queue encoded frames on a busy GPU/CPU.

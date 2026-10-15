@@ -522,6 +522,17 @@ async function run(){
  if(state.errors?.length)fail('Shader/UI errors: '+JSON.stringify(state.errors));
  if(state.mediaID&&!fs.existsSync(path.join(smokeProfile,'beatscope-media',state.mediaID)))fail('Media asset not copied to local managed library');
  dialog.showOpenDialog=originalDialog;
+ // Output quality controls must persist and change transmitted frame resolution.
+ const qualityState=await win.webContents.executeJavaScript(`(async()=>{
+   const r=document.getElementById('output-resolution'),f=document.getElementById('output-fps'),q=document.getElementById('output-quality');
+   r.value='720';r.dispatchEvent(new Event('change',{bubbles:true}));
+   f.value='24';f.dispatchEvent(new Event('change',{bubbles:true}));
+   q.value='90';q.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(done=>setTimeout(done,600));
+   const prefs=await window.beatAPI.loadPreferences();
+   return {controls:Boolean(r&&f&&q),saved:prefs.outputResolution===720&&prefs.outputFps===24&&prefs.outputQuality===90};
+ })()`);
+ if(!qualityState.controls||!qualityState.saved)fail('Output quality settings not persisted: '+JSON.stringify(qualityState));
  // Open real isolated preview/output BrowserWindows and verify decoded frames from the live renderer.
  const displays=await win.webContents.executeJavaScript('window.beatAPI.displays()');
  if(!Array.isArray(displays)||displays.length<1)fail('Output displays not detected');
@@ -544,6 +555,7 @@ async function run(){
  else{
   const frames=await waitFrame(preview,x=>x.accepted>0&&x.painted>0,8500);
   if(!frames||frames.accepted<1||frames.painted<1)fail('Preview did not receive or paint the final visual: '+JSON.stringify(frames));
+  if(frames?.sourceWidth!==1280||frames?.sourceHeight!==720)fail('Preview did not receive 720p stream: '+JSON.stringify(frames));
  }
  const previewActive=await win.webContents.executeJavaScript("document.getElementById('close-preview').disabled===false");
  if(!previewActive)fail('Preview close control not enabled');

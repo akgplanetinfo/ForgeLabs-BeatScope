@@ -197,3 +197,7 @@ A küldő a korábbi szinkron JPEG `toDataURL` helyett aszinkron `toBlob` → `F
 A felbontás, megcélzott FPS és minőség a meglévő helyi beállításfájlba kerül; újraindítás után megmarad. A régebbi Alpha 12 felhasználói fájlok automatikusan az eredeti 540p/12/80 értékeket kapják. Az új Windows-teszt tényleges előnézeti és kimeneti ablakot nyit, ellenőrzi a 720p és 1080p JPEG képkockák dekódolt méretét, az FPS-megjelenítést és a mentést.
 
 **Korlát:** az IPC-n továbbított JPEG képkockák nem natív megosztott GPU-textúrák. A 30 FPS megcélzott maximum; az alkalmazás, az effektek, a dekódolás és a grafikus kártya teljesítménye alapján a tényleges FPS kevesebb lehet. Nagy felbontáson és két nyitott kimeneten a késleltetés továbbra is nagyobb lehet a professzionális VJ-rendszerekénél.
+
+## v0.4.0-alpha.13 – Output Quality & Performance
+
+A VJ OUTPUT ROUTING panelen 960×540, 1280×720 és 1920×1080 továbbított képméret, 12/24/30 FPS célérték és 65/80/90% JPEG-minőség állítható. A képkódolás aszinkron; ha egy képkocka feldolgozása tart, az újak nem kerülnek sorba. A kimenet arányhelyesen, fekete kerettel jelenhet meg. A tényleges teljesítmény kijelzett mérése nem garancia az elérhető FPS-re; a natív, GPU-megosztásos, 60 FPS-es megjelenítés továbbra sincs kész. A beállítások helyben mentődnek. A Windows-teszt valós előnézeten ellenőrzi a 720p továbbítást.
