@@ -205,6 +205,20 @@ app.whenReady().then(()=>{
       throw new Error('Érvénytelen kimeneti művelet.');
     closeView(kind);return status();
   });
+  // Relay SDP/ICE messages only between this app's controller and its own isolated output views.
+  // Never expose arbitrary IPC destinations or accept network URLs from untrusted renderers.
+  ipcMain.on('beatscope:stream-signal',(event,kind,payload)=>{
+    if(!['preview','output'].includes(kind)||!Output.validSignal(payload))return;
+    const view=kind==='preview'?previewWindow:outputWindow;
+    if(!view||view.isDestroyed()||view.webContents.isDestroyed())return;
+    if(event.sender===window?.webContents){
+      if(!trustedController(event)||event.sender!==streamOwner||!['offer','candidate','reset'].includes(payload.type))return;
+      view.webContents.send('beatscope:stream-signal',{kind,...payload});
+    }else if(event.sender===view.webContents){
+      if(!['ready','answer','candidate','failed'].includes(payload.type)||!streamOwner||streamOwner.isDestroyed())return;
+      streamOwner.send('beatscope:stream-signal',{kind,...payload});
+    }
+  });
   ipcMain.on('beatscope:push-frame',(event,frame)=>{
     if(!trustedController(event)||event.sender!==streamOwner||!Output.validFrame(frame))return;
     const now=Date.now();
