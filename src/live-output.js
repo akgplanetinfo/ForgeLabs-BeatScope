@@ -2,12 +2,13 @@
 /* Local Electron-window WebRTC video transport. No STUN/TURN server or remote network service. */
 (()=>{
  function createController(api,getCanvas,onStateChange){
-  const peers=new Map(),pending=new Set(),ready=new Set(),failed=new Set();
+  const peers=new Map(),pending=new Set(),ready=new Set(),failed=new Set(),timeouts=new Map();
   let stream=null,track=null,source=null,enabled=false;
   const kinds=['preview','output'];
   function signal(kind,payload){if(kinds.includes(kind))api.sendStreamSignal(kind,payload);}
   function teardown(kind,notifyView=true){
    const pc=peers.get(kind);peers.delete(kind);pending.delete(kind);
+   if(timeouts.has(kind)){clearTimeout(timeouts.get(kind));timeouts.delete(kind);}
    if(pc){pc.onicecandidate=null;pc.onconnectionstatechange=null;pc.close();}
    if(notifyView)signal(kind,{type:'reset'});
    onStateChange();
@@ -33,7 +34,10 @@
     pc.addTrack(track,stream);
     pc.onicecandidate=event=>{if(event.candidate)signal(kind,{type:'candidate',candidate:event.candidate.toJSON()});};
     pc.onconnectionstatechange=()=>{
-     if(pc.connectionState==='connected'){failed.delete(kind);onStateChange();}
+     if(pc.connectionState==='connected'){
+      if(timeouts.has(kind)){clearTimeout(timeouts.get(kind));timeouts.delete(kind);}
+      failed.delete(kind);onStateChange();
+     }
      if(['failed','closed','disconnected'].includes(pc.connectionState)&&peers.get(kind)===pc){
       failed.add(kind);teardown(kind);
      }
@@ -41,7 +45,12 @@
     const offer=await pc.createOffer();
     if(peers.get(kind)!==pc)return;
     await pc.setLocalDescription(offer);
-    if(peers.get(kind)===pc)signal(kind,{type:'offer',sdp:pc.localDescription.sdp});
+    if(peers.get(kind)===pc){
+     signal(kind,{type:'offer',sdp:pc.localDescription.sdp});
+     timeouts.set(kind,setTimeout(()=>{
+      if(peers.get(kind)===pc&&pc.connectionState!=='connected'){failed.add(kind);teardown(kind);}
+     },10000));
+    }
    }catch(error){failed.add(kind);teardown(kind);onStateChange();}
    finally{pending.delete(kind);}
   }
