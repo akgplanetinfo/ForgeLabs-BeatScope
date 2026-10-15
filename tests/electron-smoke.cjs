@@ -523,7 +523,7 @@ async function run(){
  await win.webContents.executeJavaScript("document.getElementById('open-preview').click()");
  await new Promise(resolve=>setTimeout(resolve,1650));
  let viewWindows=BrowserWindow.getAllWindows().filter(w=>!w.isDestroyed()&&w.webContents.getURL().includes('output.html'));
- const preview=viewWindows.find(w=>w.getTitle().includes('Előnézet'));
+ const preview=viewWindows.find(w=>w.webContents.getURL().includes('kind=preview'));
  if(!preview)fail('Preview BrowserWindow not created');
  else{
   const frames=await preview.webContents.executeJavaScript("window.__beatOutputStats?.()");
@@ -534,7 +534,7 @@ async function run(){
  await win.webContents.executeJavaScript("document.getElementById('open-output').click()");
  await new Promise(resolve=>setTimeout(resolve,1650));
  viewWindows=BrowserWindow.getAllWindows().filter(w=>!w.isDestroyed()&&w.webContents.getURL().includes('output.html'));
- const output=viewWindows.find(w=>w.getTitle().includes('VJ Output'));
+ const output=viewWindows.find(w=>w.webContents.getURL().includes('kind=output'));
  if(!output)fail('Separate VJ output BrowserWindow not created');
  else{
   const frames=await output.webContents.executeJavaScript("window.__beatOutputStats?.()");

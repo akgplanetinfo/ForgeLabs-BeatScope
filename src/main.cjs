@@ -110,6 +110,7 @@ function createView(kind,displayId){
      contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:true,backgroundThrottling:false}
  });
  if(kind==='preview')previewWindow=view;else{outputWindow=view;selectedDisplayId=chosen.id;}
+ view.webContents.on('page-title-updated',event=>event.preventDefault());
  view.webContents.setWindowOpenHandler(()=>({action:'deny'}));
  view.webContents.on('will-navigate',e=>e.preventDefault());
  view.webContents.on('before-input-event',(event,input)=>{
