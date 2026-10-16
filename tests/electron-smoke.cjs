@@ -680,9 +680,20 @@ async function run(){
    const navShown=getComputedStyle($('pro-navigation')).display!=='none';
    document.querySelector('[data-vj-target="vj-mix"]').click();
    const jumpWorks=document.activeElement===$('vj-mix');
+   const activeIndicator=document.querySelector('[data-vj-target="vj-mix"]').getAttribute('aria-current')==='location';
+   document.querySelector('[data-vj-target="vj-tempo"]').click();
+   const backEnabled=!$('pro-nav-back').disabled;
+   $('pro-nav-back').click();
+   const backWorks=document.activeElement===$('vj-mix')
+     &&document.querySelector('[data-vj-target="vj-mix"]').getAttribute('aria-current')==='location';
+   const previewButton=document.querySelector('[data-vj-target="visual-shell"]');
+   const projectButton=document.querySelector('[data-vj-target="project-toolbar"]');
+   previewButton.focus();
+   previewButton.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
+   const keyboardNav=document.activeElement===projectButton;
    return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
      sourceAccurate,trackAccurate,visualAccurate,aiDelegates,visualDelegates,
-     proMode,deckShown,navShown,jumpWorks};
+     proMode,deckShown,navShown,jumpWorks,activeIndicator,backEnabled,backWorks,keyboardNav};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
