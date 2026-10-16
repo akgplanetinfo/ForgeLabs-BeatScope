@@ -34,6 +34,11 @@
       if (source && !source.disabled) source.click();
     });
 
+    const STATUS_FIELDS = [
+      ['simple-status-source', 'title-status'],
+      ['simple-status-track', 'track-name'],
+      ['simple-status-visual', 'mode-label']
+    ];
     function sync() {
       const selected = [...doc.querySelectorAll('[data-mode]')]
         .find(element => element.classList.contains('active') && VISUALS.includes(element.dataset.mode));
@@ -48,6 +53,11 @@
       ]) {
         get(id)?.setAttribute('aria-pressed', String(pressed));
       }
+      // Read existing renderer labels; never guess whether the input is live.
+      for (const [displayId, originalId] of STATUS_FIELDS) {
+        const display = get(displayId), original = get(originalId);
+        if (display && original) display.textContent = original.textContent;
+      }
     }
 
     let observer = null;
@@ -60,6 +70,11 @@
       observe(get('microphone'), 'class');
       observe(doc.body, 'class');
       for (const element of doc.querySelectorAll('[data-mode]')) observe(element, 'class');
+      // textContent replacement fires childList mutations on the original BeatScope labels.
+      for (const [, originalId] of STATUS_FIELDS) {
+        const element = get(originalId);
+        if (element) observer.observe(element, { childList: true, subtree: true, characterData: true });
+      }
     }
     sync();
     return { sync, disconnect: () => observer?.disconnect() };
