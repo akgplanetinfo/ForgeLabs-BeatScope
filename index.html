@@ -73,6 +73,21 @@
         <button type="button" class="studio-mode-button active" id="studio-pro" data-studio-mode-target="pro" aria-pressed="true">PRO VJ STUDIO</button>
         <span class="studio-mode-hint" id="studio-mode-hint" aria-live="polite">Teljes VJ munkatér · rétegek, BPM, effektek és kimenetek.</span>
       </div>
+      <nav class="pro-navigation" id="pro-navigation" aria-label="Pro VJ Studio gyorsnavigáció">
+        <span class="pro-navigation-title">PRO VJ</span>
+        <button type="button" data-vj-target="visual-shell">Előnézet</button>
+        <button type="button" data-vj-target="project-toolbar">Projekt</button>
+        <button type="button" data-vj-target="vj-tempo">BPM</button>
+        <button type="button" data-vj-target="vj-auto">Auto Scene</button>
+        <button type="button" data-vj-target="vj-deck">Kliprács</button>
+        <button type="button" data-vj-target="vj-controls">Klip beállítások</button>
+        <button type="button" data-vj-target="vj-mix">Layer Mixer</button>
+        <button type="button" data-vj-target="vj-layer-effects">Layer FX</button>
+        <button type="button" data-vj-target="vj-clip-effects">Clip FX</button>
+        <button type="button" data-vj-target="output-router">VJ Output</button>
+        <button type="button" data-vj-action="fx-library">FX Library ↗</button>
+        <span id="pro-navigation-status" class="pro-navigation-status" role="status" aria-live="polite"></span>
+      </nav>
       <section class="simple-control-bar" id="simple-control-bar" aria-label="Simple Mode gyorsvezérlés">
         <div class="simple-control-heading"><strong>QUICK CONTROLS</strong><small>Az eredeti BeatScope-motor valódi vezérlése</small></div>
         <label class="simple-visual-field" for="simple-visual">Vizualizáció
@@ -130,7 +145,7 @@
         </div>
         <small>WebRTC: helyi, közvetlenebb videóátvitel JPEG-képkockák helyett; kapcsolódási hiba esetén JPEG-re vált vissza. A 60 FPS célérték, nem garancia. Esc: kimenet bezárása.</small>
       </section>
-      <section class="project-toolbar" aria-label="BeatScope projektek kezelése">
+      <section class="project-toolbar" id="project-toolbar" tabindex="-1" aria-label="BeatScope projektek kezelése">
         <div class="project-toolbar-label"><strong>PROJEKT</strong><small id="project-status" aria-live="polite">Helyi munkamenet · automatikus beállításmentés</small></div>
         <div class="project-toolbar-actions">
           <button type="button" id="project-new" title="Új projekt megerősítéssel">+ Új</button>
@@ -371,5 +386,6 @@
   <script src="src/studio-mode.js"></script>
   <script src="src/ui.js"></script>
   <script src="src/simple-controls.js"></script>
+  <script src="src/pro-navigation.js"></script>
 </body>
 </html>
