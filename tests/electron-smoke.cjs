@@ -649,6 +649,43 @@ async function run(){
  const closed=await win.webContents.executeJavaScript("window.beatAPI.outputState()");
  if(closed.preview||closed.output)fail('Output windows were not released on stop');
  details.push('OUTPUT TEST: displays='+displays.length+', preview and VJ output received live frames and closed');
+ // Alpha 17: test real mode switching, original BeatScope delegation and navigation in Windows Electron.
+ const alpha17UI=await win.webContents.executeJavaScript(`(async()=>{
+   const $=id=>document.getElementById(id);
+   $('studio-simple').click();
+   const simpleMode=document.body.dataset.studioMode==='simple';
+   const simpleBar=getComputedStyle($('simple-control-bar')).display!=='none';
+   const navHidden=getComputedStyle($('pro-navigation')).display==='none';
+   const deckHidden=getComputedStyle($('vj-deck')).display==='none';
+   const widePreview=getComputedStyle(document.querySelector('.sidebar')).display==='none';
+   const sourceAccurate=$('simple-status-source').textContent===$('title-status').textContent;
+   const trackAccurate=$('simple-status-track').textContent===$('track-name').textContent;
+   const visualAccurate=$('simple-status-visual').textContent===$('mode-label').textContent;
+   const initialAI=$('ai-toggle').getAttribute('aria-checked');
+   $('simple-ai').click();
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const aiDelegates=$('ai-toggle').getAttribute('aria-checked')!==initialAI
+     &&$('simple-ai').getAttribute('aria-pressed')===$('ai-toggle').getAttribute('aria-checked');
+   $('simple-ai').click();
+   $('simple-visual').value='wave';
+   $('simple-visual').dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const visualDelegates=document.querySelector('[data-mode="wave"]').classList.contains('active')
+     &&$('simple-status-visual').textContent===$('mode-label').textContent;
+   $('simple-visual').value='bars';
+   $('simple-visual').dispatchEvent(new Event('change',{bubbles:true}));
+   $('studio-pro').click();
+   const proMode=document.body.dataset.studioMode==='pro';
+   const deckShown=getComputedStyle($('vj-deck')).display!=='none';
+   const navShown=getComputedStyle($('pro-navigation')).display!=='none';
+   document.querySelector('[data-vj-target="vj-mix"]').click();
+   const jumpWorks=document.activeElement===$('vj-mix');
+   return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
+     sourceAccurate,trackAccurate,visualAccurate,aiDelegates,visualDelegates,
+     proMode,deckShown,navShown,jumpWorks};
+ })()`);
+ for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
+ details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
  await win.close();
 }
 const timeout=setTimeout(()=>{fail('Electron renderer smoke test timed out');process.stderr.write(details.join('\n')+'\n');app.exit(1);},105000);
