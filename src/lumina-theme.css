@@ -147,8 +147,8 @@ body[data-theme="lumina-pulse"] .studio-mode-label{
 }
 body[data-theme="lumina-pulse"] .studio-mode-button{
   appearance:none;cursor:pointer;background:#0c222b;color:#a5cbd4;
-  border:1px solid #28525c;border-radius:3px;font:700 11px/1.25 inherit;
-  font-size:11px;font-weight:700;letter-spacing:.6px;padding:9px 13px;
+  border:1px solid #28525c;border-radius:3px;font-family:inherit;font-size:11px;font-weight:700;line-height:1.25;
+  letter-spacing:.6px;padding:9px 13px;
 }
 body[data-theme="lumina-pulse"] .studio-mode-button:hover{
   color:#efffff;background:#103842;border-color:#00d3f2;
