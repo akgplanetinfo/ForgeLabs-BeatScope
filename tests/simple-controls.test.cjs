@@ -27,8 +27,12 @@ function element(id, dataset = {}) {
 }
 function fixture() {
   const ids = ['simple-control-bar', 'simple-visual', ...Object.keys(ACTIONS),
-    ...Object.values(ACTIONS)];
+    ...Object.values(ACTIONS), 'title-status', 'track-name', 'mode-label',
+    'simple-status-source', 'simple-status-track', 'simple-status-visual'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
+  nodes['title-status'].textContent = 'Élő mikrofon';
+  nodes['track-name'].textContent = 'teszt-zene.wav';
+  nodes['mode-label'].textContent = 'ORBIT / RADIAL SPECTRUM';
   const sources = VISUALS.map(value => element('source-' + value, { mode: value }));
   const body = element('body');
   const doc = {
@@ -39,7 +43,7 @@ function fixture() {
   const observers = [];
   class Observer {
     constructor(callback) { this.callback = callback; this.observed = []; observers.push(this); }
-    observe(node, opts) { this.observed.push([node, opts.attributeFilter[0]]); }
+    observe(node, opts) { this.observed.push([node, opts.attributeFilter?.[0] ?? 'text']); }
     disconnect() { this.disconnected = true; }
     notify() { this.callback(); }
   }
@@ -107,4 +111,21 @@ test('Simple quick controls are wired into real Electron HTML only, with no dupl
   assert.match(css, /data-studio-mode="simple"\] \.simple-control-bar/);
   assert.match(css, /\.simple-control-bar\{display:none\}/);
   assert.match(js, /target\.click\(\)/);
+});
+
+test('Simple HUD reads original audio/track/visual labels and observes changes', () => {
+  const f = fixture();
+  const controller = attachSimpleControls(f.doc, f.Observer);
+  assert.equal(f.nodes['simple-status-source'].textContent, 'Élő mikrofon');
+  assert.equal(f.nodes['simple-status-track'].textContent, 'teszt-zene.wav');
+  assert.equal(f.nodes['simple-status-visual'].textContent, 'ORBIT / RADIAL SPECTRUM');
+  f.nodes['title-status'].textContent = 'Nincs hangforrás';
+  f.nodes['track-name'].textContent = 'Nincs kiválasztott zene';
+  f.nodes['mode-label'].textContent = 'SPECTRUM / REAL TIME';
+  f.observers[0].notify();
+  assert.equal(f.nodes['simple-status-source'].textContent,'Nincs hangforrás');
+  assert.equal(f.nodes['simple-status-track'].textContent,'Nincs kiválasztott zene');
+  assert.equal(f.nodes['simple-status-visual'].textContent,'SPECTRUM / REAL TIME');
+  assert.ok(f.observers[0].observed.filter(([_,kind])=>kind==='text').length>=3);
+  controller.disconnect();
 });
