@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="src/style.css" />
   <link rel="stylesheet" href="src/lumina-theme.css" />
 </head>
-<body data-theme="lumina-pulse">
+<body data-theme="lumina-pulse" data-studio-mode="pro">
   <header class="titlebar" id="titlebar">
     <div class="brand-group">
       <div class="appmark"><svg viewBox="0 0 32 32" fill="none"><path d="M4 18h5l3-10 6 17 4-9h6" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
@@ -67,6 +67,12 @@
       <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α13</span></div>
     </aside>
     <main class="workspace">
+      <div class="studio-mode-bar" role="group" aria-label="Lumina Pulse munkatér módja">
+        <span class="studio-mode-label">MUNKATÉR</span>
+        <button type="button" class="studio-mode-button" id="studio-simple" data-studio-mode-target="simple" aria-pressed="false">SIMPLE MODE</button>
+        <button type="button" class="studio-mode-button active" id="studio-pro" data-studio-mode-target="pro" aria-pressed="true">PRO VJ STUDIO</button>
+        <span class="studio-mode-hint" id="studio-mode-hint" aria-live="polite">Teljes VJ munkatér · rétegek, BPM, effektek és kimenetek.</span>
+      </div>
       <div class="workspace-top">
         <div><div class="eyebrow">AUDIO REACTIVE EXPERIENCE <span>—</span> STUDIO</div><h1>Hangból <em>élmény.</em></h1><p id="subtext">Tölts be egy zenét, vagy használd a mikrofont.</p></div>
         <div class="workspace-actions"><button class="outline-btn fx-launch" id="fx-browser-open" title="120 effekt böngészése">✦ <span>FX könyvtár · 120</span></button><button class="outline-btn" id="save-image" title="Aktuális vizualizáció mentése PNG-ként">⇩ <span>Kép mentése</span></button><button class="outline-btn" id="fullscreen" title="Teljes képernyő (F11)">⛶ <span>Fullscreen</span></button></div>
@@ -347,6 +353,7 @@
   <script src="src/generators-extra.js"></script>
   <script src="src/fx-engine.js"></script>
   <script src="src/live-output.js"></script>
+  <script src="src/studio-mode.js"></script>
   <script src="src/ui.js"></script>
 </body>
 </html>
