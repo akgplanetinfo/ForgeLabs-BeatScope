@@ -217,3 +217,36 @@ body[data-theme="lumina-pulse"] #simple-visual:focus-visible{
   body[data-theme="lumina-pulse"] .simple-action{flex:1 1 125px}
   body[data-theme="lumina-pulse"] .simple-visual-field{flex:1 1 180px}
 }
+
+/* Alpha 17 stage 3: compact, keyboard-accessible Pro VJ navigation. */
+body[data-theme="lumina-pulse"] .pro-navigation{
+  position:sticky;top:0;z-index:8;display:flex;align-items:center;gap:6px;
+  overflow-x:auto;overflow-y:hidden;flex-shrink:0;min-height:49px;
+  padding:7px 9px;margin-bottom:10px;scrollbar-width:thin;
+  background:#071a22f5;border:1px solid #22505d;border-radius:3px;
+}
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .pro-navigation{display:none}
+body[data-theme="lumina-pulse"] .pro-navigation-title{
+  color:#00d3f2;letter-spacing:1px;font-size:10px;font-weight:850;
+  flex:0 0 auto;margin-right:5px;
+}
+body[data-theme="lumina-pulse"] .pro-navigation button{
+  appearance:none;white-space:nowrap;flex:0 0 auto;cursor:pointer;
+  background:#0b2933;border:1px solid #2b5460;color:#d5f7fc;
+  font-family:inherit;font-size:10px;font-weight:720;line-height:1.3;
+  padding:8px 10px;border-radius:3px;
+}
+body[data-theme="lumina-pulse"] .pro-navigation button:hover{
+  background:#105263;border-color:#00d3f2;
+}
+body[data-theme="lumina-pulse"] .pro-navigation button:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:2px;
+}
+body[data-theme="lumina-pulse"] :is(
+  #visual-shell,#project-toolbar,#vj-tempo,#vj-auto,#vj-deck,#vj-controls,
+  #vj-mix,#vj-layer-effects,#vj-clip-effects,#output-router
+){scroll-margin-top:64px}
+body[data-theme="lumina-pulse"] .pro-navigation-status{
+  position:absolute;width:1px;height:1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;
+}
