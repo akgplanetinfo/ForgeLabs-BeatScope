@@ -1,8 +1,8 @@
 {
   "name": "forgelabs-beatscope",
   "productName": "ForgeLabs BeatScope",
-  "version": "0.4.0-alpha.15",
-  "description": "ForgeLabs BeatScope – valós idejű zenei vizualizátor Windowsra",
+  "version": "0.4.0-alpha.16",
+  "description": "Lumina Pulse – továbbfejlesztett ForgeLabs BeatScope audio- és VJ-alkalmazás",
   "private": true,
   "main": "src/main.cjs",
   "author": "ForgeLabs",

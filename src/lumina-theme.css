@@ -1,0 +1,137 @@
+/* Lumina Pulse 2.0 · Stage 1 — working BeatScope UI theme.
+   Design reference: https://lumina-pulse-forgelabs.vercel.app/
+   No app logic, IDs or preferences are changed by this stylesheet. */
+:root {
+  --bg:#050709;
+  --panel:#090f13;
+  --panel2:#11191d;
+  --ink:#f6fdff;
+  --soft:#b0ccd3;
+  --muted:#7c99a2;
+  --line:#20343b;
+  --accent:#00d3f2;
+  --green:#58ebda;
+  --violet:#7eaeff;
+}
+body[data-theme="lumina-pulse"]{
+  background:radial-gradient(ellipse at 62% 4%,#04303b55,transparent 49%),#050709;
+  color:var(--ink);
+  font-family:Inter,"Segoe UI Variable","Segoe UI",Arial,sans-serif;
+}
+body[data-theme="lumina-pulse"] .titlebar{
+  background:#05090c;
+  border-bottom:1px solid #15404c;
+  min-height:58px;
+}
+body[data-theme="lumina-pulse"] .brand-group{min-width:280px}
+body[data-theme="lumina-pulse"] .appmark{
+  color:#00e3ff;
+  background:linear-gradient(145deg,#052936,#091119);
+  border:1px solid #00d3f28a;
+  box-shadow:0 0 0 1px #00d3f222,inset 0 0 18px #00d3f225;
+  border-radius:2px;
+}
+body[data-theme="lumina-pulse"] .brand-name strong{
+  font-family:"Space Grotesk",Inter,"Segoe UI",sans-serif;
+  font-style:italic;
+  font-size:18px;
+  font-weight:900;
+  letter-spacing:-.55px;
+  line-height:1;
+  text-transform:uppercase;
+}
+body[data-theme="lumina-pulse"] .brand-name strong span{color:#00d3f2}
+body[data-theme="lumina-pulse"] .brand-name small{
+  color:#6c9da9;
+  font-size:8px;
+  letter-spacing:1.35px;
+  padding-top:3px;
+}
+body[data-theme="lumina-pulse"] .app-layout{
+  height:calc(100vh - 58px);
+  grid-template-columns:232px minmax(330px,1fr) 255px;
+}
+body[data-theme="lumina-pulse"] .sidebar{
+  background:linear-gradient(180deg,#081319,#050b0f);
+  border-right:1px solid #15333d;
+}
+body[data-theme="lumina-pulse"] .inspector{
+  background:linear-gradient(180deg,#08141a,#050b0f);
+  border-left-color:#16313a;
+}
+body[data-theme="lumina-pulse"] .sidebar-section-label,
+body[data-theme="lumina-pulse"] .inspector-head{color:#87b5bd;letter-spacing:1.6px}
+body[data-theme="lumina-pulse"] .mode-btn{
+  border-radius:2px;
+  border:1px solid transparent;
+  transition:background .16s,border-color .16s;
+}
+body[data-theme="lumina-pulse"] .mode-btn:hover{background:#11323c}
+body[data-theme="lumina-pulse"] .mode-btn.active{
+  border-color:#00d3f287;
+  background:linear-gradient(110deg,#053a43,#0b1c22);
+  box-shadow:inset 3px 0 #00d3f2,0 0 18px #00d3f213;
+}
+body[data-theme="lumina-pulse"] .mode-icon{
+  border-radius:2px;
+  background:#06252e;
+  color:#76e8ef;
+  border-color:#1c5260;
+}
+body[data-theme="lumina-pulse"] .mode-btn.active .mode-icon{
+  color:#00efff;background:#06323b;border-color:#168ba0;
+}
+body[data-theme="lumina-pulse"] .keycap{border-radius:2px;background:#0c242e}
+body[data-theme="lumina-pulse"] .ai-panel,
+body[data-theme="lumina-pulse"] .vj-deck,
+body[data-theme="lumina-pulse"] .vj-mix,
+body[data-theme="lumina-pulse"] .vj-layer-effects,
+body[data-theme="lumina-pulse"] .vj-clip-effects,
+body[data-theme="lumina-pulse"] .vj-video-controls,
+body[data-theme="lumina-pulse"] .vj-tempo,
+body[data-theme="lumina-pulse"] .vj-auto,
+body[data-theme="lumina-pulse"] .output-router,
+body[data-theme="lumina-pulse"] .project-toolbar{
+  background:linear-gradient(120deg,#0b181e,#091216);
+  border:1px solid #1d4852;
+  border-radius:3px;
+  box-shadow:none;
+}
+body[data-theme="lumina-pulse"] .project-toolbar-label strong,
+body[data-theme="lumina-pulse"] .output-router-heading strong,
+body[data-theme="lumina-pulse"] .vj-tempo-header strong,
+body[data-theme="lumina-pulse"] .vj-auto-title strong{
+  color:#00d3f2;
+  letter-spacing:1px;
+}
+body[data-theme="lumina-pulse"] :is(.project-toolbar-actions button,.output-router-options button,.vj-tempo-controls button,.vj-auto-actions button,.vj-cfx-add button,.vj-mix-order button){
+  border-radius:2px;
+  border-color:#286875;
+  background:#0b303a;
+  color:#dcfcff;
+}
+body[data-theme="lumina-pulse"] :is(.project-toolbar-actions button,.output-router-options button,.vj-tempo-controls button,.vj-auto-actions button,.vj-cfx-add button,.vj-mix-order button):hover:not(:disabled){
+  border-color:#00d3f2;background:#105061;
+}
+body[data-theme="lumina-pulse"] :is(select,input[type=text],input[type=number]){
+  border-radius:2px;
+}
+body[data-theme="lumina-pulse"] :is(.vj-clip,.vj-scene-trigger){
+  border-radius:2px;
+}
+body[data-theme="lumina-pulse"] :is(.vj-clip.playing,.vj-scene-trigger.pending){box-shadow:inset 0 0 0 1px #00d3f245}
+body[data-theme="lumina-pulse"] .title-center{color:#9dbbc5}
+body[data-theme="lumina-pulse"] .titlebar:before{
+  content:"";position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,#00d3f288 45%,transparent);
+  pointer-events:none;
+}
+@media(max-width:1120px){
+  body[data-theme="lumina-pulse"] .app-layout{grid-template-columns:205px minmax(290px,1fr) 224px}
+  body[data-theme="lumina-pulse"] .brand-group{min-width:235px}
+}
+@media(max-width:920px){
+  body[data-theme="lumina-pulse"] .app-layout{grid-template-columns:184px minmax(260px,1fr) 190px}
+  body[data-theme="lumina-pulse"] .brand-group{min-width:210px}
+  body[data-theme="lumina-pulse"] .brand-name strong{font-size:16px}
+}

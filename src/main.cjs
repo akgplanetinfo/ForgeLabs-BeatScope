@@ -11,7 +11,7 @@ const Projects=require('./project-bundle.cjs');
 const {pathToFileURL}=require('node:url');
 protocol.registerSchemesAsPrivileged([{scheme:'beatscope-media',privileges:{standard:true,secure:true,stream:true,supportFetchAPI:true,corsEnabled:true}}]);
 
-const APP_TITLE = 'ForgeLabs BeatScope';
+const APP_TITLE = 'Lumina Pulse | BeatScope Edition';
 const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.15, smooth:0.75, barCount:56, showGrid:true, micDevice:'default', volume:0.85, aiEnabled:false, aiSpeed:'balanced', aiPalette:false, fxStack:[], fxBypass:false, fxAuto:false, fxFavorites:[], composition:Composition.createComposition(), bpm:120, quantize:'off',autoSceneMode:'sequential',autoSceneBars:4, ...Output.DEFAULT_CONFIG });
 let window = null;
 let previewWindow=null,outputWindow=null;
