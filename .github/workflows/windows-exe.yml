@@ -2,7 +2,7 @@ name: ForgeLabs BeatScope Windows EXE
 
 on:
   push:
-    branches: [main, 'feature/project-bundles-alpha15']
+    branches: [main, 'feature/project-bundles-alpha15', 'feature/lumina-alpha17-stage1']
     paths-ignore:
       - '**/*.md'
   workflow_dispatch:
