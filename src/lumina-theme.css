@@ -250,3 +250,33 @@ body[data-theme="lumina-pulse"] .pro-navigation-status{
   position:absolute;width:1px;height:1px;overflow:hidden;
   clip:rect(0 0 0 0);white-space:nowrap;
 }
+
+/* Alpha 17 stage 3: spacious Simple Mode with the existing live audio inspector. */
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .app-layout{
+  grid-template-columns:minmax(0,1fr) 255px;
+}
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .sidebar{display:none}
+body[data-theme="lumina-pulse"] .simple-live-summary{
+  display:flex;align-items:center;gap:9px 18px;flex-wrap:wrap;
+  width:100%;padding:9px 11px;background:#06141b;
+  border:1px solid #214954;border-radius:3px;
+}
+body[data-theme="lumina-pulse"] .simple-live-summary > span{
+  display:flex;gap:6px;align-items:center;min-width:0;
+  color:#7cb4c1;font-size:9px;font-weight:800;letter-spacing:.65px;
+}
+body[data-theme="lumina-pulse"] .simple-live-summary strong{
+  min-width:0;max-width:320px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;color:#d9fbff;font-size:10px;font-weight:600;
+  letter-spacing:0;
+}
+@media(max-width:1120px){
+  body[data-theme="lumina-pulse"][data-studio-mode="simple"] .app-layout{
+    grid-template-columns:minmax(0,1fr) 208px;
+  }
+}
+@media(max-width:980px){
+  body[data-theme="lumina-pulse"][data-studio-mode="simple"] .app-layout{
+    grid-template-columns:minmax(0,1fr);
+  }
+}
