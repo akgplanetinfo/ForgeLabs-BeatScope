@@ -1,4 +1,4 @@
-/* Lumina Pulse 2.0 · Stage 1 — working BeatScope UI theme.
+/* Lumina Pulse 2.0 · Alpha 17 stage 1 — working BeatScope UI theme and workspace navigation.
    Design reference: https://lumina-pulse-forgelabs.vercel.app/
    No app logic, IDs or preferences are changed by this stylesheet. */
 :root {
@@ -134,4 +134,42 @@ body[data-theme="lumina-pulse"] .titlebar:before{
   body[data-theme="lumina-pulse"] .app-layout{grid-template-columns:184px minmax(260px,1fr) 190px}
   body[data-theme="lumina-pulse"] .brand-group{min-width:210px}
   body[data-theme="lumina-pulse"] .brand-name strong{font-size:16px}
+}
+
+/* Alpha 17: accessible Simple / Pro VJ workspace switcher. */
+body[data-theme="lumina-pulse"] .studio-mode-bar{
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+  padding:9px 12px;margin:0 0 14px;background:#08161c;
+  border:1px solid #20515d;border-radius:3px;
+}
+body[data-theme="lumina-pulse"] .studio-mode-label{
+  color:#8ab9c2;font-size:10px;font-weight:800;letter-spacing:1.5px;margin-right:4px;
+}
+body[data-theme="lumina-pulse"] .studio-mode-button{
+  appearance:none;cursor:pointer;background:#0c222b;color:#a5cbd4;
+  border:1px solid #28525c;border-radius:3px;font:700 11px/1.25 inherit;
+  font-size:11px;font-weight:700;letter-spacing:.6px;padding:9px 13px;
+}
+body[data-theme="lumina-pulse"] .studio-mode-button:hover{
+  color:#efffff;background:#103842;border-color:#00d3f2;
+}
+body[data-theme="lumina-pulse"] .studio-mode-button.active{
+  color:#00171d;background:#00d3f2;border-color:#00d3f2;
+  box-shadow:0 0 13px #00d3f225;
+}
+body[data-theme="lumina-pulse"] .studio-mode-button:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:3px;
+}
+body[data-theme="lumina-pulse"] .studio-mode-hint{
+  color:#9dbdc4;font-size:11px;line-height:1.35;margin-left:auto;
+}
+/* Keep all engine nodes, listeners, audio and scene state intact; change layout only. */
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .workspace > :is(
+  #output-router,#vj-tempo,#vj-auto,#vj-deck,#vj-controls,
+  #vj-video-controls,#vj-mix,#vj-layer-effects,#vj-clip-effects,#vj-clip-menu
+){display:none !important}
+@media(max-width:1100px){
+  body[data-theme="lumina-pulse"] .studio-mode-hint{
+    flex-basis:100%;margin-left:0;
+  }
 }
