@@ -73,6 +73,21 @@
         <button type="button" class="studio-mode-button active" id="studio-pro" data-studio-mode-target="pro" aria-pressed="true">PRO VJ STUDIO</button>
         <span class="studio-mode-hint" id="studio-mode-hint" aria-live="polite">Teljes VJ munkatér · rétegek, BPM, effektek és kimenetek.</span>
       </div>
+      <section class="simple-control-bar" id="simple-control-bar" aria-label="Simple Mode gyorsvezérlés">
+        <div class="simple-control-heading"><strong>QUICK CONTROLS</strong><small>Az eredeti BeatScope-motor valódi vezérlése</small></div>
+        <label class="simple-visual-field" for="simple-visual">Vizualizáció
+          <select id="simple-visual" aria-label="Simple Mode vizualizáció kiválasztása">
+            <option value="bars">Spectrum Bars</option>
+            <option value="wave">Waveform</option>
+            <option value="orbit">Orbit Pulse</option>
+            <option value="particles">Particles</option>
+          </select>
+        </label>
+        <button type="button" class="simple-action" id="simple-open-file">♫ Zene betöltése</button>
+        <button type="button" class="simple-action" id="simple-microphone" aria-pressed="false">♩ Mikrofon</button>
+        <button type="button" class="simple-action" id="simple-ai" aria-pressed="false">✦ Automata FX</button>
+        <button type="button" class="simple-action" id="simple-fullscreen" aria-pressed="false">⛶ Teljes képernyő</button>
+      </section>
       <div class="workspace-top">
         <div><div class="eyebrow">AUDIO REACTIVE EXPERIENCE <span>—</span> STUDIO</div><h1>Hangból <em>élmény.</em></h1><p id="subtext">Tölts be egy zenét, vagy használd a mikrofont.</p></div>
         <div class="workspace-actions"><button class="outline-btn fx-launch" id="fx-browser-open" title="120 effekt böngészése">✦ <span>FX könyvtár · 120</span></button><button class="outline-btn" id="save-image" title="Aktuális vizualizáció mentése PNG-ként">⇩ <span>Kép mentése</span></button><button class="outline-btn" id="fullscreen" title="Teljes képernyő (F11)">⛶ <span>Fullscreen</span></button></div>
@@ -355,5 +370,6 @@
   <script src="src/live-output.js"></script>
   <script src="src/studio-mode.js"></script>
   <script src="src/ui.js"></script>
+  <script src="src/simple-controls.js"></script>
 </body>
 </html>
