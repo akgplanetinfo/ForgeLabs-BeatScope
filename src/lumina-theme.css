@@ -495,3 +495,15 @@ body[data-theme="lumina-pulse"] .pro-favorite-shortcut[data-command-kind="action
   }
   body[data-theme="lumina-pulse"] .pro-favorites-actions{width:100%}
 }
+
+/* Alpha 17 stage 10: reveal the keyboard slot for each pinned Pro VJ shortcut. */
+body[data-theme="lumina-pulse"] .pro-favorite-shortcut[data-hotkey]::after{
+  content:attr(data-hotkey);
+  display:inline-block;vertical-align:baseline;margin-left:9px;
+  padding:2px 5px;border:1px solid #5d8490;border-radius:2px;
+  color:#b3d9e2;background:#10252e;
+  font-family:inherit;font-size:9px;font-weight:650;letter-spacing:.15px;
+}
+body[data-theme="lumina-pulse"] .pro-favorite-shortcut:disabled::after{
+  color:#9ca7aa;
+}
