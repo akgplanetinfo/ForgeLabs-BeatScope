@@ -130,6 +130,18 @@ test('Explicit close button, outside click and switch to Simple close safely',()
   f.els['studio-simple'].click();
   assert.equal(controller.isOpen(),false);
 });
+test('Tab and Shift+Tab keep focus within the open modal',()=>{
+  const f=fixture(),controller=attachVJCommandSearch(doc);
+  controller.open();
+  const items=f.els['pro-command-results'].querySelectorAll('[role="option"]');
+  items[items.length-1].focus();
+  assert.equal(f.docKey('Tab'),true);
+  assert.equal(doc.activeElement,f.els['pro-command-close']);
+  assert.equal(f.docKey('Tab',{shiftKey:true}),true);
+  assert.equal(doc.activeElement,items[items.length-1]);
+  controller.close();
+});
+
 test('Search dialog is in the Electron renderer with original navigation unchanged',()=>{
   const html=read('index.html'),css=read('src/lumina-theme.css'),js=read('src/vj-command-search.js');
   for(const id of ['pro-search-open','pro-command-overlay','pro-command-input',
