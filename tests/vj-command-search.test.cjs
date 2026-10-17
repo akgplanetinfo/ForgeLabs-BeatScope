@@ -3,7 +3,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-const {normalizeSearch,matches,attachVJCommandSearch}=require('../src/vj-command-search.js');
+const {COMMAND_ACTIONS,normalizeSearch,matches,attachVJCommandSearch}=require('../src/vj-command-search.js');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 
 function makeElement(id='') {
@@ -34,9 +34,10 @@ function makeElement(id='') {
   return node;
 }
 let doc;
-function fixture() {
+function fixture({withActions=false}={}) {
   const ids=['pro-command-overlay','pro-search-open','pro-command-close',
-    'pro-command-input','pro-command-results','pro-navigation','studio-simple'];
+    'pro-command-input','pro-command-results','pro-navigation','studio-simple',
+    ...(withActions?COMMAND_ACTIONS.map(action=>action.id):[])];
   const els=Object.fromEntries(ids.map(id=>[id,makeElement(id)]));
   const navItems=['BPM','Layer Mixer','FX Library ↗','VJ Output','Kliprács'].map((label,i)=>{
     const b=makeElement('nav'+i);
@@ -140,6 +141,49 @@ test('Tab and Shift+Tab keep focus within the open modal',()=>{
   assert.equal(f.docKey('Tab',{shiftKey:true}),true);
   assert.equal(doc.activeElement,items[items.length-1]);
   controller.close();
+});
+
+test('Stage 6 action registry uses existing BeatScope source IDs and searchable aliases',()=>{
+  assert.equal(COMMAND_ACTIONS.length,7);
+  const html=read('index.html');
+  for(const action of COMMAND_ACTIONS)assert.ok(html.includes('id="'+action.id+'"'),action.id);
+  const entries=COMMAND_ACTIONS.map(action=>({label:'Művelet · '+action.label,terms:action.terms}));
+  assert.deepEqual(matches(entries,'screenshot').map(x=>x.label),['Művelet · Kép mentése PNG']);
+  assert.deepEqual(matches(entries,'mikrofon').map(x=>x.label),['Művelet · Mikrofon kapcsolása']);
+  assert.deepEqual(matches(entries,'projekt').map(x=>x.label),['Művelet · Projekt mentése']);
+});
+
+test('Stage 6 delegates each selected action once to its original BeatScope control',()=>{
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc);
+  for(const action of COMMAND_ACTIONS){
+    assert.equal(ctrl.open(),true);
+    f.els['pro-command-input'].value=action.label;
+    f.els['pro-command-input'].fire('input');
+    const names=ctrl.getMatches();
+    assert.equal(names.length,1,action.label+': '+names.join(', '));
+    f.key('Enter').dispatch();
+    assert.equal(f.els[action.id].clicks,1,action.id);
+    assert.equal(ctrl.isOpen(),false);
+  }
+});
+
+test('Stage 6 does not run a disabled action; re-enabled original actions become available',()=>{
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc);
+  f.els['open-preview'].disabled=true;
+  ctrl.open();
+  f.els['pro-command-input'].value='Előnézeti ablak megnyitása';
+  f.els['pro-command-input'].fire('input');
+  const row=f.els['pro-command-results'].querySelectorAll('[role="option"]')[0];
+  assert.equal(row.disabled,true);
+  f.key('Enter').dispatch();
+  assert.equal(ctrl.isOpen(),true);
+  assert.equal(f.els['open-preview'].clicks||0,0);
+  f.els['open-preview'].disabled=false;
+  f.els['pro-command-input'].fire('input');
+  assert.equal(f.els['pro-command-results'].querySelectorAll('[role="option"]')[0].disabled,false);
+  f.key('Enter').dispatch();
+  assert.equal(ctrl.isOpen(),false);
+  assert.equal(f.els['open-preview'].clicks,1);
 });
 
 test('Search dialog is in the Electron renderer with original navigation unchanged',()=>{
