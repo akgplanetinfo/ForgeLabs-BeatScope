@@ -703,6 +703,7 @@ async function run(){
    query.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
    const paletteNavigated=$('pro-command-overlay').hidden
      &&document.activeElement===$('vj-mix');
+   $('pro-search-open').focus();
    $('pro-search-open').click();
    const paletteReopened=!$('pro-command-overlay').hidden;
    $('pro-command-input').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
