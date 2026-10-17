@@ -807,6 +807,36 @@ async function run(){
    $('studio-pro').click();
    const favoritesReturnInPro=getComputedStyle(favoritesBar).display!=='none'
      &&favoritesButtons.querySelectorAll('.pro-favorite-shortcut').length===2;
+   // Stage 10: live keyboard slots with physical Digit codes for Hungarian layouts.
+   const favoriteHotkeyLabels=[...favoritesButtons.querySelectorAll('.pro-favorite-shortcut')]
+     .map(button=>button.dataset.hotkey);
+   const hotkeyLabels=favoriteHotkeyLabels.join(',')==='Ctrl+Shift+1,Ctrl+Shift+2'
+     &&favoritesButtons.querySelector('.pro-favorite-shortcut')
+       ?.getAttribute('aria-keyshortcuts')==='Control+Shift+1';
+   const digitEvent=(code,key,extra={})=>new KeyboardEvent('keydown',{
+     key,code,ctrlKey:true,shiftKey:true,bubbles:true,cancelable:true,...extra
+   });
+   const hotkeyOneConsumed=document.dispatchEvent(digitEvent('Digit1','!'))===false;
+   const hotkeyOneNavigates=document.activeElement===$('vj-mix');
+   const hotkeyTwoBefore=$('ai-toggle').getAttribute('aria-checked');
+   const hotkeyTwoConsumed=document.dispatchEvent(digitEvent('Digit2','@'))===false;
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const hotkeyTwoDelegates=$('ai-toggle').getAttribute('aria-checked')!==hotkeyTwoBefore;
+   $('ai-toggle').click();
+   const repeatedBefore=$('ai-toggle').getAttribute('aria-checked');
+   document.dispatchEvent(digitEvent('Digit2','@',{repeat:true}));
+   const hotkeyRepeatSafe=$('ai-toggle').getAttribute('aria-checked')===repeatedBefore;
+   const textField=$('pro-command-input');
+   textField.dispatchEvent(digitEvent('Digit2','@'));
+   const hotkeyTypingSafe=$('ai-toggle').getAttribute('aria-checked')===repeatedBefore;
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   document.dispatchEvent(digitEvent('Digit2','@'));
+   const hotkeyDialogSafe=$('ai-toggle').getAttribute('aria-checked')===repeatedBefore;
+   textField.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   $('studio-simple').click();
+   document.dispatchEvent(digitEvent('Digit2','@'));
+   const hotkeySimpleSafe=$('ai-toggle').getAttribute('aria-checked')===repeatedBefore;
+   $('studio-pro').click();
    return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
      sourceAccurate,trackAccurate,visualAccurate,aiDelegates,visualDelegates,
      proMode,deckShown,navShown,jumpWorks,activeIndicator,backEnabled,backWorks,
@@ -816,7 +846,9 @@ async function run(){
      categoriesDistinct,recentStored,pinInitiallyOff,favoritePinned,favoriteFirst,
      favoriteUnpinned,recentAfterUnpin,favoritesBarShown,favoriteButtonLabel,
      favoriteQuickNavigation,favoriteQuickActions,favoriteQuickDelegated,
-     favoritesHiddenInSimple,favoritesReturnInPro};
+     favoritesHiddenInSimple,favoritesReturnInPro,hotkeyLabels,hotkeyOneConsumed,
+     hotkeyOneNavigates,hotkeyTwoConsumed,hotkeyTwoDelegates,hotkeyRepeatSafe,
+     hotkeyTypingSafe,hotkeyDialogSafe,hotkeySimpleSafe};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
