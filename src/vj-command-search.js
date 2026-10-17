@@ -3,9 +3,19 @@
 (() => {
   const normalizeSearch = value => String(value || '').normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('hu').trim();
+  // Actions are strictly delegated to existing controls; no duplicate playback/audio state.
+  const COMMAND_ACTIONS = Object.freeze([
+    {id:'open-file',label:'Zene betöltése',terms:'hangfájl fájl mp3 audio megnyitás'},
+    {id:'play-pause',label:'Lejátszás / szünet',terms:'play pause zene indítás megállítás'},
+    {id:'microphone',label:'Mikrofon kapcsolása',terms:'mikrofon mic élő bemenet'},
+    {id:'ai-toggle',label:'Automatikus FX kapcsolása',terms:'ai visual director effektek automata'},
+    {id:'save-image',label:'Kép mentése PNG',terms:'screenshot kép export pillanatkép'},
+    {id:'open-preview',label:'Előnézeti ablak megnyitása',terms:'preview ablak megjelenítés'},
+    {id:'project-save',label:'Projekt mentése',terms:'projekt biztonsági mentés save'}
+  ]);
   const matches = (entries, term) => {
     const query = normalizeSearch(term);
-    return entries.filter(entry => normalizeSearch(entry.label).includes(query));
+    return entries.filter(entry => normalizeSearch(entry.label+' '+(entry.terms||'')).includes(query));
   };
   function attachVJCommandSearch(doc) {
     const overlay=doc?.getElementById?.('pro-command-overlay');
@@ -15,8 +25,14 @@
     const results=doc?.getElementById?.('pro-command-results');
     const nav=doc?.getElementById?.('pro-navigation');
     if (!overlay || !openButton || !closeButton || !input || !results || !nav) return null;
-    const entries=[...nav.querySelectorAll('[data-vj-target], [data-vj-action]')]
-      .map((button,index)=>({button,label:button.textContent.trim(),id:index}));
+    const navigation=[...nav.querySelectorAll('[data-vj-target], [data-vj-action]')]
+      .map((button,index)=>({button,label:button.textContent.trim(),id:index,kind:'navigation'}));
+    const actions=COMMAND_ACTIONS.flatMap(action=>{
+      const button=doc.getElementById(action.id);
+      return button?[{button,label:'Művelet · '+action.label,id:navigation.length+COMMAND_ACTIONS.indexOf(action),
+        kind:'action',terms:action.terms}]:[];
+    });
+    const entries=[...navigation,...actions];
     let filtered=[],selected=0,previousFocus=null;
     const visible=()=>!overlay.hidden;
     function render() {
@@ -30,6 +46,8 @@
         item.setAttribute('role','option');
         item.id='pro-command-option-'+entry.id;
         item.textContent=entry.label;
+        item.disabled=Boolean(entry.button.disabled);
+        if(entry.kind==='action')item.dataset.commandKind='action';
         item.addEventListener('click',()=>execute(entry));
         results.append(item);
       }
@@ -70,9 +88,11 @@
       return true;
     }
     function execute(entry){
-      if(!entry || !entries.includes(entry))return false;
-      // This uses the existing Pro VJ navigation (history, FX library and section focus).
+      if(!visible() || !entry || !entries.includes(entry) || entry.button.disabled)return false;
+      // Existing real UI handlers own confirmation, file dialogs, playback and permissions.
+      // Keep this inside the user's click or Enter event to preserve user activation.
       close({restoreFocus:false});
+      if(entry.kind==='action')entry.button.focus?.({preventScroll:true});
       entry.button.click();
       return true;
     }
@@ -122,6 +142,6 @@
     return {open,close,isOpen:visible,execute,render,getMatches:()=>filtered.map(e=>e.label)};
   }
   if(typeof module!=='undefined'&&module.exports)
-    module.exports={normalizeSearch,matches,attachVJCommandSearch};
+    module.exports={COMMAND_ACTIONS,normalizeSearch,matches,attachVJCommandSearch};
   if(typeof document!=='undefined')attachVJCommandSearch(document);
 })();
