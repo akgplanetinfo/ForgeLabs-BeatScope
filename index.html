@@ -75,6 +75,7 @@
       </div>
       <nav class="pro-navigation" id="pro-navigation" aria-label="Pro VJ Studio gyorsnavigáció">
         <span class="pro-navigation-title">PRO VJ</span>
+        <button type="button" id="pro-search-open" class="pro-search-launch" title="Pro VJ parancskereső (Ctrl+K)" aria-keyshortcuts="Control+K">⌕ Keresés <span>Ctrl+K</span></button>
         <button type="button" id="pro-nav-back" class="pro-nav-back" disabled aria-label="Vissza az előző Pro VJ szakaszhoz" title="Előző szakasz">← Vissza</button>
         <button type="button" data-vj-target="visual-shell">Előnézet</button>
         <button type="button" data-vj-target="project-toolbar">Projekt</button>
@@ -376,6 +377,15 @@
       <div class="inspector-bottom"><span>🔒</span><p>A hangfeldolgozás <b>helyben történik.</b> Nincs feltöltés, nincs fiók.</p></div>
     </aside>
   </div>
+  <section id="pro-command-overlay" class="pro-command-overlay" role="dialog" aria-modal="true" aria-label="Pro VJ parancskereső" hidden>
+    <div class="pro-command-panel">
+      <div class="pro-command-header"><strong>PRO VJ · GYORSKERESŐ</strong><button type="button" id="pro-command-close" aria-label="Parancskereső bezárása">✕</button></div>
+      <label for="pro-command-input">Keress munkaterületet vagy funkciót</label>
+      <input type="search" id="pro-command-input" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="pro-command-results" autocomplete="off" spellcheck="false" placeholder="Például: BPM, Layer Mixer, Output..." />
+      <div id="pro-command-results" class="pro-command-results" role="listbox" aria-label="Elérhető Pro VJ funkciók"></div>
+      <div class="pro-command-footer">↑ ↓ választás · Enter megnyitás · Esc bezárás</div>
+    </div>
+  </section>
   <input type="file" id="audio-file" accept="audio/*,.mp3,.wav,.ogg,.flac,.m4a,.aac" hidden/>
   <audio id="audio" preload="metadata"></audio>
   <div class="toast-stack" id="toasts" role="status" aria-live="polite"></div>
@@ -393,5 +403,6 @@
   <script src="src/ui.js"></script>
   <script src="src/simple-controls.js"></script>
   <script src="src/pro-navigation.js"></script>
+  <script src="src/vj-command-search.js"></script>
 </body>
 </html>
