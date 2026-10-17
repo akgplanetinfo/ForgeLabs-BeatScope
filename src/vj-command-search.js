@@ -15,6 +15,8 @@
   ]);
   const RECENT_KEY = 'lumina-pulse.recent-commands.v1';
   const RECENT_LIMIT = 5;
+  const FAVORITE_KEY = 'lumina-pulse.favorite-commands.v1';
+  const FAVORITE_LIMIT = 8;
   const matches = (entries, term) => {
     const query = normalizeSearch(term);
     return entries.filter(entry => normalizeSearch(entry.label+' '+(entry.terms||'')).includes(query));
@@ -25,14 +27,27 @@
       (position.get(a.key) ?? Number.MAX_SAFE_INTEGER) -
       (position.get(b.key) ?? Number.MAX_SAFE_INTEGER));
   }
+  function prioritizeFavorites(entries, favoriteKeys, recentKeys) {
+    const fav = new Map(favoriteKeys.map((key,index)=>[key,index]));
+    const rec = new Map(recentKeys.map((key,index)=>[key,index]));
+    return [...entries].sort((a,b)=>{
+      const af=fav.get(a.key),bf=fav.get(b.key);
+      if(af!==undefined || bf!==undefined)
+        return (af??Number.MAX_SAFE_INTEGER)-(bf??Number.MAX_SAFE_INTEGER);
+      return (rec.get(a.key)??Number.MAX_SAFE_INTEGER)-
+        (rec.get(b.key)??Number.MAX_SAFE_INTEGER);
+    });
+  }
   function attachVJCommandSearch(doc, providedStorage) {
     const overlay=doc?.getElementById?.('pro-command-overlay');
     const openButton=doc?.getElementById?.('pro-search-open');
     const closeButton=doc?.getElementById?.('pro-command-close');
     const input=doc?.getElementById?.('pro-command-input');
     const results=doc?.getElementById?.('pro-command-results');
+    const favoriteButton=doc?.getElementById?.('pro-command-favorite');
+    const note=doc?.getElementById?.('pro-command-note');
     const nav=doc?.getElementById?.('pro-navigation');
-    if (!overlay || !openButton || !closeButton || !input || !results || !nav) return null;
+    if (!overlay || !openButton || !closeButton || !input || !results || !nav || !favoriteButton) return null;
     const navigation=[...nav.querySelectorAll('[data-vj-target], [data-vj-action]')]
       .map((button,index)=>({button,label:button.textContent.trim(),id:index,kind:'navigation',
         key:button.dataset.vjTarget?'target:'+button.dataset.vjTarget:'nav:'+button.dataset.vjAction}));
@@ -50,11 +65,19 @@
       if(Array.isArray(parsed))recentKeys=[...new Set(parsed)]
         .filter(key=>typeof key==='string'&&entries.some(entry=>entry.key===key)).slice(0,RECENT_LIMIT);
     }catch{ /* local storage may be denied or contain damaged data */ }
+    let favoriteKeys=[];
+    try{
+      const parsed=JSON.parse(storage?.getItem(FAVORITE_KEY)||'[]');
+      if(Array.isArray(parsed))favoriteKeys=[...new Set(parsed)]
+        .filter(key=>typeof key==='string'&&entries.some(entry=>entry.key===key))
+        .slice(0,FAVORITE_LIMIT);
+    }catch{ /* optional local storage may be restricted */ }
     let filtered=[],selected=0,previousFocus=null;
     const visible=()=>!overlay.hidden;
     function render() {
       const found=matches(entries,input.value);
-      filtered=normalizeSearch(input.value)?found:prioritizeRecent(found,recentKeys);
+      filtered=normalizeSearch(input.value)?found:
+        prioritizeFavorites(found,favoriteKeys,recentKeys);
       selected=0;
       results.replaceChildren();
       for(const entry of filtered){
@@ -68,6 +91,7 @@
         item.dataset.commandKind=entry.kind;
         if(!normalizeSearch(input.value)&&recentKeys.includes(entry.key))
           item.dataset.recent='true';
+        if(favoriteKeys.includes(entry.key))item.dataset.favorite='true';
         item.addEventListener('click',()=>execute(entry));
         results.append(item);
       }
@@ -86,6 +110,28 @@
       });
       if(filtered[selected]) input.setAttribute('aria-activedescendant','pro-command-option-'+filtered[selected].id);
       else input.removeAttribute('aria-activedescendant');
+      const active=filtered[selected];
+      const pinned=Boolean(active && favoriteKeys.includes(active.key));
+      favoriteButton.disabled=!active;
+      favoriteButton.setAttribute('aria-pressed',String(pinned));
+      favoriteButton.textContent=pinned?'★ Kedvenc eltávolítása':'☆ Kedvencekhez';
+    }
+    function toggleFavorite(){
+      if(!visible() || !filtered[selected])return false;
+      const key=filtered[selected].key;
+      const pinned=favoriteKeys.includes(key);
+      if(!pinned && favoriteKeys.length>=FAVORITE_LIMIT) {
+        if(note)note.textContent='Legfeljebb '+FAVORITE_LIMIT+' kedvenc rögzíthető.';
+        return false;
+      }
+      favoriteKeys=pinned?favoriteKeys.filter(value=>value!==key):[...favoriteKeys,key];
+      try{storage?.setItem(FAVORITE_KEY,JSON.stringify(favoriteKeys));}catch{/* optional */}
+      if(note)note.textContent=pinned?'Eltávolítva a kedvencek közül.':'Kedvencek közé mentve.';
+      const selectedKey=key;
+      render();
+      const index=filtered.findIndex(entry=>entry.key===selectedKey);
+      if(index>=0){selected=index;highlight();}
+      return true;
     }
     function open(){
       if(doc.body?.dataset.studioMode!=='pro')return false;
@@ -93,6 +139,7 @@
       previousFocus=doc.activeElement;
       overlay.hidden=false;
       input.value='';
+      if(note)note.textContent='';
       render();
       input.focus();
       return true;
@@ -124,7 +171,11 @@
     overlay.addEventListener('click',event=>{
       if(event.target===overlay)close();
     });
-    input.addEventListener('input',render);
+    input.addEventListener('input',()=>{
+      if(note)note.textContent='';
+      render();
+    });
+    favoriteButton.addEventListener('click',toggleFavorite);
     input.addEventListener('keydown',event=>{
       if(event.key==='ArrowDown'||event.key==='ArrowUp'){
         event.preventDefault();
@@ -150,7 +201,8 @@
         close();
       } else if(event.key==='Tab'&&visible()){
         // Keep keyboard focus inside the modal while it is visible.
-        const focusable=[closeButton,input,...results.querySelectorAll('[role="option"]')];
+        const focusable=[closeButton,input,favoriteButton,...results.querySelectorAll('[role="option"]')]
+          .filter(element=>!element.disabled);
         const index=focusable.indexOf(doc.activeElement);
         if(index<0){
           event.preventDefault();input.focus();
@@ -162,11 +214,12 @@
       }
     },true);
     doc.getElementById('studio-simple')?.addEventListener('click',()=>close({restoreFocus:false}));
-    return {open,close,isOpen:visible,execute,render,getMatches:()=>filtered.map(e=>e.label),
-      getRecentKeys:()=>[...recentKeys]};
+    return {open,close,isOpen:visible,execute,render,toggleFavorite,
+      getMatches:()=>filtered.map(e=>e.label),getRecentKeys:()=>[...recentKeys],
+      getFavoriteKeys:()=>[...favoriteKeys]};
   }
   if(typeof module!=='undefined'&&module.exports)
-    module.exports={COMMAND_ACTIONS,RECENT_KEY,RECENT_LIMIT,normalizeSearch,matches,
-      prioritizeRecent,attachVJCommandSearch};
+    module.exports={COMMAND_ACTIONS,RECENT_KEY,RECENT_LIMIT,FAVORITE_KEY,FAVORITE_LIMIT,
+      normalizeSearch,matches,prioritizeRecent,prioritizeFavorites,attachVJCommandSearch};
   if(typeof document!=='undefined')attachVJCommandSearch(document);
 })();
