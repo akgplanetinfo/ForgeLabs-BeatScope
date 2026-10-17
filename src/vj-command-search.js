@@ -105,6 +105,17 @@
       } else if(event.key==='Escape'&&visible()){
         event.preventDefault();event.stopPropagation();
         close();
+      } else if(event.key==='Tab'&&visible()){
+        // Keep keyboard focus inside the modal while it is visible.
+        const focusable=[closeButton,input,...results.querySelectorAll('[role="option"]')];
+        const index=focusable.indexOf(doc.activeElement);
+        if(index<0){
+          event.preventDefault();input.focus();
+        } else if(event.shiftKey&&index===0){
+          event.preventDefault();focusable[focusable.length-1].focus();
+        } else if(!event.shiftKey&&index===focusable.length-1){
+          event.preventDefault();focusable[0].focus();
+        }
       }
     },true);
     doc.getElementById('studio-simple')?.addEventListener('click',()=>close({restoreFocus:false}));
