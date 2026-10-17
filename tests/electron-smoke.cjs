@@ -713,11 +713,42 @@ async function run(){
    document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
    const paletteDisabledInSimple=$('pro-command-overlay').hidden;
    $('studio-pro').click();
+   // Stage 6: real native action execution without opening a system file/permission dialog.
+   const aiBeforeAction=$('ai-toggle').getAttribute('aria-checked');
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const actionsShown=$('pro-command-results').querySelectorAll('[data-command-kind="action"]').length===7;
+   const actionSearch=$('pro-command-input');
+   actionSearch.value='automatikus fx';
+   actionSearch.dispatchEvent(new Event('input',{bubbles:true}));
+   const actionFound=$('pro-command-results').querySelectorAll('[role="option"]').length===1;
+   actionSearch.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const actionDelegated=$('pro-command-overlay').hidden
+     &&$('ai-toggle').getAttribute('aria-checked')!==aiBeforeAction;
+   $('ai-toggle').click(); // Restore the original state.
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const aliasSearch=$('pro-command-input');
+   aliasSearch.value='screenshot';
+   aliasSearch.dispatchEvent(new Event('input',{bubbles:true}));
+   const actionAlias=$('pro-command-results').querySelectorAll('[role="option"]').length===1
+     &&$('pro-command-results').textContent.includes('Kép mentése');
+   aliasSearch.value='előnézeti ablak megnyitása';
+   aliasSearch.dispatchEvent(new Event('input',{bubbles:true}));
+   const previewSource=$('open-preview');
+   const previewDisabledBefore=previewSource.disabled;
+   previewSource.disabled=true;
+   aliasSearch.dispatchEvent(new Event('input',{bubbles:true}));
+   const actionDisabledRow=$('pro-command-results').querySelector('[role="option"]').disabled;
+   aliasSearch.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+   const actionDisabledSafe=!$('pro-command-overlay').hidden;
+   previewSource.disabled=previewDisabledBefore;
+   aliasSearch.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
    return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
      sourceAccurate,trackAccurate,visualAccurate,aiDelegates,visualDelegates,
      proMode,deckShown,navShown,jumpWorks,activeIndicator,backEnabled,backWorks,
      keyboardNav,paletteOpened,paletteFiltered,paletteNavigated,paletteReopened,
-     paletteEscaped,paletteDisabledInSimple};
+     paletteEscaped,paletteDisabledInSimple,actionsShown,actionFound,actionDelegated,
+     actionAlias,actionDisabledRow,actionDisabledSafe};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
