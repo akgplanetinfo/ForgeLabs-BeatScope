@@ -381,9 +381,13 @@
     <div class="pro-command-panel">
       <div class="pro-command-header"><strong>PRO VJ · GYORSKERESŐ</strong><button type="button" id="pro-command-close" aria-label="Parancskereső bezárása">✕</button></div>
       <label for="pro-command-input">Keress munkaterületet vagy funkciót</label>
-      <input type="search" id="pro-command-input" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="pro-command-results" autocomplete="off" spellcheck="false" placeholder="BPM, Layer Mixer, zene betöltése, projekt mentése..." />
+      <div class="pro-command-search-row">
+        <input type="search" id="pro-command-input" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="pro-command-results" autocomplete="off" spellcheck="false" placeholder="BPM, Layer Mixer, zene betöltése, projekt mentése..." />
+        <button type="button" id="pro-command-favorite" aria-pressed="false" title="Kijelölt parancs kedvencekhez adása vagy eltávolítása" disabled>☆ Kedvencekhez</button>
+      </div>
+      <p class="pro-command-note" id="pro-command-note" role="status" aria-live="polite"></p>
       <div id="pro-command-results" class="pro-command-results" role="listbox" aria-label="Elérhető Pro VJ funkciók"></div>
-      <div class="pro-command-footer">Legutóbbi parancsok elöl · ↑ ↓ választás · Enter megnyitás · Esc bezárás</div>
+      <div class="pro-command-footer">Kedvencek, majd legutóbbi parancsok · ☆ jelölés · ↑ ↓ választás · Enter megnyitás · Esc bezárás</div>
     </div>
   </section>
   <input type="file" id="audio-file" accept="audio/*,.mp3,.wav,.ogg,.flac,.m4a,.aac" hidden/>
