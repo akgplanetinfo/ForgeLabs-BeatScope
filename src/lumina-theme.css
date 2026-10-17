@@ -368,3 +368,16 @@ body[data-theme="lumina-pulse"] .pro-command-empty{
 body[data-theme="lumina-pulse"] .pro-command-footer{
   color:#779daa;font-size:10px;padding-top:4px;
 }
+
+/* Alpha 17 stage 6: distinguish real actions from navigation commands. */
+body[data-theme="lumina-pulse"] .pro-command-result[data-command-kind="action"]{
+  border-left:3px solid #18b5c5;
+  padding-left:10px;
+}
+body[data-theme="lumina-pulse"] .pro-command-result:disabled{
+  cursor:not-allowed;opacity:.48;
+  color:#78949d;border-color:#24414a;background:#0b1a21;
+}
+body[data-theme="lumina-pulse"] #pro-command-input{
+  font-family:inherit;font-size:14px;font-weight:500;line-height:1.4;
+}
