@@ -649,6 +649,121 @@ async function run(){
  const closed=await win.webContents.executeJavaScript("window.beatAPI.outputState()");
  if(closed.preview||closed.output)fail('Output windows were not released on stop');
  details.push('OUTPUT TEST: displays='+displays.length+', preview and VJ output received live frames and closed');
+ // Alpha 17: test real mode switching, original BeatScope delegation and navigation in Windows Electron.
+ const alpha17UI=await win.webContents.executeJavaScript(`(async()=>{
+   const $=id=>document.getElementById(id);
+   $('studio-simple').click();
+   const simpleMode=document.body.dataset.studioMode==='simple';
+   const simpleBar=getComputedStyle($('simple-control-bar')).display!=='none';
+   const navHidden=getComputedStyle($('pro-navigation')).display==='none';
+   const deckHidden=getComputedStyle($('vj-deck')).display==='none';
+   const widePreview=getComputedStyle(document.querySelector('.sidebar')).display==='none';
+   const sourceAccurate=$('simple-status-source').textContent===$('title-status').textContent;
+   const trackAccurate=$('simple-status-track').textContent===$('track-name').textContent;
+   const visualAccurate=$('simple-status-visual').textContent===$('mode-label').textContent;
+   const initialAI=$('ai-toggle').getAttribute('aria-checked');
+   $('simple-ai').click();
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const aiDelegates=$('ai-toggle').getAttribute('aria-checked')!==initialAI
+     &&$('simple-ai').getAttribute('aria-pressed')===$('ai-toggle').getAttribute('aria-checked');
+   $('simple-ai').click();
+   $('simple-visual').value='wave';
+   $('simple-visual').dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const visualDelegates=document.querySelector('[data-mode="wave"]').classList.contains('active')
+     &&$('simple-status-visual').textContent===$('mode-label').textContent;
+   $('simple-visual').value='bars';
+   $('simple-visual').dispatchEvent(new Event('change',{bubbles:true}));
+   $('studio-pro').click();
+   const proMode=document.body.dataset.studioMode==='pro';
+   const deckShown=getComputedStyle($('vj-deck')).display!=='none';
+   const navShown=getComputedStyle($('pro-navigation')).display!=='none';
+   document.querySelector('[data-vj-target="vj-mix"]').click();
+   const jumpWorks=document.activeElement===$('vj-mix');
+   const activeIndicator=document.querySelector('[data-vj-target="vj-mix"]').getAttribute('aria-current')==='location';
+   document.querySelector('[data-vj-target="vj-tempo"]').click();
+   const backEnabled=!$('pro-nav-back').disabled;
+   $('pro-nav-back').click();
+   const backWorks=document.activeElement===$('vj-mix')
+     &&document.querySelector('[data-vj-target="vj-mix"]').getAttribute('aria-current')==='location';
+   const previewButton=document.querySelector('[data-vj-target="visual-shell"]');
+   const projectButton=document.querySelector('[data-vj-target="project-toolbar"]');
+   previewButton.focus();
+   previewButton.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
+   const keyboardNav=document.activeElement===projectButton;
+   // Stage 5: real Ctrl+K query, navigation delegation, Escape and focus restore.
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const paletteOpened=!$('pro-command-overlay').hidden
+     &&document.activeElement===$('pro-command-input');
+   const query=$('pro-command-input');
+   query.value='layer mixer';
+   query.dispatchEvent(new Event('input',{bubbles:true}));
+   const paletteFiltered=$('pro-command-results').querySelectorAll('[role="option"]').length===1
+     &&$('pro-command-results').textContent.includes('Layer Mixer');
+   query.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+   const paletteNavigated=$('pro-command-overlay').hidden
+     &&document.activeElement===$('vj-mix');
+   $('pro-search-open').focus();
+   $('pro-search-open').click();
+   const paletteReopened=!$('pro-command-overlay').hidden;
+   $('pro-command-input').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   const paletteEscaped=$('pro-command-overlay').hidden
+     &&document.activeElement===$('pro-search-open');
+   $('studio-simple').click();
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const paletteDisabledInSimple=$('pro-command-overlay').hidden;
+   $('studio-pro').click();
+   // Stage 6: real native action execution without opening a system file/permission dialog.
+   const aiBeforeAction=$('ai-toggle').getAttribute('aria-checked');
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const actionsShown=$('pro-command-results').querySelectorAll('[data-command-kind="action"]').length===7;
+   const actionSearch=$('pro-command-input');
+   actionSearch.value='automatikus fx';
+   actionSearch.dispatchEvent(new Event('input',{bubbles:true}));
+   const actionFound=$('pro-command-results').querySelectorAll('[role="option"]').length===1;
+   actionSearch.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const actionDelegated=$('pro-command-overlay').hidden
+     &&$('ai-toggle').getAttribute('aria-checked')!==aiBeforeAction;
+   $('ai-toggle').click(); // Restore the original state.
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const aliasSearch=$('pro-command-input');
+   aliasSearch.value='screenshot';
+   aliasSearch.dispatchEvent(new Event('input',{bubbles:true}));
+   const actionAlias=$('pro-command-results').querySelectorAll('[role="option"]').length===1
+     &&$('pro-command-results').textContent.includes('Kép mentése');
+   aliasSearch.value='előnézeti ablak megnyitása';
+   aliasSearch.dispatchEvent(new Event('input',{bubbles:true}));
+   const previewSource=$('open-preview');
+   const previewDisabledBefore=previewSource.disabled;
+   previewSource.disabled=true;
+   aliasSearch.dispatchEvent(new Event('input',{bubbles:true}));
+   const actionDisabledRow=$('pro-command-results').querySelector('[role="option"]').disabled;
+   aliasSearch.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+   const actionDisabledSafe=!$('pro-command-overlay').hidden;
+   previewSource.disabled=previewDisabledBefore;
+   aliasSearch.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   // Stage 7: completed native actions are offered first without keeping the search text.
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const recentOptions=$('pro-command-results').querySelectorAll('[role="option"]');
+   const recentFirst=recentOptions.length>1&&recentOptions[0].textContent.includes('Automatikus FX');
+   const recentBadge=recentOptions[0]?.dataset.recent==='true';
+   const categoriesDistinct=recentOptions[0]?.dataset.commandKind==='action'
+     &&[...recentOptions].some(option=>option.dataset.commandKind==='navigation');
+   const storedRecents=JSON.parse(localStorage.getItem('lumina-pulse.recent-commands.v1')||'[]');
+   const recentStored=storedRecents[0]==='action:ai-toggle'&&storedRecents.length<=5
+     &&!localStorage.getItem('lumina-pulse.recent-commands.v1').includes('screenshot');
+   $('pro-command-input').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
+     sourceAccurate,trackAccurate,visualAccurate,aiDelegates,visualDelegates,
+     proMode,deckShown,navShown,jumpWorks,activeIndicator,backEnabled,backWorks,
+     keyboardNav,paletteOpened,paletteFiltered,paletteNavigated,paletteReopened,
+     paletteEscaped,paletteDisabledInSimple,actionsShown,actionFound,actionDelegated,
+     actionAlias,actionDisabledRow,actionDisabledSafe,recentFirst,recentBadge,
+     categoriesDistinct,recentStored};
+ })()`);
+ for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
+ details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
  await win.close();
 }
 const timeout=setTimeout(()=>{fail('Electron renderer smoke test timed out');process.stderr.write(details.join('\n')+'\n');app.exit(1);},105000);

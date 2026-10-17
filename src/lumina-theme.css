@@ -1,4 +1,4 @@
-/* Lumina Pulse 2.0 · Stage 1 — working BeatScope UI theme.
+/* Lumina Pulse 2.0 · Alpha 17 stage 1 — working BeatScope UI theme and workspace navigation.
    Design reference: https://lumina-pulse-forgelabs.vercel.app/
    No app logic, IDs or preferences are changed by this stylesheet. */
 :root {
@@ -134,4 +134,278 @@ body[data-theme="lumina-pulse"] .titlebar:before{
   body[data-theme="lumina-pulse"] .app-layout{grid-template-columns:184px minmax(260px,1fr) 190px}
   body[data-theme="lumina-pulse"] .brand-group{min-width:210px}
   body[data-theme="lumina-pulse"] .brand-name strong{font-size:16px}
+}
+
+/* Alpha 17: accessible Simple / Pro VJ workspace switcher. */
+body[data-theme="lumina-pulse"] .studio-mode-bar{
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+  padding:9px 12px;margin:0 0 14px;background:#08161c;
+  border:1px solid #20515d;border-radius:3px;
+}
+body[data-theme="lumina-pulse"] .studio-mode-label{
+  color:#8ab9c2;font-size:10px;font-weight:800;letter-spacing:1.5px;margin-right:4px;
+}
+body[data-theme="lumina-pulse"] .studio-mode-button{
+  appearance:none;cursor:pointer;background:#0c222b;color:#a5cbd4;
+  border:1px solid #28525c;border-radius:3px;font-family:inherit;font-size:11px;font-weight:700;line-height:1.25;
+  letter-spacing:.6px;padding:9px 13px;
+}
+body[data-theme="lumina-pulse"] .studio-mode-button:hover{
+  color:#efffff;background:#103842;border-color:#00d3f2;
+}
+body[data-theme="lumina-pulse"] .studio-mode-button.active{
+  color:#00171d;background:#00d3f2;border-color:#00d3f2;
+  box-shadow:0 0 13px #00d3f225;
+}
+body[data-theme="lumina-pulse"] .studio-mode-button:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:3px;
+}
+body[data-theme="lumina-pulse"] .studio-mode-hint{
+  color:#9dbdc4;font-size:11px;line-height:1.35;margin-left:auto;
+}
+/* Keep all engine nodes, listeners, audio and scene state intact; change layout only. */
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .workspace > :is(
+  #output-router,#vj-tempo,#vj-auto,#vj-deck,#vj-controls,
+  #vj-video-controls,#vj-mix,#vj-layer-effects,#vj-clip-effects,#vj-clip-menu
+){display:none !important}
+@media(max-width:1100px){
+  body[data-theme="lumina-pulse"] .studio-mode-hint{
+    flex-basis:100%;margin-left:0;
+  }
+}
+
+/* Alpha 17 step 2: Simple Mode keeps the actual renderer and audio controls active. */
+body[data-theme="lumina-pulse"] .simple-control-bar{display:none}
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .simple-control-bar{
+  display:flex;align-items:end;gap:10px;flex-wrap:wrap;
+  padding:14px;margin-bottom:16px;border:1px solid #1b5260;
+  border-radius:3px;background:linear-gradient(110deg,#081e26,#071318);
+}
+body[data-theme="lumina-pulse"] .simple-control-heading{
+  display:flex;flex-direction:column;gap:4px;min-width:160px;margin-right:auto;
+}
+body[data-theme="lumina-pulse"] .simple-control-heading strong{
+  color:#00d3f2;font-size:11px;letter-spacing:1.15px;
+}
+body[data-theme="lumina-pulse"] .simple-control-heading small{
+  color:#8dafb9;font-size:10px;line-height:1.4;
+}
+body[data-theme="lumina-pulse"] .simple-visual-field{
+  display:flex;flex-direction:column;gap:5px;color:#abd1da;font-size:10px;white-space:nowrap;
+}
+body[data-theme="lumina-pulse"] #simple-visual{
+  background:#091e26;color:#edfcff;border:1px solid #287080;
+  border-radius:3px;padding:8px;min-height:36px;min-width:142px;
+}
+body[data-theme="lumina-pulse"] .simple-action{
+  appearance:none;background:#0b2933;border:1px solid #256170;
+  color:#e1faff;border-radius:3px;padding:8px 10px;min-height:36px;
+  font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] .simple-action:hover:not(:disabled){
+  background:#124554;border-color:#00d3f2;
+}
+body[data-theme="lumina-pulse"] .simple-action[aria-pressed="true"]{
+  background:#06414c;border-color:#00d3f2;color:#84f5ff;
+}
+body[data-theme="lumina-pulse"] .simple-action:focus-visible,
+body[data-theme="lumina-pulse"] #simple-visual:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:2px;
+}
+@media(max-width:980px){
+  body[data-theme="lumina-pulse"] .simple-control-heading{flex-basis:100%}
+  body[data-theme="lumina-pulse"] .simple-action{flex:1 1 125px}
+  body[data-theme="lumina-pulse"] .simple-visual-field{flex:1 1 180px}
+}
+
+/* Alpha 17 stage 3: compact, keyboard-accessible Pro VJ navigation. */
+body[data-theme="lumina-pulse"] .pro-navigation{
+  position:sticky;top:0;z-index:8;display:flex;align-items:center;gap:6px;
+  overflow-x:auto;overflow-y:hidden;flex-shrink:0;min-height:49px;
+  padding:7px 9px;margin-bottom:10px;scrollbar-width:thin;
+  background:#071a22f5;border:1px solid #22505d;border-radius:3px;
+}
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .pro-navigation{display:none}
+body[data-theme="lumina-pulse"] .pro-navigation-title{
+  color:#00d3f2;letter-spacing:1px;font-size:10px;font-weight:850;
+  flex:0 0 auto;margin-right:5px;
+}
+body[data-theme="lumina-pulse"] .pro-navigation button{
+  appearance:none;white-space:nowrap;flex:0 0 auto;cursor:pointer;
+  background:#0b2933;border:1px solid #2b5460;color:#d5f7fc;
+  font-family:inherit;font-size:10px;font-weight:720;line-height:1.3;
+  padding:8px 10px;border-radius:3px;
+}
+body[data-theme="lumina-pulse"] .pro-navigation button:hover{
+  background:#105263;border-color:#00d3f2;
+}
+body[data-theme="lumina-pulse"] .pro-navigation button:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:2px;
+}
+body[data-theme="lumina-pulse"] :is(
+  #visual-shell,#project-toolbar,#vj-tempo,#vj-auto,#vj-deck,#vj-controls,
+  #vj-mix,#vj-layer-effects,#vj-clip-effects,#output-router
+){scroll-margin-top:64px}
+body[data-theme="lumina-pulse"] .pro-navigation-status{
+  position:absolute;width:1px;height:1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;
+}
+
+/* Alpha 17 stage 3: spacious Simple Mode with the existing live audio inspector. */
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .app-layout{
+  grid-template-columns:minmax(0,1fr) 255px;
+}
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .sidebar{display:none}
+body[data-theme="lumina-pulse"] .simple-live-summary{
+  display:flex;align-items:center;gap:9px 18px;flex-wrap:wrap;
+  width:100%;padding:9px 11px;background:#06141b;
+  border:1px solid #214954;border-radius:3px;
+}
+body[data-theme="lumina-pulse"] .simple-live-summary > span{
+  display:flex;gap:6px;align-items:center;min-width:0;
+  color:#7cb4c1;font-size:9px;font-weight:800;letter-spacing:.65px;
+}
+body[data-theme="lumina-pulse"] .simple-live-summary strong{
+  min-width:0;max-width:320px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;color:#d9fbff;font-size:10px;font-weight:600;
+  letter-spacing:0;
+}
+@media(max-width:1120px){
+  body[data-theme="lumina-pulse"][data-studio-mode="simple"] .app-layout{
+    grid-template-columns:minmax(0,1fr) 208px;
+  }
+}
+@media(max-width:980px){
+  body[data-theme="lumina-pulse"][data-studio-mode="simple"] .app-layout{
+    grid-template-columns:minmax(0,1fr);
+  }
+}
+
+/* Alpha 17 stage 4: show chosen Pro section and accessible back state. */
+body[data-theme="lumina-pulse"] .pro-navigation button[aria-current="location"]{
+  background:#075060;
+  border-color:#00d3f2;
+  box-shadow:inset 0 -2px 0 #00d3f2;
+  color:#f3feff;
+}
+body[data-theme="lumina-pulse"] .pro-navigation button:disabled{
+  opacity:.48;
+  cursor:not-allowed;
+  background:#101f26;
+  border-color:#243e47;
+  color:#83a2ab;
+}
+body[data-theme="lumina-pulse"] .pro-navigation .pro-nav-back{
+  background:#0b313b;
+  border-color:#307381;
+  font-weight:800;
+}
+@media(prefers-reduced-motion:reduce){
+  body[data-theme="lumina-pulse"] .pro-navigation button{
+    transition:none;
+  }
+}
+
+/* Alpha 17 stage 5: local command search. No external API or audio engine changes. */
+body[data-theme="lumina-pulse"] .pro-navigation .pro-search-launch{
+  color:#91f8ff;background:#103943;border-color:#2b8898;
+}
+body[data-theme="lumina-pulse"] .pro-search-launch span{
+  display:inline-block;margin-left:5px;opacity:.75;
+  font-size:9px;font-weight:600;
+}
+body[data-theme="lumina-pulse"] .pro-command-overlay[hidden]{display:none!important}
+body[data-theme="lumina-pulse"] .pro-command-overlay{
+  position:fixed;inset:0;z-index:2000;
+  display:flex;align-items:flex-start;justify-content:center;
+  padding:clamp(32px,11vh,130px) 12px 30px;
+  background:#020a0ecf;
+}
+body[data-theme="lumina-pulse"] .pro-command-panel{
+  width:min(560px,100%);max-height:85vh;overflow:auto;
+  border:1px solid #287488;border-radius:6px;
+  box-shadow:0 20px 75px #000b;
+  background:linear-gradient(120deg,#102832,#07151b);
+  padding:15px 18px 17px;display:flex;flex-direction:column;gap:10px;
+}
+body[data-theme="lumina-pulse"] .pro-command-header{
+  display:flex;align-items:center;justify-content:space-between;gap:15px;
+}
+body[data-theme="lumina-pulse"] .pro-command-header strong{
+  color:#00d3f2;font-size:12px;letter-spacing:1.1px;
+}
+body[data-theme="lumina-pulse"] #pro-command-close{
+  background:#102d38;color:#f5ffff;border:1px solid #285c68;
+  border-radius:3px;cursor:pointer;padding:6px 10px;
+}
+body[data-theme="lumina-pulse"] .pro-command-panel label{
+  color:#b0cbd4;font-size:11px;
+}
+body[data-theme="lumina-pulse"] #pro-command-input{
+  background:#050f14;color:#e7fdff;border:1px solid #3b8b9d;
+  border-radius:3px;padding:12px;outline-offset:3px;
+  font:500 14px/1.4 inherit;
+}
+body[data-theme="lumina-pulse"] .pro-command-results{
+  display:flex;flex-direction:column;gap:4px;min-height:25px;
+  max-height:43vh;overflow:auto;
+}
+body[data-theme="lumina-pulse"] .pro-command-result{
+  padding:10px 12px;text-align:left;cursor:pointer;
+  background:#102a34;color:#d5edf2;border:1px solid #204750;
+  border-radius:3px;font-family:inherit;font-size:12px;
+}
+body[data-theme="lumina-pulse"] .pro-command-result:hover,
+body[data-theme="lumina-pulse"] .pro-command-result[aria-selected="true"]{
+  color:#e7ffff;background:#105464;border-color:#00d3f2;
+}
+body[data-theme="lumina-pulse"] :is(#pro-command-input,#pro-command-close,.pro-command-result):focus-visible{
+  outline:2px solid #b8f7ff;outline-offset:2px;
+}
+body[data-theme="lumina-pulse"] .pro-command-empty{
+  color:#98bbc2;font-size:12px;padding:10px;
+}
+body[data-theme="lumina-pulse"] .pro-command-footer{
+  color:#779daa;font-size:10px;padding-top:4px;
+}
+
+/* Alpha 17 stage 6: distinguish real actions from navigation commands. */
+body[data-theme="lumina-pulse"] .pro-command-result[data-command-kind="action"]{
+  border-left:3px solid #18b5c5;
+  padding-left:10px;
+}
+body[data-theme="lumina-pulse"] .pro-command-result:disabled{
+  cursor:not-allowed;opacity:.48;
+  color:#78949d;border-color:#24414a;background:#0b1a21;
+}
+body[data-theme="lumina-pulse"] #pro-command-input{
+  font-family:inherit;font-size:14px;font-weight:500;line-height:1.4;
+}
+
+/* Alpha 17 stage 7: separate destinations from actions and label recent commands. */
+body[data-theme="lumina-pulse"] .pro-command-result{
+  display:flex;align-items:center;gap:9px;min-width:0;
+}
+body[data-theme="lumina-pulse"] .pro-command-result[data-command-kind="navigation"]{
+  border-left:3px solid #396aa0;padding-left:10px;
+}
+body[data-theme="lumina-pulse"] .pro-command-result::before{
+  content:"MENÜ";flex:0 0 auto;
+  color:#a1bfdb;font-size:9px;font-weight:800;letter-spacing:.6px;
+}
+body[data-theme="lumina-pulse"] .pro-command-result[data-command-kind="action"]::before{
+  content:"MŰVELET";color:#76dfe9;
+}
+body[data-theme="lumina-pulse"] .pro-command-result[data-recent="true"]::after{
+  content:"Nemrég";flex:0 0 auto;margin-left:auto;
+  border:1px solid #35707c;border-radius:2px;
+  color:#7fe4ed;font-size:9px;padding:2px 5px;
+}
+@media(max-width:560px){
+  body[data-theme="lumina-pulse"] .pro-command-result{
+    gap:6px;font-size:11px;
+  }
+  body[data-theme="lumina-pulse"] .pro-command-result::before{
+    font-size:8px;
+  }
 }
