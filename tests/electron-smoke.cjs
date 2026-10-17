@@ -691,9 +691,32 @@ async function run(){
    previewButton.focus();
    previewButton.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
    const keyboardNav=document.activeElement===projectButton;
+   // Stage 5: real Ctrl+K query, navigation delegation, Escape and focus restore.
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const paletteOpened=!$('pro-command-overlay').hidden
+     &&document.activeElement===$('pro-command-input');
+   const query=$('pro-command-input');
+   query.value='layer mixer';
+   query.dispatchEvent(new Event('input',{bubbles:true}));
+   const paletteFiltered=$('pro-command-results').querySelectorAll('[role="option"]').length===1
+     &&$('pro-command-results').textContent.includes('Layer Mixer');
+   query.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+   const paletteNavigated=$('pro-command-overlay').hidden
+     &&document.activeElement===$('vj-mix');
+   $('pro-search-open').click();
+   const paletteReopened=!$('pro-command-overlay').hidden;
+   $('pro-command-input').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   const paletteEscaped=$('pro-command-overlay').hidden
+     &&document.activeElement===$('pro-search-open');
+   $('studio-simple').click();
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const paletteDisabledInSimple=$('pro-command-overlay').hidden;
+   $('studio-pro').click();
    return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
      sourceAccurate,trackAccurate,visualAccurate,aiDelegates,visualDelegates,
-     proMode,deckShown,navShown,jumpWorks,activeIndicator,backEnabled,backWorks,keyboardNav};
+     proMode,deckShown,navShown,jumpWorks,activeIndicator,backEnabled,backWorks,
+     keyboardNav,paletteOpened,paletteFiltered,paletteNavigated,paletteReopened,
+     paletteEscaped,paletteDisabledInSimple};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
