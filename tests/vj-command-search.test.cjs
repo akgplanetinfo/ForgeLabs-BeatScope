@@ -426,6 +426,74 @@ test('Stage 9 UI retains Pro-only favorite strip and existing navigation',()=>{
   assert.ok(html.indexOf('id="pro-favorites-bar"')<html.indexOf('id="simple-control-bar"'));
 });
 
+test('Stage 10 assigns Ctrl+Shift+1–8 in pinned order and runs native handlers',()=>{
+  const store=new Map([[FAVORITE_KEY,JSON.stringify(['target:id-1','action:ai-toggle'])]]);
+  const storage={getItem:key=>store.get(key),setItem:(key,value)=>store.set(key,value)};
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc,storage);
+  const quick=f.els['pro-favorites-actions'].children;
+  assert.equal(quick.length,2);
+  assert.equal(quick[0].dataset.hotkey,'Ctrl+Shift+1');
+  assert.equal(quick[1].dataset.hotkey,'Ctrl+Shift+2');
+  assert.equal(quick[0].getAttribute('aria-keyshortcuts'),'Control+Shift+1');
+  assert.match(quick[1].title,/Ctrl\+Shift\+2/);
+  assert.equal(f.docKey('!',{code:'Digit1',ctrlKey:true,shiftKey:true}),true);
+  assert.equal(f.navItems[1].clicks,1,'Physical Digit1 works when HU Shift produces !');
+  assert.equal(f.docKey('@',{code:'Digit2',ctrlKey:true,shiftKey:true}),true);
+  assert.equal(f.els['ai-toggle'].clicks,1);
+  assert.deepEqual(ctrl.getRecentKeys().slice(0,2),['action:ai-toggle','target:id-1']);
+  assert.equal(f.docKey('9',{code:'Digit9',ctrlKey:true,shiftKey:true}),false);
+  assert.equal(f.els['ai-toggle'].clicks,1);
+});
+
+test('Stage 10 ignores repeats, typing, Simple Mode, missing favorites, and the open palette',()=>{
+  const storage={getItem:key=>key===FAVORITE_KEY?JSON.stringify(['action:ai-toggle']):'[]',
+    setItem(){}};
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc,storage);
+  const press=(extras={})=>f.docKey('1',{code:'Digit1',ctrlKey:true,shiftKey:true,...extras});
+  assert.equal(press({repeat:true}),true);
+  assert.equal(f.els['ai-toggle'].clicks||0,0);
+  assert.equal(press({target:{tagName:'INPUT'}}),false);
+  assert.equal(press({target:{isContentEditable:true}}),false);
+  assert.equal(press({isComposing:true}),false);
+  assert.equal(press({altKey:true}),false);
+  assert.equal(f.els['ai-toggle'].clicks||0,0);
+  assert.equal(f.docKey('2',{code:'Digit2',ctrlKey:true,shiftKey:true}),true);
+  assert.equal(f.els['ai-toggle'].clicks||0,0);
+  ctrl.open();
+  assert.equal(press(),true);
+  assert.equal(f.els['ai-toggle'].clicks||0,0);
+  ctrl.close();
+  doc.body.dataset.studioMode='simple';
+  assert.equal(press(),false);
+  assert.equal(f.els['ai-toggle'].clicks||0,0);
+  doc.body.dataset.studioMode='pro';
+  assert.equal(press(),true);
+  assert.equal(f.els['ai-toggle'].clicks,1);
+});
+
+test('Stage 10 dynamically reassigns number slots after favorite removal',()=>{
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc);
+  for(const name of ['BPM','Layer Mixer']){
+    ctrl.open();
+    f.els['pro-command-input'].value=name;
+    f.els['pro-command-input'].fire('input');
+    assert.equal(ctrl.toggleFavorite(),true);
+    ctrl.close();
+  }
+  assert.equal(f.els['pro-favorites-actions'].children[1].dataset.hotkey,'Ctrl+Shift+2');
+  ctrl.open();
+  f.els['pro-command-input'].value='BPM';
+  f.els['pro-command-input'].fire('input');
+  assert.equal(ctrl.toggleFavorite(),true);
+  ctrl.close();
+  const first=f.els['pro-favorites-actions'].children[0];
+  assert.equal(first.textContent,'★ Layer Mixer');
+  assert.equal(first.dataset.hotkey,'Ctrl+Shift+1');
+  f.docKey('1',{code:'Digit1',ctrlKey:true,shiftKey:true});
+  assert.equal(f.navItems[1].clicks,1);
+  assert.equal(f.navItems[0].clicks||0,0);
+});
+
 test('Search dialog is in the Electron renderer with original navigation unchanged',()=>{
   const html=read('index.html'),css=read('src/lumina-theme.css'),js=read('src/vj-command-search.js');
   for(const id of ['pro-search-open','pro-command-overlay','pro-command-input',
