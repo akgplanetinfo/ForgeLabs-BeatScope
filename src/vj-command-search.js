@@ -45,6 +45,8 @@
     const input=doc?.getElementById?.('pro-command-input');
     const results=doc?.getElementById?.('pro-command-results');
     const favoriteButton=doc?.getElementById?.('pro-command-favorite');
+    const shortcutBar=doc?.getElementById?.('pro-favorites-bar');
+    const shortcutActions=doc?.getElementById?.('pro-favorites-actions');
     const note=doc?.getElementById?.('pro-command-note');
     const nav=doc?.getElementById?.('pro-navigation');
     if (!overlay || !openButton || !closeButton || !input || !results || !nav || !favoriteButton) return null;
@@ -74,6 +76,25 @@
     }catch{ /* optional local storage may be restricted */ }
     let filtered=[],selected=0,previousFocus=null;
     const visible=()=>!overlay.hidden;
+    function syncFavoriteShortcuts(){
+      if(!shortcutBar||!shortcutActions)return;
+      shortcutActions.replaceChildren();
+      for(const key of favoriteKeys){
+        const entry=entries.find(item=>item.key===key);
+        if(!entry)continue;
+        const quick=doc.createElement('button');
+        quick.type='button';
+        quick.className='pro-favorite-shortcut';
+        quick.dataset.commandKind=entry.kind;
+        quick.textContent='★ '+(entry.kind==='action'?
+          entry.label.replace(/^Művelet · /,''):entry.label);
+        quick.title=entry.label;
+        quick.disabled=Boolean(entry.button.disabled);
+        quick.addEventListener('click',()=>runCommand(entry));
+        shortcutActions.append(quick);
+      }
+      shortcutBar.hidden=shortcutActions.children.length===0;
+    }
     function render() {
       const found=matches(entries,input.value);
       filtered=normalizeSearch(input.value)?found:
@@ -126,6 +147,7 @@
       }
       favoriteKeys=pinned?favoriteKeys.filter(value=>value!==key):[...favoriteKeys,key];
       try{storage?.setItem(FAVORITE_KEY,JSON.stringify(favoriteKeys));}catch{/* optional */}
+      syncFavoriteShortcuts();
       if(note)note.textContent=pinned?'Eltávolítva a kedvencek közül.':'Kedvencek közé mentve.';
       const selectedKey=key;
       render();
@@ -154,17 +176,19 @@
       }
       return true;
     }
-    function execute(entry){
-      if(!visible() || !entry || !entries.includes(entry) || entry.button.disabled)return false;
-      // Existing real UI handlers own confirmation, file dialogs, playback and permissions.
-      // Keep this inside the user's click or Enter event to preserve user activation.
-      close({restoreFocus:false});
+    function runCommand(entry){
+      if(!entry || !entries.includes(entry) || entry.button.disabled)return false;
+      // Delegate directly to the existing BeatScope controls in the user's click.
       if(entry.kind==='action')entry.button.focus?.({preventScroll:true});
       entry.button.click();
-      // Persist only stable command identifiers, never searches or filenames.
       recentKeys=[entry.key,...recentKeys.filter(key=>key!==entry.key)].slice(0,RECENT_LIMIT);
       try{storage?.setItem(RECENT_KEY,JSON.stringify(recentKeys));}catch{/* optional */}
       return true;
+    }
+    function execute(entry){
+      if(!visible() || !entry || !entries.includes(entry) || entry.button.disabled)return false;
+      close({restoreFocus:false});
+      return runCommand(entry);
     }
     openButton.addEventListener('click',open);
     closeButton.addEventListener('click',()=>close());
@@ -214,7 +238,13 @@
       }
     },true);
     doc.getElementById('studio-simple')?.addEventListener('click',()=>close({restoreFocus:false}));
-    return {open,close,isOpen:visible,execute,render,toggleFavorite,
+    if(shortcutActions && typeof doc.defaultView?.MutationObserver==='function'){
+      const observer=new doc.defaultView.MutationObserver(syncFavoriteShortcuts);
+      for(const entry of entries)
+        observer.observe(entry.button,{attributes:true,attributeFilter:['disabled']});
+    }
+    syncFavoriteShortcuts();
+    return {open,close,isOpen:visible,execute,runCommand,render,toggleFavorite,
       getMatches:()=>filtered.map(e=>e.label),getRecentKeys:()=>[...recentKeys],
       getFavoriteKeys:()=>[...favoriteKeys]};
   }
