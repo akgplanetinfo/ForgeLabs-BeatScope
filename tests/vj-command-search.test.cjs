@@ -3,7 +3,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-const {COMMAND_ACTIONS,RECENT_KEY,RECENT_LIMIT,normalizeSearch,matches,prioritizeRecent,attachVJCommandSearch}=require('../src/vj-command-search.js');
+const {COMMAND_ACTIONS,RECENT_KEY,RECENT_LIMIT,FAVORITE_KEY,FAVORITE_LIMIT,normalizeSearch,matches,prioritizeRecent,prioritizeFavorites,attachVJCommandSearch}=require('../src/vj-command-search.js');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 
 function makeElement(id='') {
@@ -36,7 +36,8 @@ function makeElement(id='') {
 let doc;
 function fixture({withActions=false}={}) {
   const ids=['pro-command-overlay','pro-search-open','pro-command-close',
-    'pro-command-input','pro-command-results','pro-navigation','studio-simple',
+    'pro-command-input','pro-command-results','pro-command-favorite','pro-command-note',
+    'pro-navigation','studio-simple',
     ...(withActions?COMMAND_ACTIONS.map(action=>action.id):[])];
   const els=Object.fromEntries(ids.map(id=>[id,makeElement(id)]));
   const navItems=['BPM','Layer Mixer','FX Library ↗','VJ Output','Kliprács'].map((label,i)=>{
@@ -260,10 +261,99 @@ test('Stage 7 sorting is stable and never mutates original search results',()=>{
   assert.deepEqual(items.map(x=>x.key),['a','b','c','d']);
 });
 
+test('Stage 8 pinned favorite outranks recent and persists without search text',()=>{
+  const values=new Map();
+  const storage={getItem:key=>values.get(key)||null,setItem:(key,v)=>values.set(key,v)};
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc,storage);
+  ctrl.open();
+  const input=f.els['pro-command-input'],pin=f.els['pro-command-favorite'];
+  assert.equal(pin.disabled,false);
+  assert.equal(pin.getAttribute('aria-pressed'),'false');
+  input.value='Layer Mixer';input.fire('input');
+  assert.equal(pin.getAttribute('aria-pressed'),'false');
+  pin.click();
+  assert.deepEqual(ctrl.getFavoriteKeys(),['target:id-1']);
+  assert.equal(pin.getAttribute('aria-pressed'),'true');
+  assert.deepEqual(JSON.parse(values.get(FAVORITE_KEY)),['target:id-1']);
+  assert.equal(values.get(FAVORITE_KEY).includes('Layer Mixer'),false);
+  input.value='BPM';input.fire('input');
+  f.key('Enter').dispatch();
+  assert.deepEqual(ctrl.getRecentKeys(),['target:id-0']);
+  ctrl.open();
+  assert.equal(ctrl.getMatches()[0],'Layer Mixer','Pinned wins over more recent BPM');
+  const first=f.els['pro-command-results'].querySelectorAll('[role="option"]')[0];
+  assert.equal(first.dataset.favorite,'true');
+  assert.equal(first.dataset.commandKind,'navigation');
+  assert.equal(first.dataset.recent,undefined);
+  ctrl.close();
+  const revived=fixture({withActions:true}),afterRestart=attachVJCommandSearch(doc,storage);
+  assert.deepEqual(afterRestart.getFavoriteKeys(),['target:id-1']);
+  afterRestart.open();
+  assert.equal(afterRestart.getMatches()[0],'Layer Mixer');
+  revived.els['pro-command-favorite'].click();
+  assert.deepEqual(afterRestart.getFavoriteKeys(),[]);
+  assert.equal(afterRestart.getMatches()[0],'BPM');
+});
+
+test('Stage 8 favorites are bounded, unique and permit clean unpinning',()=>{
+  const values=new Map();
+  const storage={getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v)};
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc,storage);
+  const pin=f.els['pro-command-favorite'];
+  const queries=['BPM','Layer Mixer','FX Library','VJ Output','Kliprács',
+    'Zene betöltése','Lejátszás / szünet','Mikrofon kapcsolása'];
+  for(const query of queries){
+    ctrl.open();
+    f.els['pro-command-input'].value=query;
+    f.els['pro-command-input'].fire('input');
+    assert.equal(ctrl.getMatches().length,1,query);
+    pin.click();
+    ctrl.close();
+  }
+  assert.equal(ctrl.getFavoriteKeys().length,FAVORITE_LIMIT);
+  ctrl.open();
+  f.els['pro-command-input'].value='Automatikus FX';
+  f.els['pro-command-input'].fire('input');
+  assert.equal(ctrl.toggleFavorite(),false);
+  assert.equal(f.els['pro-command-note'].textContent,'Legfeljebb 8 kedvenc rögzíthető.');
+  assert.equal(ctrl.getFavoriteKeys().length,8);
+  f.els['pro-command-input'].value='BPM';f.els['pro-command-input'].fire('input');
+  pin.click();
+  assert.equal(ctrl.getFavoriteKeys().length,7);
+  f.els['pro-command-input'].value='Automatikus FX';f.els['pro-command-input'].fire('input');
+  assert.equal(ctrl.toggleFavorite(),true);
+  assert.equal(ctrl.getFavoriteKeys().length,8);
+  assert.equal(new Set(ctrl.getFavoriteKeys()).size,8);
+});
+
+test('Stage 8 invalid favorites and blocked localStorage do not break command execution',()=>{
+  const bad=new Map([[FAVORITE_KEY,JSON.stringify(['bogus','target:id-4','target:id-4','action:ai-toggle',123])]]);
+  const storage={getItem:k=>bad.get(k),setItem:(k,v)=>bad.set(k,v)};
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc,storage);
+  assert.deepEqual(ctrl.getFavoriteKeys(),['target:id-4','action:ai-toggle']);
+  ctrl.open();
+  assert.deepEqual(ctrl.getMatches().slice(0,2),['Kliprács','Művelet · Automatikus FX kapcsolása']);
+  const blocked={getItem(){throw Error('denied');},setItem(){throw Error('denied');}};
+  const g=fixture({withActions:true}),offline=attachVJCommandSearch(doc,blocked);
+  offline.open();
+  assert.equal(offline.toggleFavorite(),true);
+  assert.equal(offline.getFavoriteKeys().length,1);
+  g.els['pro-command-input'].value='BPM';g.els['pro-command-input'].fire('input');
+  g.key('Enter').dispatch();
+  assert.equal(g.navItems[0].clicks,1);
+});
+
+test('Stage 8 ranking is stable with favorite, recent and ordinary commands',()=>{
+  const items=['a','b','c','d','e'].map(key=>({key}));
+  assert.deepEqual(prioritizeFavorites(items,['d','b'],['e','a']).map(x=>x.key),
+    ['d','b','e','a','c']);
+  assert.deepEqual(items.map(x=>x.key),['a','b','c','d','e']);
+});
+
 test('Search dialog is in the Electron renderer with original navigation unchanged',()=>{
   const html=read('index.html'),css=read('src/lumina-theme.css'),js=read('src/vj-command-search.js');
   for(const id of ['pro-search-open','pro-command-overlay','pro-command-input',
-    'pro-command-close','pro-command-results','pro-navigation'])
+    'pro-command-close','pro-command-results','pro-command-favorite','pro-navigation'])
     assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
   assert.match(html,/src\/vj-command-search\.js/);
   assert.ok(html.indexOf('src/pro-navigation.js')<html.indexOf('src/vj-command-search.js'));
