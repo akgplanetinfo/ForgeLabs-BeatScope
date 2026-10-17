@@ -381,3 +381,31 @@ body[data-theme="lumina-pulse"] .pro-command-result:disabled{
 body[data-theme="lumina-pulse"] #pro-command-input{
   font-family:inherit;font-size:14px;font-weight:500;line-height:1.4;
 }
+
+/* Alpha 17 stage 7: separate destinations from actions and label recent commands. */
+body[data-theme="lumina-pulse"] .pro-command-result{
+  display:flex;align-items:center;gap:9px;min-width:0;
+}
+body[data-theme="lumina-pulse"] .pro-command-result[data-command-kind="navigation"]{
+  border-left:3px solid #396aa0;padding-left:10px;
+}
+body[data-theme="lumina-pulse"] .pro-command-result::before{
+  content:"MENÜ";flex:0 0 auto;
+  color:#a1bfdb;font-size:9px;font-weight:800;letter-spacing:.6px;
+}
+body[data-theme="lumina-pulse"] .pro-command-result[data-command-kind="action"]::before{
+  content:"MŰVELET";color:#76dfe9;
+}
+body[data-theme="lumina-pulse"] .pro-command-result[data-recent="true"]::after{
+  content:"Nemrég";flex:0 0 auto;margin-left:auto;
+  border:1px solid #35707c;border-radius:2px;
+  color:#7fe4ed;font-size:9px;padding:2px 5px;
+}
+@media(max-width:560px){
+  body[data-theme="lumina-pulse"] .pro-command-result{
+    gap:6px;font-size:11px;
+  }
+  body[data-theme="lumina-pulse"] .pro-command-result::before{
+    font-size:8px;
+  }
+}
