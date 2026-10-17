@@ -754,13 +754,36 @@ async function run(){
    const recentStored=storedRecents[0]==='action:ai-toggle'&&storedRecents.length<=5
      &&!localStorage.getItem('lumina-pulse.recent-commands.v1').includes('screenshot');
    $('pro-command-input').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   // Stage 8: pin a frequently used navigation command, confirm it outranks recents,
+   // then unpin it without launching any audio, file or dialog operations.
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const favoriteInput=$('pro-command-input');
+   const favoriteButton=$('pro-command-favorite');
+   favoriteInput.value='Layer Mixer';
+   favoriteInput.dispatchEvent(new Event('input',{bubbles:true}));
+   const pinInitiallyOff=!favoriteButton.disabled&&favoriteButton.getAttribute('aria-pressed')==='false';
+   favoriteButton.click();
+   const favoritePinned=favoriteButton.getAttribute('aria-pressed')==='true'
+     &&JSON.parse(localStorage.getItem('lumina-pulse.favorite-commands.v1')||'[]')
+       .includes('target:vj-mix');
+   favoriteInput.value='';
+   favoriteInput.dispatchEvent(new Event('input',{bubbles:true}));
+   const pinnedOption=$('pro-command-results').querySelector('[role="option"]');
+   const favoriteFirst=pinnedOption?.textContent==='Layer Mixer'
+     &&pinnedOption?.dataset.favorite==='true';
+   favoriteButton.click();
+   const favoriteUnpinned=JSON.parse(localStorage.getItem('lumina-pulse.favorite-commands.v1')||'[]').length===0
+     &&favoriteButton.getAttribute('aria-pressed')==='false';
+   const recentAfterUnpin=$('pro-command-results').querySelector('[role="option"]')?.textContent.includes('Automatikus FX');
+   favoriteInput.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
    return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
      sourceAccurate,trackAccurate,visualAccurate,aiDelegates,visualDelegates,
      proMode,deckShown,navShown,jumpWorks,activeIndicator,backEnabled,backWorks,
      keyboardNav,paletteOpened,paletteFiltered,paletteNavigated,paletteReopened,
      paletteEscaped,paletteDisabledInSimple,actionsShown,actionFound,actionDelegated,
      actionAlias,actionDisabledRow,actionDisabledSafe,recentFirst,recentBadge,
-     categoriesDistinct,recentStored};
+     categoriesDistinct,recentStored,pinInitiallyOff,favoritePinned,favoriteFirst,
+     favoriteUnpinned,recentAfterUnpin};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
