@@ -743,12 +743,24 @@ async function run(){
    const actionDisabledSafe=!$('pro-command-overlay').hidden;
    previewSource.disabled=previewDisabledBefore;
    aliasSearch.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   // Stage 7: completed native actions are offered first without keeping the search text.
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const recentOptions=$('pro-command-results').querySelectorAll('[role="option"]');
+   const recentFirst=recentOptions.length>1&&recentOptions[0].textContent.includes('Automatikus FX');
+   const recentBadge=recentOptions[0]?.dataset.recent==='true';
+   const categoriesDistinct=recentOptions[0]?.dataset.commandKind==='action'
+     &&[...recentOptions].some(option=>option.dataset.commandKind==='navigation');
+   const storedRecents=JSON.parse(localStorage.getItem('lumina-pulse.recent-commands.v1')||'[]');
+   const recentStored=storedRecents[0]==='action:ai-toggle'&&storedRecents.length<=5
+     &&!localStorage.getItem('lumina-pulse.recent-commands.v1').includes('screenshot');
+   $('pro-command-input').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
    return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
      sourceAccurate,trackAccurate,visualAccurate,aiDelegates,visualDelegates,
      proMode,deckShown,navShown,jumpWorks,activeIndicator,backEnabled,backWorks,
      keyboardNav,paletteOpened,paletteFiltered,paletteNavigated,paletteReopened,
      paletteEscaped,paletteDisabledInSimple,actionsShown,actionFound,actionDelegated,
-     actionAlias,actionDisabledRow,actionDisabledSafe};
+     actionAlias,actionDisabledRow,actionDisabledSafe,recentFirst,recentBadge,
+     categoriesDistinct,recentStored};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
