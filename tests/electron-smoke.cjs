@@ -776,6 +776,37 @@ async function run(){
      &&favoriteButton.getAttribute('aria-pressed')==='false';
    const recentAfterUnpin=$('pro-command-results').querySelector('[role="option"]')?.textContent.includes('Automatikus FX');
    favoriteInput.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   // Stage 9: verify pinned commands can be used directly from the actual Pro workspace.
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const shortcutsQuery=$('pro-command-input');
+   shortcutsQuery.value='Layer Mixer';
+   shortcutsQuery.dispatchEvent(new Event('input',{bubbles:true}));
+   $('pro-command-favorite').click();
+   const favoritesBar=$('pro-favorites-bar');
+   const favoritesButtons=$('pro-favorites-actions');
+   const favoritesBarShown=!favoritesBar.hidden&&getComputedStyle(favoritesBar).display!=='none';
+   const favoriteButtonLabel=favoritesButtons.querySelector('.pro-favorite-shortcut')?.textContent==='★ Layer Mixer';
+   shortcutsQuery.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   favoritesButtons.querySelector('.pro-favorite-shortcut').click();
+   const favoriteQuickNavigation=document.activeElement===$('vj-mix')
+     &&document.querySelector('[data-vj-target="vj-mix"]').getAttribute('aria-current')==='location';
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const shortcutSearch=$('pro-command-input');
+   shortcutSearch.value='Automatikus FX';
+   shortcutSearch.dispatchEvent(new Event('input',{bubbles:true}));
+   $('pro-command-favorite').click();
+   shortcutSearch.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   const favoriteQuickActions=favoritesButtons.querySelectorAll('.pro-favorite-shortcut').length===2;
+   const beforeFavoriteAI=$('ai-toggle').getAttribute('aria-checked');
+   favoritesButtons.querySelectorAll('.pro-favorite-shortcut')[1].click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const favoriteQuickDelegated=$('ai-toggle').getAttribute('aria-checked')!==beforeFavoriteAI;
+   $('ai-toggle').click();
+   $('studio-simple').click();
+   const favoritesHiddenInSimple=getComputedStyle(favoritesBar).display==='none';
+   $('studio-pro').click();
+   const favoritesReturnInPro=getComputedStyle(favoritesBar).display!=='none'
+     &&favoritesButtons.querySelectorAll('.pro-favorite-shortcut').length===2;
    return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
      sourceAccurate,trackAccurate,visualAccurate,aiDelegates,visualDelegates,
      proMode,deckShown,navShown,jumpWorks,activeIndicator,backEnabled,backWorks,
@@ -783,7 +814,9 @@ async function run(){
      paletteEscaped,paletteDisabledInSimple,actionsShown,actionFound,actionDelegated,
      actionAlias,actionDisabledRow,actionDisabledSafe,recentFirst,recentBadge,
      categoriesDistinct,recentStored,pinInitiallyOff,favoritePinned,favoriteFirst,
-     favoriteUnpinned,recentAfterUnpin};
+     favoriteUnpinned,recentAfterUnpin,favoritesBarShown,favoriteButtonLabel,
+     favoriteQuickNavigation,favoriteQuickActions,favoriteQuickDelegated,
+     favoritesHiddenInSimple,favoritesReturnInPro};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
