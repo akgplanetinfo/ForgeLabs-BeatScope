@@ -453,3 +453,45 @@ body[data-theme="lumina-pulse"] .pro-command-result[data-favorite="true"]::after
     flex:1 1 100%;white-space:normal;
   }
 }
+
+/* Alpha 17 stage 9: one-click pinned commands in the Pro VJ workspace. */
+body[data-theme="lumina-pulse"] .pro-favorites-bar[hidden],
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .pro-favorites-bar{
+  display:none!important;
+}
+body[data-theme="lumina-pulse"] .pro-favorites-bar{
+  flex:0 0 auto;display:flex;align-items:center;gap:9px;min-width:0;
+  padding:7px 9px;min-height:38px;margin-top:-5px;
+  border:1px solid #65532f;border-radius:3px;background:#181d20;
+}
+body[data-theme="lumina-pulse"] .pro-favorites-heading{
+  flex:0 0 auto;color:#f3d48e;font-size:10px;letter-spacing:1px;
+}
+body[data-theme="lumina-pulse"] .pro-favorites-actions{
+  display:flex;align-items:center;gap:5px;min-width:0;
+  overflow-x:auto;scrollbar-width:thin;
+}
+body[data-theme="lumina-pulse"] .pro-favorite-shortcut{
+  appearance:none;flex:0 0 auto;cursor:pointer;
+  background:#1c393e;border:1px solid #48747a;border-radius:3px;
+  color:#d7edf0;font-family:inherit;font-size:10px;font-weight:700;
+  white-space:nowrap;padding:7px 9px;
+}
+body[data-theme="lumina-pulse"] .pro-favorite-shortcut:hover:not(:disabled){
+  background:#2a4e50;color:#fff;border-color:#edca77;
+}
+body[data-theme="lumina-pulse"] .pro-favorite-shortcut:focus-visible{
+  outline:2px solid #f8df9d;outline-offset:2px;
+}
+body[data-theme="lumina-pulse"] .pro-favorite-shortcut:disabled{
+  cursor:not-allowed;opacity:.43;
+}
+body[data-theme="lumina-pulse"] .pro-favorite-shortcut[data-command-kind="action"]{
+  border-color:#42818b;
+}
+@media(max-width:580px){
+  body[data-theme="lumina-pulse"] .pro-favorites-bar{
+    align-items:flex-start;flex-direction:column;gap:6px;
+  }
+  body[data-theme="lumina-pulse"] .pro-favorites-actions{width:100%}
+}
