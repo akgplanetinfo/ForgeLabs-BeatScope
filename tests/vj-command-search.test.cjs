@@ -37,7 +37,7 @@ let doc;
 function fixture({withActions=false}={}) {
   const ids=['pro-command-overlay','pro-search-open','pro-command-close',
     'pro-command-input','pro-command-results','pro-command-favorite','pro-command-note',
-    'pro-navigation','studio-simple',
+    'pro-favorites-bar','pro-favorites-actions','pro-navigation','studio-simple',
     ...(withActions?COMMAND_ACTIONS.map(action=>action.id):[])];
   const els=Object.fromEntries(ids.map(id=>[id,makeElement(id)]));
   const navItems=['BPM','Layer Mixer','FX Library ↗','VJ Output','Kliprács'].map((label,i)=>{
@@ -348,6 +348,82 @@ test('Stage 8 ranking is stable with favorite, recent and ordinary commands',()=
   assert.deepEqual(prioritizeFavorites(items,['d','b'],['e','a']).map(x=>x.key),
     ['d','b','e','a','c']);
   assert.deepEqual(items.map(x=>x.key),['a','b','c','d','e']);
+});
+
+test('Stage 9 favorite shortcuts appear immediately, launch existing buttons, and unpin cleanly',()=>{
+  const values=new Map(),storage={getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v)};
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc,storage);
+  const bar=f.els['pro-favorites-bar'],shortcuts=f.els['pro-favorites-actions'];
+  assert.equal(bar.hidden,true);
+  assert.equal(shortcuts.children.length,0);
+  ctrl.open();
+  f.els['pro-command-input'].value='Layer Mixer';
+  f.els['pro-command-input'].fire('input');
+  f.els['pro-command-favorite'].click();
+  assert.equal(bar.hidden,false);
+  assert.equal(shortcuts.children.length,1);
+  assert.equal(shortcuts.children[0].textContent,'★ Layer Mixer');
+  assert.equal(shortcuts.children[0].dataset.commandKind,'navigation');
+  ctrl.close();
+  shortcuts.children[0].click();
+  assert.equal(f.navItems[1].clicks,1);
+  assert.deepEqual(ctrl.getRecentKeys(),['target:id-1']);
+  assert.equal(ctrl.isOpen(),false,'Pinned button must not open the search modal');
+  ctrl.open();
+  f.els['pro-command-input'].value='Layer Mixer';
+  f.els['pro-command-input'].fire('input');
+  f.els['pro-command-favorite'].click();
+  assert.equal(bar.hidden,true);
+  assert.equal(shortcuts.children.length,0);
+});
+
+test('Stage 9 shortcut buttons work after new session and never bypass native disabled state',()=>{
+  const values=new Map([[FAVORITE_KEY,JSON.stringify(['action:open-preview','target:id-4'])]]);
+  const storage={getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v)};
+  const f=fixture({withActions:true});
+  const ctrl=attachVJCommandSearch(doc,storage);
+  const bar=f.els['pro-favorites-bar'],buttons=f.els['pro-favorites-actions'];
+  assert.equal(bar.hidden,false);
+  assert.equal(buttons.children.length,2);
+  assert.equal(buttons.children[0].textContent,'★ Előnézeti ablak megnyitása');
+  f.els['open-preview'].disabled=true;
+  assert.equal(ctrl.runCommand(ctrl.getFavoriteKeys() && {}),false,'Unknown commands rejected');
+  buttons.children[0].click();
+  assert.equal(f.els['open-preview'].clicks||0,0,'Disabled native button never fires');
+  ctrl.open();
+  f.els['pro-command-input'].value='Előnézeti ablak megnyitása';
+  f.els['pro-command-input'].fire('input');
+  assert.equal(ctrl.execute({}),false,'Unknown palette entries never trigger a click');
+  ctrl.close();
+  f.els['open-preview'].disabled=false;
+  buttons.children[0].click();
+  assert.equal(f.els['open-preview'].clicks,1);
+  assert.equal(ctrl.getRecentKeys()[0],'action:open-preview');
+});
+
+test('Stage 9 blocked localStorage still permits direct pinned shortcuts',()=>{
+  const blocked={getItem(){throw Error('denied');},setItem(){throw Error('denied');}};
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc,blocked);
+  ctrl.open();
+  f.els['pro-command-input'].value='BPM';
+  f.els['pro-command-input'].fire('input');
+  assert.equal(ctrl.toggleFavorite(),true);
+  ctrl.close();
+  const bar=f.els['pro-favorites-bar'],quick=f.els['pro-favorites-actions'];
+  assert.equal(bar.hidden,false);
+  quick.children[0].click();
+  assert.equal(f.navItems[0].clicks,1);
+  assert.deepEqual(ctrl.getRecentKeys(),['target:id-0']);
+});
+
+test('Stage 9 UI retains Pro-only favorite strip and existing navigation',()=>{
+  const html=read('index.html'),css=read('src/lumina-theme.css');
+  assert.match(html,/id="pro-favorites-bar"/);
+  assert.match(html,/id="pro-favorites-actions"/);
+  assert.match(css,/data-studio-mode="simple"\] \.pro-favorites-bar/);
+  assert.match(css,/\.pro-favorites-bar\[hidden\]/);
+  assert.ok(html.indexOf('id="pro-navigation"')<html.indexOf('id="pro-favorites-bar"'));
+  assert.ok(html.indexOf('id="pro-favorites-bar"')<html.indexOf('id="simple-control-bar"'));
 });
 
 test('Search dialog is in the Electron renderer with original navigation unchanged',()=>{
