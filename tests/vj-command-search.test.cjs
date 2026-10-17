@@ -3,7 +3,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-const {COMMAND_ACTIONS,normalizeSearch,matches,attachVJCommandSearch}=require('../src/vj-command-search.js');
+const {COMMAND_ACTIONS,RECENT_KEY,RECENT_LIMIT,normalizeSearch,matches,prioritizeRecent,attachVJCommandSearch}=require('../src/vj-command-search.js');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 
 function makeElement(id='') {
@@ -184,6 +184,80 @@ test('Stage 6 does not run a disabled action; re-enabled original actions become
   f.key('Enter').dispatch();
   assert.equal(ctrl.isOpen(),false);
   assert.equal(f.els['open-preview'].clicks,1);
+});
+
+test('Stage 7 recent commands appear first on an empty query and persist only stable IDs',()=>{
+  const values=new Map();
+  const storage={getItem:key=>values.get(key)||null,setItem:(key,val)=>values.set(key,val)};
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc,storage);
+  ctrl.open();
+  assert.equal(ctrl.getRecentKeys().length,0);
+  f.els['pro-command-input'].value='Layer Mixer';
+  f.els['pro-command-input'].fire('input');
+  f.key('Enter').dispatch();
+  assert.deepEqual(ctrl.getRecentKeys(),['target:id-1']);
+  assert.deepEqual(JSON.parse(values.get(RECENT_KEY)),['target:id-1']);
+  ctrl.open();
+  assert.equal(ctrl.getMatches()[0],'Layer Mixer');
+  const option=f.els['pro-command-results'].querySelectorAll('[role="option"]')[0];
+  assert.equal(option.dataset.recent,'true');
+  assert.equal(option.dataset.commandKind,'navigation');
+  f.els['pro-command-input'].value='play pause';
+  f.els['pro-command-input'].fire('input');
+  f.key('Enter').dispatch();
+  assert.deepEqual(ctrl.getRecentKeys(),['action:play-pause','target:id-1']);
+  ctrl.open();
+  assert.equal(ctrl.getMatches()[0],'Művelet · Lejátszás / szünet');
+  assert.equal(f.els['pro-command-results'].querySelectorAll('[role="option"]')[0].dataset.commandKind,'action');
+  assert.equal(f.els['pro-command-results'].querySelectorAll('[role="option"]')[0].dataset.recent,'true');
+  assert.equal(values.get(RECENT_KEY).includes('play pause'),false);
+});
+
+test('Stage 7 recents are bounded and do not keep duplicates',()=>{
+  const storage={value:'',getItem(){return this.value;},setItem(_key,val){this.value=val;}};
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc,storage);
+  for(const query of ['Layer Mixer','BPM','Kliprács','screenshot','Mikrofon kapcsolása','Projekt mentése']){
+    ctrl.open();
+    f.els['pro-command-input'].value=query;
+    f.els['pro-command-input'].fire('input');
+    assert.equal(ctrl.getMatches().length,1,query);
+    f.key('Enter').dispatch();
+  }
+  assert.equal(ctrl.getRecentKeys().length,RECENT_LIMIT);
+  assert.equal(ctrl.getRecentKeys()[0],'action:project-save');
+  assert.equal(ctrl.getRecentKeys().includes('target:id-1'),false);
+  ctrl.open();
+  f.els['pro-command-input'].value='Projekt mentése';
+  f.els['pro-command-input'].fire('input');
+  f.key('Enter').dispatch();
+  assert.equal(new Set(ctrl.getRecentKeys()).size,RECENT_LIMIT);
+});
+
+test('Stage 7 validates stored recents, supports blocked storage and restores next session',()=>{
+  const values=new Map([[RECENT_KEY,JSON.stringify(['not-a-command','action:microphone','action:microphone','target:id-4'])]]);
+  const storage={getItem:key=>values.get(key),setItem:(key,value)=>values.set(key,value)};
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc,storage);
+  assert.deepEqual(ctrl.getRecentKeys(),['action:microphone','target:id-4']);
+  ctrl.open();
+  assert.equal(ctrl.getMatches()[0],'Művelet · Mikrofon kapcsolása');
+  ctrl.close();
+  const reread=attachVJCommandSearch(doc,storage);
+  assert.deepEqual(reread.getRecentKeys(),['action:microphone','target:id-4']);
+  const blocked={getItem(){throw Error('access denied');},setItem(){throw Error('access denied');}};
+  const f2=fixture({withActions:true}),offline=attachVJCommandSearch(doc,blocked);
+  assert.equal(offline.open(),true);
+  f2.els['pro-command-input'].value='BPM';
+  f2.els['pro-command-input'].fire('input');
+  f2.key('Enter').dispatch();
+  assert.deepEqual(offline.getRecentKeys(),['target:id-0']);
+  assert.equal(offline.isOpen(),false);
+});
+
+test('Stage 7 sorting is stable and never mutates original search results',()=>{
+  const items=[{key:'a'},{key:'b'},{key:'c'},{key:'d'}];
+  const sorted=prioritizeRecent(items,['d','b']);
+  assert.deepEqual(sorted.map(x=>x.key),['d','b','a','c']);
+  assert.deepEqual(items.map(x=>x.key),['a','b','c','d']);
 });
 
 test('Search dialog is in the Electron renderer with original navigation unchanged',()=>{
