@@ -13,11 +13,19 @@
     {id:'open-preview',label:'Előnézeti ablak megnyitása',terms:'preview ablak megjelenítés'},
     {id:'project-save',label:'Projekt mentése',terms:'projekt biztonsági mentés save'}
   ]);
+  const RECENT_KEY = 'lumina-pulse.recent-commands.v1';
+  const RECENT_LIMIT = 5;
   const matches = (entries, term) => {
     const query = normalizeSearch(term);
     return entries.filter(entry => normalizeSearch(entry.label+' '+(entry.terms||'')).includes(query));
   };
-  function attachVJCommandSearch(doc) {
+  function prioritizeRecent(entries, recentKeys) {
+    const position = new Map(recentKeys.map((key,index)=>[key,index]));
+    return [...entries].sort((a,b)=>
+      (position.get(a.key) ?? Number.MAX_SAFE_INTEGER) -
+      (position.get(b.key) ?? Number.MAX_SAFE_INTEGER));
+  }
+  function attachVJCommandSearch(doc, providedStorage) {
     const overlay=doc?.getElementById?.('pro-command-overlay');
     const openButton=doc?.getElementById?.('pro-search-open');
     const closeButton=doc?.getElementById?.('pro-command-close');
@@ -26,17 +34,27 @@
     const nav=doc?.getElementById?.('pro-navigation');
     if (!overlay || !openButton || !closeButton || !input || !results || !nav) return null;
     const navigation=[...nav.querySelectorAll('[data-vj-target], [data-vj-action]')]
-      .map((button,index)=>({button,label:button.textContent.trim(),id:index,kind:'navigation'}));
+      .map((button,index)=>({button,label:button.textContent.trim(),id:index,kind:'navigation',
+        key:button.dataset.vjTarget?'target:'+button.dataset.vjTarget:'nav:'+button.dataset.vjAction}));
     const actions=COMMAND_ACTIONS.flatMap(action=>{
       const button=doc.getElementById(action.id);
       return button?[{button,label:'Művelet · '+action.label,id:navigation.length+COMMAND_ACTIONS.indexOf(action),
-        kind:'action',terms:action.terms}]:[];
+        kind:'action',terms:action.terms,key:'action:'+action.id}]:[];
     });
     const entries=[...navigation,...actions];
+    let storage=providedStorage;
+    if(storage===undefined){try{storage=doc.defaultView?.localStorage;}catch{storage=null;}}
+    let recentKeys=[];
+    try{
+      const parsed=JSON.parse(storage?.getItem(RECENT_KEY)||'[]');
+      if(Array.isArray(parsed))recentKeys=[...new Set(parsed)]
+        .filter(key=>typeof key==='string'&&entries.some(entry=>entry.key===key)).slice(0,RECENT_LIMIT);
+    }catch{ /* local storage may be denied or contain damaged data */ }
     let filtered=[],selected=0,previousFocus=null;
     const visible=()=>!overlay.hidden;
     function render() {
-      filtered=matches(entries,input.value);
+      const found=matches(entries,input.value);
+      filtered=normalizeSearch(input.value)?found:prioritizeRecent(found,recentKeys);
       selected=0;
       results.replaceChildren();
       for(const entry of filtered){
@@ -47,7 +65,9 @@
         item.id='pro-command-option-'+entry.id;
         item.textContent=entry.label;
         item.disabled=Boolean(entry.button.disabled);
-        if(entry.kind==='action')item.dataset.commandKind='action';
+        item.dataset.commandKind=entry.kind;
+        if(!normalizeSearch(input.value)&&recentKeys.includes(entry.key))
+          item.dataset.recent='true';
         item.addEventListener('click',()=>execute(entry));
         results.append(item);
       }
@@ -94,6 +114,9 @@
       close({restoreFocus:false});
       if(entry.kind==='action')entry.button.focus?.({preventScroll:true});
       entry.button.click();
+      // Persist only stable command identifiers, never searches or filenames.
+      recentKeys=[entry.key,...recentKeys.filter(key=>key!==entry.key)].slice(0,RECENT_LIMIT);
+      try{storage?.setItem(RECENT_KEY,JSON.stringify(recentKeys));}catch{/* optional */}
       return true;
     }
     openButton.addEventListener('click',open);
@@ -139,9 +162,11 @@
       }
     },true);
     doc.getElementById('studio-simple')?.addEventListener('click',()=>close({restoreFocus:false}));
-    return {open,close,isOpen:visible,execute,render,getMatches:()=>filtered.map(e=>e.label)};
+    return {open,close,isOpen:visible,execute,render,getMatches:()=>filtered.map(e=>e.label),
+      getRecentKeys:()=>[...recentKeys]};
   }
   if(typeof module!=='undefined'&&module.exports)
-    module.exports={COMMAND_ACTIONS,normalizeSearch,matches,attachVJCommandSearch};
+    module.exports={COMMAND_ACTIONS,RECENT_KEY,RECENT_LIMIT,normalizeSearch,matches,
+      prioritizeRecent,attachVJCommandSearch};
   if(typeof document!=='undefined')attachVJCommandSearch(document);
 })();
