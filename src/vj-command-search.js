@@ -79,7 +79,7 @@
     function syncFavoriteShortcuts(){
       if(!shortcutBar||!shortcutActions)return;
       shortcutActions.replaceChildren();
-      for(const key of favoriteKeys){
+      for(const [index,key] of favoriteKeys.entries()){
         const entry=entries.find(item=>item.key===key);
         if(!entry)continue;
         const quick=doc.createElement('button');
@@ -88,7 +88,9 @@
         quick.dataset.commandKind=entry.kind;
         quick.textContent='★ '+(entry.kind==='action'?
           entry.label.replace(/^Művelet · /,''):entry.label);
-        quick.title=entry.label;
+        quick.title=entry.label+' · Ctrl+Shift+'+(index+1);
+        quick.dataset.hotkey='Ctrl+Shift+'+(index+1);
+        quick.setAttribute('aria-keyshortcuts','Control+Shift+'+(index+1));
         quick.disabled=Boolean(entry.button.disabled);
         quick.addEventListener('click',()=>runCommand(entry));
         shortcutActions.append(quick);
@@ -216,6 +218,23 @@
       }
     });
     doc.addEventListener('keydown',event=>{
+      // Ctrl+Shift+1–8 are Pro-only favorites, not new audio/rendering handlers.
+      // Physical Digit codes also work on HU layouts where Shift changes key to '!'.
+      const digit=/^Digit([1-8])$/.exec(event.code||'')?.[1]
+        || (/^[1-8]$/.test(event.key)?event.key:null);
+      if(digit && event.ctrlKey && event.shiftKey && !event.altKey
+          && !event.metaKey && doc.body?.dataset.studioMode==='pro'){
+        const tag=event.target?.tagName;
+        const editing=event.target?.isContentEditable || ['INPUT','TEXTAREA','SELECT'].includes(tag);
+        if(editing || event.isComposing)return;
+        event.preventDefault();
+        event.stopPropagation();
+        if(event.repeat || visible())return;
+        const commandKey=favoriteKeys[Number(digit)-1];
+        const command=entries.find(entry=>entry.key===commandKey);
+        if(command)runCommand(command);
+        return;
+      }
       if((event.ctrlKey||event.metaKey)&&!event.shiftKey&&!event.altKey&&
         event.key.toLowerCase()==='k'&&doc.body?.dataset.studioMode==='pro'){
         event.preventDefault();
