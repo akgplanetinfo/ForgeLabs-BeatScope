@@ -653,3 +653,35 @@ body[data-theme="lumina-pulse"] .simple-keyboard-hint kbd{
   border:1px solid #3c7a88;border-radius:3px;background:#122e37;
   padding:3px 6px;box-shadow:0 1px 0 #0b3e4a;
 }
+
+/* Alpha 17 stage 16: audio-reactive visual tuning with the original engine. */
+body[data-theme="lumina-pulse"] .simple-visual-tuning{
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;
+  width:100%;padding:11px 13px;background:#081e24;
+  border:1px solid #205465;border-radius:3px;
+}
+body[data-theme="lumina-pulse"] .simple-tuning-field{
+  display:flex;align-items:center;gap:10px;flex:1 1 250px;min-width:205px;
+}
+body[data-theme="lumina-pulse"] .simple-tuning-field label{
+  color:#add1d9;flex:0 0 116px;font-size:11px;font-weight:750;
+}
+body[data-theme="lumina-pulse"] .simple-tuning-field input{
+  flex:1 1 100px;min-width:70px;accent-color:#00d3f2;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] .simple-tuning-field input:disabled{
+  opacity:.4;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] .simple-tuning-field input:focus-visible{
+  outline:2px solid #e5fbff;outline-offset:3px;
+}
+body[data-theme="lumina-pulse"] .simple-tuning-field output{
+  color:#adf3fa;min-width:43px;text-align:right;
+  font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;
+}
+@media(max-width:650px){
+  body[data-theme="lumina-pulse"] .simple-tuning-field{
+    flex:1 1 100%;flex-wrap:wrap;
+  }
+  body[data-theme="lumina-pulse"] .simple-tuning-field label{flex:0 0 110px}
+}
