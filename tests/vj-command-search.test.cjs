@@ -37,7 +37,8 @@ let doc;
 function fixture({withActions=false}={}) {
   const ids=['pro-command-overlay','pro-search-open','pro-command-close',
     'pro-command-input','pro-command-results','pro-command-favorite','pro-command-note',
-    'pro-favorites-bar','pro-favorites-actions','pro-navigation','studio-simple',
+    'pro-favorites-bar','pro-favorites-actions','pro-favorites-select',
+    'pro-favorites-left','pro-favorites-right','pro-navigation','studio-simple',
     ...(withActions?COMMAND_ACTIONS.map(action=>action.id):[])];
   const els=Object.fromEntries(ids.map(id=>[id,makeElement(id)]));
   const navItems=['BPM','Layer Mixer','FX Library ↗','VJ Output','Kliprács'].map((label,i)=>{
@@ -492,6 +493,81 @@ test('Stage 10 dynamically reassigns number slots after favorite removal',()=>{
   f.docKey('1',{code:'Digit1',ctrlKey:true,shiftKey:true});
   assert.equal(f.navItems[1].clicks,1);
   assert.equal(f.navItems[0].clicks||0,0);
+});
+
+test('Stage 11 reorder changes visual order, hotkeys, and persistent favorite order',()=>{
+  const values=new Map([[FAVORITE_KEY,JSON.stringify(['target:id-1','action:ai-toggle','target:id-0'])]]);
+  const storage={getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v)};
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc,storage);
+  const select=f.els['pro-favorites-select'],left=f.els['pro-favorites-left'],
+    right=f.els['pro-favorites-right'],bar=f.els['pro-favorites-actions'];
+  assert.deepEqual(bar.children.map(b=>b.textContent),
+    ['★ Layer Mixer','★ Automatikus FX kapcsolása','★ BPM']);
+  assert.deepEqual(select.children.map(o=>o.value),
+    ['target:id-1','action:ai-toggle','target:id-0']);
+  assert.equal(select.value,'target:id-1');
+  assert.equal(left.disabled,true);
+  assert.equal(right.disabled,false);
+  assert.equal(ctrl.moveFavorite(-1),false,'First favorite cannot go farther left');
+  select.value='action:ai-toggle';select.fire('change');
+  assert.equal(left.disabled,false);
+  left.click();
+  assert.deepEqual(ctrl.getFavoriteKeys(),['action:ai-toggle','target:id-1','target:id-0']);
+  assert.deepEqual(JSON.parse(values.get(FAVORITE_KEY)),ctrl.getFavoriteKeys());
+  assert.equal(select.value,'action:ai-toggle','Keep selected command after reorder');
+  assert.equal(left.disabled,true);
+  assert.equal(bar.children[0].textContent,'★ Automatikus FX kapcsolása');
+  assert.equal(bar.children[0].dataset.hotkey,'Ctrl+Shift+1');
+  assert.equal(bar.children[1].dataset.hotkey,'Ctrl+Shift+2');
+  assert.equal(f.docKey('!',{code:'Digit1',ctrlKey:true,shiftKey:true}),true);
+  assert.equal(f.els['ai-toggle'].clicks,1,'New slot 1 triggers moved favorite');
+  assert.equal(f.docKey('@',{code:'Digit2',ctrlKey:true,shiftKey:true}),true);
+  assert.equal(f.navItems[1].clicks,1,'Slot 2 is the former first favorite');
+  right.click();
+  assert.deepEqual(ctrl.getFavoriteKeys(),['target:id-1','action:ai-toggle','target:id-0']);
+  assert.equal(select.value,'action:ai-toggle');
+  const g=fixture({withActions:true}),fresh=attachVJCommandSearch(doc,storage);
+  assert.deepEqual(fresh.getFavoriteKeys(),['target:id-1','action:ai-toggle','target:id-0']);
+  assert.equal(g.els['pro-favorites-actions'].children[1].dataset.hotkey,'Ctrl+Shift+2');
+});
+
+test('Stage 11 boundary controls and missing selections do not corrupt favorites',()=>{
+  const values=new Map([[FAVORITE_KEY,JSON.stringify(['target:id-0','target:id-1'])]]);
+  const storage={getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v)};
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc,storage);
+  const select=f.els['pro-favorites-select'];
+  select.value='target:id-1';select.fire('change');
+  assert.equal(f.els['pro-favorites-right'].disabled,true);
+  assert.equal(ctrl.moveFavorite(1),false);
+  assert.equal(ctrl.moveFavorite(0),false);
+  assert.equal(ctrl.moveFavorite(2),false);
+  select.value='bad-value';select.fire('change');
+  assert.equal(f.els['pro-favorites-left'].disabled,true);
+  assert.equal(f.els['pro-favorites-right'].disabled,true);
+  assert.equal(ctrl.moveFavorite(-1),false);
+  assert.deepEqual(ctrl.getFavoriteKeys(),['target:id-0','target:id-1']);
+  assert.deepEqual(JSON.parse(values.get(FAVORITE_KEY)),['target:id-0','target:id-1']);
+});
+
+test('Stage 11 reorder survives unavailable storage and does not execute a command',()=>{
+  const data={getItem:k=>k===FAVORITE_KEY?JSON.stringify(['target:id-1','target:id-0']):'[]',
+    setItem(){throw Error('storage unavailable');}};
+  const f=fixture({withActions:true}),ctrl=attachVJCommandSearch(doc,data);
+  f.els['pro-favorites-select'].value='target:id-0';
+  assert.equal(ctrl.moveFavorite(-1),true);
+  assert.deepEqual(ctrl.getFavoriteKeys(),['target:id-0','target:id-1']);
+  assert.equal(f.navItems[0].clicks||0,0);
+  assert.equal(f.navItems[1].clicks||0,0);
+  f.docKey('1',{code:'Digit1',ctrlKey:true,shiftKey:true});
+  assert.equal(f.navItems[0].clicks,1);
+});
+
+test('Stage 11 ordering controls are in the real Pro-only favorites bar',()=>{
+  const html=read('index.html'),css=read('src/lumina-theme.css');
+  for(const id of ['pro-favorites-select','pro-favorites-left','pro-favorites-right'])
+    assert.ok(html.includes('id="'+id+'"'),id);
+  assert.match(css,/\.pro-favorites-order/);
+  assert.match(css,/data-studio-mode="simple"\] \.pro-favorites-bar/);
 });
 
 test('Search dialog is in the Electron renderer with original navigation unchanged',()=>{
