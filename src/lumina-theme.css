@@ -781,3 +781,17 @@ body[data-theme="lumina-pulse"] .simple-bars-tuning label small{
 body[data-theme="lumina-pulse"] #simple-bars-count{
   accent-color:#00d3f2;
 }
+
+/* Alpha 17 stage 22: one-click FX bypass in Simple preserves the Pro effect stack. */
+body[data-theme="lumina-pulse"] #simple-fx-bypass{
+  min-width:126px;border-color:#337a8a;
+}
+body[data-theme="lumina-pulse"] #simple-fx-bypass[aria-pressed="true"]{
+  border-color:#f3ba74;color:#ffe1ae;background:#473329;
+}
+body[data-theme="lumina-pulse"] #simple-fx-bypass:disabled{
+  opacity:.42;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-fx-bypass:focus-visible{
+  outline:2px solid #e5fbff;outline-offset:2px;
+}
