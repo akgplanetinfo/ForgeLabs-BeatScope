@@ -2,6 +2,7 @@
 // Alpha 17 step 2. Delegate to the original BeatScope controls, never fork the audio/VJ engine.
 (() => {
   const VISUALS = Object.freeze(['bars', 'wave', 'orbit', 'particles']);
+  const PALETTES = Object.freeze(['azure','mint','violet','sunset','rainbow']);
   const ACTIONS = Object.freeze({
     'simple-open-file': 'open-file',
     'simple-microphone': 'microphone',
@@ -23,6 +24,7 @@
     if (!root) return null;
     const get = id => doc.getElementById(id);
     const visual = get('simple-visual');
+    const palette = get('simple-palette');
     if (!visual) return null;
 
     for (const [quickId, sourceId] of Object.entries(ACTIONS)) {
@@ -40,6 +42,13 @@
       if (!VISUALS.includes(value)) return;
       const source = [...doc.querySelectorAll('[data-mode]')]
         .find(element => element.dataset.mode === value);
+      if (source && !source.disabled) source.click();
+    });
+    palette?.addEventListener('change', () => {
+      if (!PALETTES.includes(palette.value)) return;
+      // Use the existing palette button and its persistence/AI handling.
+      const source = [...doc.querySelectorAll('[data-palette]')]
+        .find(element => element.dataset.palette === palette.value);
       if (source && !source.disabled) source.click();
     });
 
@@ -213,6 +222,10 @@
       const selected = [...doc.querySelectorAll('[data-mode]')]
         .find(element => element.classList.contains('active') && VISUALS.includes(element.dataset.mode));
       if (selected) visual.value = selected.dataset.mode;
+      const selectedPalette = [...doc.querySelectorAll('[data-palette]')]
+        .find(element => element.classList.contains('selected') &&
+          PALETTES.includes(element.dataset.palette));
+      if (palette && selectedPalette) palette.value = selectedPalette.dataset.palette;
 
       const ai = get('ai-toggle')?.getAttribute('aria-checked') === 'true';
       const microphone = Boolean(get('microphone')?.classList.contains('active'));
@@ -252,6 +265,7 @@
       }
       observe(doc.body, 'class');
       for (const element of doc.querySelectorAll('[data-mode]')) observe(element, 'class');
+      for (const element of doc.querySelectorAll('[data-palette]')) observe(element, 'class');
       // textContent replacement fires childList mutations on the original BeatScope labels.
       for (const [, originalId] of STATUS_FIELDS) {
         const element = get(originalId);
@@ -273,7 +287,7 @@
   }
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { VISUALS, ACTIONS, SIMPLE_SHORTCUTS, VISUAL_TUNING, attachSimpleControls };
+    module.exports = { VISUALS, PALETTES, ACTIONS, SIMPLE_SHORTCUTS, VISUAL_TUNING, attachSimpleControls };
   }
   if (typeof document !== 'undefined') attachSimpleControls(document);
 })();
