@@ -949,8 +949,8 @@ test('Stage 22 Pro native FX bypass changes are visible in Simple including star
   assert.equal(quick.getAttribute('aria-pressed'),'false');
   native.setAttribute('aria-pressed','true');f.observers[0].notify();
   assert.equal(quick.getAttribute('aria-pressed'),'true');
-  assert.ok(f.observers[0].observed.some(record=>
-    record.element===native&&record.options?.attributeFilter?.includes('aria-pressed')),
+  assert.ok(f.observers[0].observed.some(([node,attribute])=>
+    node===native&&attribute==='aria-pressed'),
     'Native FX bypass is observed');
   ctrl.disconnect();
 });
