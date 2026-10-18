@@ -34,6 +34,60 @@
       if (source && !source.disabled) source.click();
     });
 
+    // Stage 12: transport is a thin adapter to BeatScope's existing player/seek.
+    const audio = get('audio');
+    const nativeSeek = get('seek');
+    const play = get('simple-play-pause');
+    const stop = get('simple-stop');
+    const seek = get('simple-seek');
+    const current = get('simple-current-time');
+    const duration = get('simple-duration');
+    function isMicActive() {
+      return Boolean(get('microphone')?.classList.contains('active'));
+    }
+    function canSeek() {
+      return Boolean(nativeSeek && !nativeSeek.disabled && audio &&
+        Number.isFinite(audio.duration) && audio.duration > 0 && !isMicActive());
+    }
+    function syncTransport() {
+      if (!audio || !nativeSeek || !play || !stop || !seek) return;
+      const microphone = isMicActive();
+      const hasFile = !nativeSeek.disabled;
+      const isPlaying = hasFile && !audio.paused && !audio.ended && !microphone;
+      const label = microphone ? 'Mikrofon leállítása'
+        : !hasFile ? 'Zene megnyitása' : isPlaying ? 'Szünet' : 'Lejátszás';
+      play.textContent = (microphone ? '■ ' : !hasFile ? '♫ ' : isPlaying ? '❚❚ ' : '▶ ') + label;
+      play.setAttribute('aria-label',label);
+      play.setAttribute('aria-pressed',String(isPlaying));
+      play.disabled = Boolean(get('play-pause')?.disabled);
+      stop.disabled = Boolean(get('stop')?.disabled) || (!hasFile && !microphone);
+      seek.disabled = !canSeek();
+      seek.value = canSeek() ? String(Math.max(0,Math.min(1000,
+        Math.round(audio.currentTime / audio.duration * 1000)))) : '0';
+      if (current) current.textContent = get('current-time')?.textContent || '0:00';
+      if (duration) duration.textContent = get('duration')?.textContent || '0:00';
+      seek.setAttribute('aria-valuetext',
+        (current?.textContent || '0:00') + ' / ' + (duration?.textContent || '0:00'));
+    }
+    play?.addEventListener('click',() => {
+      const original=get('play-pause');
+      if (original && !original.disabled) original.click();
+    });
+    stop?.addEventListener('click',() => {
+      const original=get('stop');
+      if (original && !original.disabled) original.click();
+    });
+    seek?.addEventListener('input',() => {
+      if (!canSeek()) return;
+      nativeSeek.value=seek.value;
+      // Trigger the original renderer's input handler; do not reimplement time changes.
+      const NativeEvent=doc.defaultView?.Event;
+      if (NativeEvent) nativeSeek.dispatchEvent(new NativeEvent('input',{bubbles:true}));
+    });
+    const AUDIO_EVENTS=['loadedmetadata','durationchange','timeupdate','seeked',
+      'play','pause','ended','emptied','error'];
+    for (const name of AUDIO_EVENTS) audio?.addEventListener(name,syncTransport);
+
     const STATUS_FIELDS = [
       ['simple-status-source', 'title-status'],
       ['simple-status-track', 'track-name'],
@@ -58,6 +112,7 @@
         const display = get(displayId), original = get(originalId);
         if (display && original) display.textContent = original.textContent;
       }
+      syncTransport();
     }
 
     let observer = null;
@@ -68,6 +123,9 @@
       };
       observe(get('ai-toggle'), 'aria-checked');
       observe(get('microphone'), 'class');
+      observe(get('seek'), 'disabled');
+      observe(get('play-pause'), 'disabled');
+      observe(get('stop'), 'disabled');
       observe(doc.body, 'class');
       for (const element of doc.querySelectorAll('[data-mode]')) observe(element, 'class');
       // textContent replacement fires childList mutations on the original BeatScope labels.
@@ -75,9 +133,16 @@
         const element = get(originalId);
         if (element) observer.observe(element, { childList: true, subtree: true, characterData: true });
       }
+      for (const id of ['current-time','duration']) {
+        const element=get(id);
+        if(element)observer.observe(element,{childList:true,subtree:true,characterData:true});
+      }
     }
     sync();
-    return { sync, disconnect: () => observer?.disconnect() };
+    return { sync, syncTransport, disconnect: () => {
+      observer?.disconnect();
+      for (const name of AUDIO_EVENTS) audio?.removeEventListener?.(name,syncTransport);
+    } };
   }
 
   if (typeof module !== 'undefined' && module.exports) {
