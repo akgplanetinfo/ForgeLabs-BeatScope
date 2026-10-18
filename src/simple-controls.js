@@ -139,6 +139,9 @@
         ?'Effektek visszakapcsolása':'Effektek kikapcsolása');
       simpleFXBypass.textContent=bypassed?'◌ FX kikapcsolva':'◉ FX aktív';
     }
+    // Listen to the native Pro button as well as observing its attributes.
+    // The original renderer binds first, so this sees its final new state.
+    nativeFXBypass?.addEventListener('click',syncFXBypass);
 
     // Stage 12: transport is a thin adapter to BeatScope's existing player/seek.
     const audio = get('audio');
@@ -387,6 +390,7 @@
       nativeAutoPalette?.removeEventListener?.('change',syncAutoPalette);
       nativeAISpeed?.removeEventListener?.('change',syncAISpeed);
       nativeGrid?.removeEventListener?.('change',syncGrid);
+      nativeFXBypass?.removeEventListener?.('click',syncFXBypass);
       for(const [,nativeId] of VISUAL_TUNING)get(nativeId)?.removeEventListener?.('input',syncVisualTuning);
     } };
   }
