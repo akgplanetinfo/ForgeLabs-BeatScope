@@ -39,7 +39,8 @@ function fixture() {
     'mute','volume','simple-mute','simple-volume','simple-volume-value',
     'previous','next','repeat','simple-previous','simple-next','simple-repeat',
     'intensity','smooth','intensity-val','smooth-val',
-    'simple-intensity','simple-smooth','simple-intensity-value','simple-smooth-value'];
+    'simple-intensity','simple-smooth','simple-intensity-value','simple-smooth-value',
+    'bars-count','bars-val','simple-bars-count','simple-bars-value'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['title-status'].textContent = 'Élő mikrofon';
   nodes['track-name'].textContent = 'teszt-zene.wav';
@@ -61,7 +62,10 @@ function fixture() {
   nodes.volume.value='85';
   nodes.intensity.value='115';nodes.intensity.min='20';nodes.intensity.max='300';
   nodes.smooth.value='75';nodes.smooth.min='0';nodes.smooth.max='94';
+  nodes['bars-count'].value='56';nodes['bars-count'].min='16';
+  nodes['bars-count'].max='128';nodes['bars-count'].step='8';
   nodes['intensity-val'].textContent='115%';nodes['smooth-val'].textContent='75%';
+  nodes['bars-val'].textContent='56';
   nodes['simple-volume'].value='85';
   nodes['current-time'].textContent='0:00';
   nodes.duration.textContent='0:00';
@@ -839,4 +843,66 @@ test('Stage 20 background grid is in the original Electron renderer without a ne
   assert.match(js,/nativeGrid\.dispatchEvent/);
   assert.match(js,/nativeGrid\?\.addEventListener\('change',syncGrid\)/);
   assert.match(css,/\.simple-grid-toggle/);
+});
+
+test('Stage 21 Simple Spectrum Bars count delegates to native visual engine exactly once',()=>{
+  const f=fixture(),native=f.nodes['bars-count'],quick=f.nodes['simple-bars-count'];
+  let nativeInputs=0;
+  native.addEventListener('input',()=>{
+    nativeInputs++;
+    f.nodes['bars-val'].textContent=native.value;
+  });
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.ok(VISUAL_TUNING.some(([quickId,nativeId])=>
+    quickId==='simple-bars-count'&&nativeId==='bars-count'));
+  assert.equal(quick.value,'56');
+  assert.equal(f.nodes['simple-bars-value'].textContent,'56');
+  quick.value='80';quick.emit('input');
+  assert.equal(nativeInputs,1,'Exactly one native change');
+  assert.equal(native.value,'80');
+  assert.equal(quick.getAttribute('aria-valuetext'),'80');
+  assert.equal(f.nodes['simple-bars-value'].textContent,'80');
+  ctrl.disconnect();
+});
+
+test('Stage 21 bars density preserves original steps and safely clamps bad values',()=>{
+  const f=fixture(),native=f.nodes['bars-count'],quick=f.nodes['simple-bars-count'];
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  quick.value='83';quick.emit('input');
+  assert.equal(native.value,'80','Step 8 rounds to the nearest native permitted value');
+  quick.value='999';quick.emit('input');
+  assert.equal(native.value,'128');
+  quick.value='-50';quick.emit('input');
+  assert.equal(native.value,'16');
+  quick.value='not-a-number';quick.emit('input');
+  assert.equal(native.value,'16','Invalid input cannot change engine settings');
+  native.disabled=true;f.observers[0].notify();
+  assert.equal(quick.disabled,true);
+  quick.value='96';quick.emit('input');
+  assert.equal(native.value,'16','Disabled original control cannot be overridden');
+  ctrl.disconnect();
+});
+
+test('Stage 21 Pro bar count input updates the Simple slider, even after reload',()=>{
+  const f=fixture(),native=f.nodes['bars-count'],quick=f.nodes['simple-bars-count'];
+  native.value='96';f.nodes['bars-val'].textContent='96';
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(quick.value,'96','Native stored value restored by original renderer');
+  assert.equal(f.nodes['simple-bars-value'].textContent,'96');
+  native.value='120';f.nodes['bars-val'].textContent='120';
+  native.dispatchEvent(new f.doc.defaultView.Event('input',{bubbles:true}));
+  assert.equal(quick.value,'120');
+  assert.equal(f.nodes['simple-bars-value'].textContent,'120');
+  ctrl.disconnect();
+  native.value='64';native.emit('input');
+  assert.equal(quick.value,'120','Unsubscribes on disconnect');
+});
+
+test('Stage 21 bars control is part of original renderer and keeps original spectrum parameters',()=>{
+  const html=read('index.html'),css=read('src/lumina-theme.css');
+  for(const id of ['simple-bars-count','simple-bars-value','bars-count','bars-val'])
+    assert.ok(html.includes('id="'+id+'"'),id);
+  assert.match(html,/id="simple-bars-count" min="16" max="128" value="56" step="8"/);
+  assert.match(html,/csak Bars módban/);
+  assert.match(css,/\.simple-bars-tuning/);
 });
