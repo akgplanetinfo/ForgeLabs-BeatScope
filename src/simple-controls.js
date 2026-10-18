@@ -337,7 +337,7 @@
       if(!simpleFXPicker)return;
       const rows=fxRows();
       const labels=rows.map(row=>row.querySelector?.('.fx-stack-name')?.textContent?.trim()||'Effekt');
-      const signature=labels.map((name,i)=>i+':'+name).join('\\u001f');
+      const signature=JSON.stringify(labels);
       if(fxPickerSignature!==signature){
         fxPickerSignature=signature;
         const options=rows.length?labels.map((name,i)=>{
@@ -358,7 +358,7 @@
     simpleFXPicker?.addEventListener('change',()=>{
       const selected=String(simpleFXPicker.value);
       const rows=fxRows();
-      const index=/^(0|[1-9]\\d*)$/.test(selected)?Number(selected):-1;
+      const index=/^(0|[1-9][0-9]*)$/.test(selected)?Number(selected):-1;
       const original=index>=0&&index<rows.length
         ?rows[index].querySelector?.('.fx-stack-name'):null;
       if(original&&!original.disabled)original.click();
