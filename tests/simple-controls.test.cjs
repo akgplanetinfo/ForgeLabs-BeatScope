@@ -34,7 +34,8 @@ function fixture() {
     'simple-status-source', 'simple-status-track', 'simple-status-visual',
     'simple-play-pause','simple-stop','simple-seek','simple-current-time',
     'simple-duration','play-pause','stop','seek','current-time','duration','audio',
-    'mute','volume','simple-mute','simple-volume','simple-volume-value'];
+    'mute','volume','simple-mute','simple-volume','simple-volume-value',
+    'previous','next','repeat','simple-previous','simple-next','simple-repeat'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['title-status'].textContent = 'Élő mikrofon';
   nodes['track-name'].textContent = 'teszt-zene.wav';
@@ -46,6 +47,7 @@ function fixture() {
   nodes.audio.currentTime=0;
   nodes.audio.volume=.85;
   nodes.audio.muted=false;
+  nodes.audio.loop=false;
   nodes.volume.value='85';
   nodes['simple-volume'].value='85';
   nodes['current-time'].textContent='0:00';
@@ -318,4 +320,99 @@ test('Stage 13 real Electron HTML has file-volume and mute controls',()=>{
     assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
   assert.match(css,/\.simple-volume/);
   assert.match(css,/#simple-mute\[aria-pressed="true"\]/);
+});
+
+test('Stage 14 native start/end buttons and repeat preserve original BeatScope behavior',()=>{
+  const f=fixture();
+  f.nodes.previous.addEventListener('click',()=>{f.nodes.audio.currentTime=0;});
+  f.nodes.next.addEventListener('click',()=>{f.nodes.audio.currentTime=f.nodes.audio.duration-.1;});
+  f.nodes.repeat.addEventListener('click',()=>{
+    f.nodes.audio.loop=!f.nodes.audio.loop;
+    f.nodes.repeat.classList.toggle('toggled',f.nodes.audio.loop);
+  });
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  const start=f.nodes['simple-previous'],end=f.nodes['simple-next'],loop=f.nodes['simple-repeat'];
+  assert.equal(start.disabled,true);
+  assert.equal(end.disabled,true);
+  assert.equal(loop.disabled,true);
+  assert.equal(loop.getAttribute('aria-pressed'),'false');
+  start.click();end.click();loop.click();
+  assert.deepEqual([f.nodes.previous.clicks,f.nodes.next.clicks,f.nodes.repeat.clicks],[0,0,0],
+    'No file should not invoke native handlers even if click dispatched programmatically');
+  f.nodes.seek.disabled=false;
+  f.nodes.audio.duration=120;
+  f.nodes.audio.currentTime=55;
+  f.nodes.audio.emit('loadedmetadata');
+  assert.equal(start.disabled,false);
+  assert.equal(end.disabled,false);
+  assert.equal(loop.disabled,false);
+  start.click();
+  assert.equal(f.nodes.previous.clicks,1);
+  assert.equal(f.nodes.audio.currentTime,0);
+  end.click();
+  assert.equal(f.nodes.next.clicks,1);
+  assert.ok(Math.abs(f.nodes.audio.currentTime-119.9)<.001);
+  loop.click();f.observers[0].notify();
+  assert.equal(f.nodes.repeat.clicks,1);
+  assert.equal(f.nodes.audio.loop,true);
+  assert.equal(loop.getAttribute('aria-pressed'),'true');
+  assert.equal(loop.getAttribute('aria-label'),'Ismétlés kikapcsolása');
+  assert.equal(loop.textContent,'↻ Ismétlés: be');
+  loop.click();f.observers[0].notify();
+  assert.equal(f.nodes.audio.loop,false);
+  assert.equal(loop.getAttribute('aria-pressed'),'false');
+  ctrl.disconnect();
+});
+
+test('Stage 14 mirrored repeat state responds to Pro changes and disabled native actions',()=>{
+  const f=fixture(),ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes.seek.disabled=false;
+  f.nodes.audio.duration=45;
+  f.nodes.audio.loop=true;
+  f.nodes.repeat.classList.toggle('toggled',true);
+  f.observers[0].notify();
+  assert.equal(f.nodes['simple-repeat'].getAttribute('aria-pressed'),'true');
+  assert.equal(f.nodes['simple-repeat'].disabled,false);
+  f.nodes.repeat.disabled=true;
+  f.nodes.previous.disabled=true;
+  f.nodes.next.disabled=true;
+  f.observers[0].notify();
+  for(const id of ['simple-repeat','simple-previous','simple-next'])
+    assert.equal(f.nodes[id].disabled,true,id);
+  f.nodes['simple-repeat'].click();
+  f.nodes['simple-previous'].click();
+  f.nodes['simple-next'].click();
+  assert.equal(f.nodes.repeat.clicks,0);
+  assert.equal(f.nodes.previous.clicks,0);
+  assert.equal(f.nodes.next.clicks,0);
+  ctrl.disconnect();
+});
+
+test('Stage 14 microphone and missing/invalid duration disable start/end/repeat',()=>{
+  const f=fixture(),ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes.seek.disabled=false;
+  for(const invalid of [NaN,0,Infinity,-20]){
+    f.nodes.audio.duration=invalid;
+    f.nodes.audio.emit('durationchange');
+    for(const id of ['simple-repeat','simple-previous','simple-next'])
+      assert.equal(f.nodes[id].disabled,true,'invalid duration: '+invalid);
+  }
+  f.nodes.audio.duration=80;
+  f.nodes.microphone.classList.toggle('active',true);
+  f.observers[0].notify();
+  for(const id of ['simple-repeat','simple-previous','simple-next'])
+    assert.equal(f.nodes[id].disabled,true,'microphone should disable '+id);
+  f.nodes.microphone.classList.toggle('active',false);
+  f.observers[0].notify();
+  assert.equal(f.nodes['simple-repeat'].disabled,false);
+  ctrl.disconnect();
+});
+
+test('Stage 14 HTML retains separate native source controls and visible Simple labels',()=>{
+  const html=read('index.html'),css=read('src/lumina-theme.css'),js=read('src/simple-controls.js');
+  for(const id of ['simple-repeat','simple-previous','simple-next','repeat','previous','next'])
+    assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
+  assert.match(html,/Ugrás a zene végére/);
+  assert.match(css,/\.simple-transport-extra/);
+  assert.match(js,/get\('repeat'\)/);
 });
