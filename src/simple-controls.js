@@ -8,6 +8,7 @@
     'simple-open-file': 'open-file',
     'simple-microphone': 'microphone',
     'simple-ai': 'ai-toggle',
+    'simple-fx-auto': 'fx-auto',
     'simple-fx-bypass': 'fx-bypass',
     'simple-fullscreen': 'fullscreen'
   });
@@ -36,6 +37,8 @@
     const nativeGrid = get('show-grid');
     const simpleFXBypass = get('simple-fx-bypass');
     const nativeFXBypass = get('fx-bypass');
+    const simpleFXAuto = get('simple-fx-auto');
+    const nativeFXAuto = get('fx-auto');
     if (!visual) return null;
 
     for (const [quickId, sourceId] of Object.entries(ACTIONS)) {
@@ -49,6 +52,7 @@
         // Immediately reflect the bypass result in Simple; the observer handles
         // later changes initiated by Pro or by the original renderer.
         if (quickId === 'simple-fx-bypass') syncFXBypass();
+        if (quickId === 'simple-fx-auto') syncFXAutopilot();
       });
     }
     visual.addEventListener('change', () => {
@@ -142,6 +146,19 @@
     // Listen to the native Pro button as well as observing its attributes.
     // The original renderer binds first, so this sees its final new state.
     nativeFXBypass?.addEventListener('click',syncFXBypass);
+
+    // Stage 23: this is the dedicated FX Autopilot (120 FX), separate from
+    // the AI Visual Director switch. Both states are native and persisted by UI.
+    function syncFXAutopilot(){
+      if(!simpleFXAuto)return;
+      const active=nativeFXAuto?.getAttribute('aria-checked')==='true';
+      simpleFXAuto.disabled=!nativeFXAuto||Boolean(nativeFXAuto.disabled);
+      simpleFXAuto.setAttribute('aria-checked',String(active));
+      simpleFXAuto.setAttribute('aria-label',active
+        ?'120 FX Autopilot kikapcsolása':'120 FX Autopilot bekapcsolása');
+      simpleFXAuto.textContent=active?'✦ 120 FX Autopilot: BE':'✦ 120 FX Autopilot: KI';
+    }
+    nativeFXAuto?.addEventListener('click',syncFXAutopilot);
 
     // Stage 12: transport is a thin adapter to BeatScope's existing player/seek.
     const audio = get('audio');
@@ -326,6 +343,7 @@
       syncAISpeed();
       syncGrid();
       syncFXBypass();
+      syncFXAutopilot();
 
       const ai = get('ai-toggle')?.getAttribute('aria-checked') === 'true';
       const microphone = Boolean(get('microphone')?.classList.contains('active'));
@@ -357,6 +375,8 @@
       observe(nativeGrid, 'disabled');
       observe(nativeFXBypass, 'aria-pressed');
       observe(nativeFXBypass, 'disabled');
+      observe(nativeFXAuto, 'aria-checked');
+      observe(nativeFXAuto, 'disabled');
       observe(get('microphone'), 'class');
       observe(get('seek'), 'disabled');
       observe(get('play-pause'), 'disabled');
@@ -391,6 +411,7 @@
       nativeAISpeed?.removeEventListener?.('change',syncAISpeed);
       nativeGrid?.removeEventListener?.('change',syncGrid);
       nativeFXBypass?.removeEventListener?.('click',syncFXBypass);
+      nativeFXAuto?.removeEventListener?.('click',syncFXAutopilot);
       for(const [,nativeId] of VISUAL_TUNING)get(nativeId)?.removeEventListener?.('input',syncVisualTuning);
     } };
   }
