@@ -8,6 +8,11 @@
     'simple-ai': 'ai-toggle',
     'simple-fullscreen': 'fullscreen'
   });
+  // Space already belongs to the native BeatScope keyboard listener.
+  // Only add previously unused, Simple-only letter shortcuts.
+  const SIMPLE_SHORTCUTS = Object.freeze({
+    m:'simple-mute',r:'simple-repeat',s:'simple-stop'
+  });
 
   function attachSimpleControls(doc, ObserverClass = doc?.defaultView?.MutationObserver) {
     const root = doc?.getElementById?.('simple-control-bar');
@@ -139,6 +144,26 @@
       const NativeEvent=doc.defaultView?.Event;
       if (NativeEvent) nativeSeek.dispatchEvent(new NativeEvent('input',{bubbles:true}));
     });
+    function onSimpleKeydown(event) {
+      if (doc.body?.dataset?.studioMode!=='simple' || event.defaultPrevented ||
+          event.repeat || event.isComposing || event.ctrlKey || event.altKey ||
+          event.metaKey || event.shiftKey) return;
+      const key=String(event.key||'').toLowerCase();
+      const controlId=SIMPLE_SHORTCUTS[key];
+      if(!controlId)return;
+      const target=event.target||doc.activeElement;
+      const tag=target?.tagName?.toUpperCase();
+      if(target?.isContentEditable || ['INPUT','TEXTAREA','SELECT'].includes(tag) ||
+         target?.closest?.('[contenteditable="true"]'))return;
+      // Other active dialogs should retain their own keyboard interaction.
+      if(doc.querySelector?.('[role="dialog"]:not([hidden])'))return;
+      const quick=get(controlId);
+      if(!quick || quick.disabled)return;
+      event.preventDefault();
+      event.stopPropagation?.();
+      quick.click(); // Existing Simple handlers delegate to the original player.
+    }
+    doc.addEventListener?.('keydown',onSimpleKeydown,true);
     const AUDIO_EVENTS=['loadedmetadata','durationchange','timeupdate','seeked',
       'play','pause','ended','emptied','error'];
     for (const name of AUDIO_EVENTS) audio?.addEventListener(name,syncTransport);
@@ -202,11 +227,12 @@
       observer?.disconnect();
       for (const name of AUDIO_EVENTS) audio?.removeEventListener?.(name,syncTransport);
       audio?.removeEventListener?.('volumechange',syncVolume);
+      doc.removeEventListener?.('keydown',onSimpleKeydown,true);
     } };
   }
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { VISUALS, ACTIONS, attachSimpleControls };
+    module.exports = { VISUALS, ACTIONS, SIMPLE_SHORTCUTS, attachSimpleControls };
   }
   if (typeof document !== 'undefined') attachSimpleControls(document);
 })();
