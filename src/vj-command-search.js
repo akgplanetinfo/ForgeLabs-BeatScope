@@ -47,6 +47,9 @@
     const favoriteButton=doc?.getElementById?.('pro-command-favorite');
     const shortcutBar=doc?.getElementById?.('pro-favorites-bar');
     const shortcutActions=doc?.getElementById?.('pro-favorites-actions');
+    const orderSelect=doc?.getElementById?.('pro-favorites-select');
+    const moveLeft=doc?.getElementById?.('pro-favorites-left');
+    const moveRight=doc?.getElementById?.('pro-favorites-right');
     const note=doc?.getElementById?.('pro-command-note');
     const nav=doc?.getElementById?.('pro-navigation');
     if (!overlay || !openButton || !closeButton || !input || !results || !nav || !favoriteButton) return null;
@@ -76,9 +79,17 @@
     }catch{ /* optional local storage may be restricted */ }
     let filtered=[],selected=0,previousFocus=null;
     const visible=()=>!overlay.hidden;
+    function updateMoveControls(){
+      if(!orderSelect)return;
+      const index=favoriteKeys.indexOf(orderSelect.value);
+      if(moveLeft)moveLeft.disabled=index<=0;
+      if(moveRight)moveRight.disabled=index<0||index>=favoriteKeys.length-1;
+    }
     function syncFavoriteShortcuts(){
       if(!shortcutBar||!shortcutActions)return;
+      const previousSelection=orderSelect?.value;
       shortcutActions.replaceChildren();
+      orderSelect?.replaceChildren();
       for(const [index,key] of favoriteKeys.entries()){
         const entry=entries.find(item=>item.key===key);
         if(!entry)continue;
@@ -94,8 +105,30 @@
         quick.disabled=Boolean(entry.button.disabled);
         quick.addEventListener('click',()=>runCommand(entry));
         shortcutActions.append(quick);
+        if(orderSelect){
+          const option=doc.createElement('option');
+          option.value=key;
+          option.textContent=entry.label;
+          orderSelect.append(option);
+        }
       }
+      if(orderSelect)orderSelect.value=favoriteKeys.includes(previousSelection)
+        ?previousSelection:(favoriteKeys[0]||'');
+      updateMoveControls();
       shortcutBar.hidden=shortcutActions.children.length===0;
+    }
+    function moveFavorite(step){
+      if(!orderSelect||!Number.isInteger(step)||Math.abs(step)!==1)return false;
+      const index=favoriteKeys.indexOf(orderSelect.value);
+      const destination=index+step;
+      if(index<0||destination<0||destination>=favoriteKeys.length)return false;
+      [favoriteKeys[index],favoriteKeys[destination]]=
+        [favoriteKeys[destination],favoriteKeys[index]];
+      try{storage?.setItem(FAVORITE_KEY,JSON.stringify(favoriteKeys));}catch{/* optional */}
+      syncFavoriteShortcuts();
+      // sync retains the selected command; all Ctrl+Shift slots now match the new order.
+      if(note)note.textContent='Kedvencek sorrendje frissítve.';
+      return true;
     }
     function render() {
       const found=matches(entries,input.value);
@@ -202,6 +235,9 @@
       render();
     });
     favoriteButton.addEventListener('click',toggleFavorite);
+    orderSelect?.addEventListener('change',updateMoveControls);
+    moveLeft?.addEventListener('click',()=>moveFavorite(-1));
+    moveRight?.addEventListener('click',()=>moveFavorite(1));
     input.addEventListener('keydown',event=>{
       if(event.key==='ArrowDown'||event.key==='ArrowUp'){
         event.preventDefault();
@@ -264,7 +300,7 @@
     }
     syncFavoriteShortcuts();
     return {open,close,isOpen:visible,execute,runCommand,render,toggleFavorite,
-      getMatches:()=>filtered.map(e=>e.label),getRecentKeys:()=>[...recentKeys],
+      moveFavorite,getMatches:()=>filtered.map(e=>e.label),getRecentKeys:()=>[...recentKeys],
       getFavoriteKeys:()=>[...favoriteKeys]};
   }
   if(typeof module!=='undefined'&&module.exports)
