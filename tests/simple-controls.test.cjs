@@ -33,7 +33,8 @@ function fixture() {
     ...Object.values(ACTIONS), 'title-status', 'track-name', 'mode-label',
     'simple-status-source', 'simple-status-track', 'simple-status-visual',
     'simple-play-pause','simple-stop','simple-seek','simple-current-time',
-    'simple-duration','play-pause','stop','seek','current-time','duration','audio'];
+    'simple-duration','play-pause','stop','seek','current-time','duration','audio',
+    'mute','volume','simple-mute','simple-volume','simple-volume-value'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['title-status'].textContent = 'Élő mikrofon';
   nodes['track-name'].textContent = 'teszt-zene.wav';
@@ -43,6 +44,10 @@ function fixture() {
   nodes.audio.ended=false;
   nodes.audio.duration=NaN;
   nodes.audio.currentTime=0;
+  nodes.audio.volume=.85;
+  nodes.audio.muted=false;
+  nodes.volume.value='85';
+  nodes['simple-volume'].value='85';
   nodes['current-time'].textContent='0:00';
   nodes.duration.textContent='0:00';
   const sources = VISUALS.map(value => element('source-' + value, { mode: value }));
@@ -242,4 +247,75 @@ test('Stage 12 real HTML includes Simple playback and timeline controls, origina
   assert.match(css,/data-studio-mode="simple"\] \.simple-control-bar/);
   assert.match(css,/\.simple-transport/);
   assert.match(js,/nativeSeek\.dispatchEvent/);
+});
+
+test('Stage 13 Simple volume sends input to existing BeatScope handler and syncs status',()=>{
+  const f=fixture();
+  let nativeInputCount=0;
+  f.nodes.volume.addEventListener('input',()=>{
+    nativeInputCount++;
+    f.nodes.audio.volume=Number(f.nodes.volume.value)/100;
+    f.nodes.audio.emit('volumechange');
+  });
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(f.nodes['simple-volume'].value,'85');
+  assert.equal(f.nodes['simple-volume-value'].textContent,'85%');
+  assert.equal(f.nodes['simple-volume'].getAttribute('aria-valuetext'),'85%');
+  f.nodes['simple-volume'].value='32';
+  f.nodes['simple-volume'].emit('input');
+  assert.equal(nativeInputCount,1,'Must call native input handler exactly once');
+  assert.equal(f.nodes.volume.value,'32');
+  assert.equal(f.nodes.audio.volume,.32);
+  assert.equal(f.nodes['simple-volume-value'].textContent,'32%');
+  f.nodes.audio.volume=.67;
+  f.nodes.audio.emit('volumechange');
+  assert.equal(f.nodes['simple-volume'].value,'67');
+  assert.equal(f.nodes['simple-volume-value'].textContent,'67%');
+  f.nodes.audio.volume=1;
+  f.nodes.audio.emit('volumechange');
+  assert.equal(f.nodes['simple-volume'].value,'100');
+  f.nodes.audio.volume=0;
+  f.nodes.audio.emit('volumechange');
+  assert.equal(f.nodes['simple-volume'].value,'0');
+  ctrl.disconnect();
+});
+
+test('Stage 13 mute button delegates to original BeatScope mute and follows Pro state',()=>{
+  const f=fixture();
+  f.nodes.mute.addEventListener('click',()=>{
+    f.nodes.audio.muted=!f.nodes.audio.muted;
+    f.nodes.audio.emit('volumechange');
+  });
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  const quick=f.nodes['simple-mute'];
+  assert.equal(quick.getAttribute('aria-pressed'),'false');
+  assert.equal(quick.getAttribute('aria-label'),'Némítás');
+  quick.click();
+  assert.equal(f.nodes.mute.clicks,1);
+  assert.equal(f.nodes.audio.muted,true);
+  assert.equal(quick.getAttribute('aria-pressed'),'true');
+  assert.equal(quick.getAttribute('aria-label'),'Némítás feloldása');
+  assert.equal(quick.textContent,'◖× Némítva');
+  f.nodes.mute.click();
+  assert.equal(quick.getAttribute('aria-pressed'),'false');
+  assert.equal(quick.textContent,'◖)) Hang');
+  f.nodes.mute.disabled=true;
+  f.nodes.volume.disabled=true;
+  f.observers[0].notify();
+  assert.equal(quick.disabled,true);
+  assert.equal(f.nodes['simple-volume'].disabled,true);
+  quick.click();
+  f.nodes['simple-volume'].value='12';
+  f.nodes['simple-volume'].emit('input');
+  assert.equal(f.nodes.mute.clicks,2,'Disabled native mute stays untouched');
+  assert.equal(f.nodes.volume.value,'85','Disabled native volume stays untouched');
+  ctrl.disconnect();
+});
+
+test('Stage 13 real Electron HTML has file-volume and mute controls',()=>{
+  const html=read('index.html'),css=read('src/lumina-theme.css');
+  for(const id of ['simple-volume','simple-mute','simple-volume-value','volume','mute'])
+    assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
+  assert.match(css,/\.simple-volume/);
+  assert.match(css,/#simple-mute\[aria-pressed="true"\]/);
 });
