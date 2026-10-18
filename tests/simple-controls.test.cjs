@@ -29,7 +29,8 @@ function element(id, dataset = {}) {
   };
 }
 function fixture() {
-  const ids = ['simple-control-bar', 'simple-visual', 'simple-palette', ...Object.keys(ACTIONS),
+  const ids = ['simple-control-bar', 'simple-visual', 'simple-palette',
+    'simple-ai-palette','ai-palette', ...Object.keys(ACTIONS),
     ...Object.values(ACTIONS), 'title-status', 'track-name', 'mode-label',
     'simple-status-source', 'simple-status-track', 'simple-status-visual',
     'simple-play-pause','simple-stop','simple-seek','simple-current-time',
@@ -50,6 +51,8 @@ function fixture() {
   nodes.audio.volume=.85;
   nodes.audio.muted=false;
   nodes.audio.loop=false;
+  nodes['simple-ai-palette'].checked=false;
+  nodes['ai-palette'].checked=false;
   nodes.volume.value='85';
   nodes.intensity.value='115';nodes.intensity.min='20';nodes.intensity.max='300';
   nodes.smooth.value='75';nodes.smooth.min='0';nodes.smooth.max='94';
@@ -644,4 +647,57 @@ test('Stage 17 palette exists in actual renderer, with original palette retained
   }
   assert.match(css,/#simple-palette:focus-visible/);
   assert.match(js,/source\.click\(\)/);
+});
+
+test('Stage 18 Simple auto palette delegates a single native change and syncs both modes',()=>{
+  const f=fixture();
+  let nativeChanges=0;
+  f.nodes['ai-palette'].addEventListener('change',()=>{nativeChanges++;});
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  const simple=f.nodes['simple-ai-palette'],native=f.nodes['ai-palette'];
+  assert.equal(simple.checked,false);
+  assert.equal(simple.disabled,false);
+  simple.checked=true;simple.change();
+  assert.equal(native.checked,true);
+  assert.equal(nativeChanges,1);
+  assert.equal(simple.checked,true);
+  assert.equal(simple.disabled,false);
+  simple.change();
+  assert.equal(nativeChanges,1,'Unchanged value never dispatches duplicate change');
+  native.checked=false;native.change();
+  assert.equal(nativeChanges,2);
+  assert.equal(simple.checked,false,'Pro mode change must sync the Simple control');
+  native.checked=true;native.change();
+  assert.equal(nativeChanges,3);
+  assert.equal(simple.checked,true);
+  ctrl.disconnect();
+  native.checked=false;native.change();
+  assert.equal(simple.checked,true,'Disconnect must remove native listener');
+});
+
+test('Stage 18 native disabled state is respected and restores Simple value',()=>{
+  const f=fixture(),native=f.nodes['ai-palette'],simple=f.nodes['simple-ai-palette'];
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  native.disabled=true;
+  f.observers[0].notify();
+  assert.equal(simple.disabled,true);
+  simple.checked=true;simple.change();
+  assert.equal(native.checked,false,'Disabled native checkbox stays unchanged');
+  assert.equal(simple.checked,false,'Invalid Simple update is rolled back');
+  native.disabled=false;
+  f.observers[0].notify();
+  assert.equal(simple.disabled,false);
+  simple.checked=true;simple.change();
+  assert.equal(native.checked,true);
+  ctrl.disconnect();
+});
+
+test('Stage 18 Simple AI palette uses real native preference and documents AI dependence',()=>{
+  const html=read('index.html'),js=read('src/simple-controls.js'),css=read('src/lumina-theme.css');
+  assert.match(html,/id="simple-ai-palette" type="checkbox"/);
+  assert.match(html,/id="ai-palette" type="checkbox"/);
+  assert.match(html,/Automata FX közben váltja a palettát/);
+  assert.match(js,/nativeAutoPalette\.dispatchEvent/);
+  assert.match(js,/nativeAutoPalette\?\.addEventListener\('change',syncAutoPalette\)/);
+  assert.match(css,/\.simple-auto-palette/);
 });
