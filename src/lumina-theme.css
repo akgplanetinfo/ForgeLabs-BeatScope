@@ -838,3 +838,21 @@ body[data-theme="lumina-pulse"] .simple-fx-parameters input:disabled{
 @media(max-width:650px){
   body[data-theme="lumina-pulse"] .simple-fx-parameters .simple-tuning-field{flex:1 1 100%;}
 }
+
+/* Alpha 17 stage 25: picker for already-added native Pro FX (no second stack). */
+body[data-theme="lumina-pulse"] .simple-fx-picker-field{
+  width:100%;display:flex;align-items:center;flex-wrap:wrap;gap:9px 13px;
+  font-size:11px;font-weight:740;color:#c2e7ed;
+}
+body[data-theme="lumina-pulse"] #simple-fx-picker{
+  flex:1 1 230px;min-height:36px;min-width:190px;
+  background:#0a2731;color:#e7fbff;padding:7px 10px;
+  border:1px solid #337b89;border-radius:3px;font-family:inherit;
+  font-size:11px;
+}
+body[data-theme="lumina-pulse"] #simple-fx-picker:disabled{
+  opacity:.46;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-fx-picker:focus-visible{
+  outline:2px solid #eaffff;outline-offset:2px;
+}
