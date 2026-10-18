@@ -1016,6 +1016,24 @@ async function run(){
      &&$('simple-smooth').value==='82'
      &&$('simple-intensity-value').textContent==='90%'
      &&$('simple-smooth-value').textContent==='82%';
+   // Stage 17: select an existing palette in Simple and validate live Pro/AI sync.
+   const originalPalette=document.querySelector('[data-palette].selected')?.dataset.palette||'azure';
+   $('studio-simple').click();
+   const simplePalette=$('simple-palette');
+   const paletteInitialSync=simplePalette.value===originalPalette;
+   simplePalette.value='mint';
+   simplePalette.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const paletteDelegated=Boolean(document.querySelector('[data-palette="mint"].selected'))
+     &&simplePalette.value==='mint';
+   $('studio-pro').click();
+   document.querySelector('[data-palette="violet"]').click();
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const paletteProSync=simplePalette.value==='violet'
+     &&Boolean(document.querySelector('[data-palette="violet"].selected'));
+   document.querySelector('[data-palette="'+originalPalette+'"]').click();
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const paletteRestored=simplePalette.value===originalPalette;
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
@@ -1041,7 +1059,8 @@ async function run(){
      simpleKeyMConsumed,simpleKeyM,simpleKeyRConsumed,simpleKeyR,
      simpleKeySConsumed,simpleKeyS,simpleKeyTypingSafe,
      simpleKeyModifierSafe,simpleKeyProSafe,tuningVisible,
-     tuningInitialSync,tuningDelegates,tuningProSync};
+     tuningInitialSync,tuningDelegates,tuningProSync,paletteInitialSync,
+     paletteDelegated,paletteProSync,paletteRestored};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
