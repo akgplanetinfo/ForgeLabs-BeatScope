@@ -326,6 +326,45 @@
       native?.addEventListener('input',syncVisualTuning);
     }
 
+    // Stage 25: select an effect already in the native Pro FX chain.
+    // The native name button updates fxSelected and refreshes the real FX panel.
+    const simpleFXPicker=get('simple-fx-picker');
+    let fxPickerSignature=null;
+    function fxRows(){
+      return [...(doc.querySelectorAll?.('#fx-stack .fx-stack-entry')||[])];
+    }
+    function syncFXPicker(){
+      if(!simpleFXPicker)return;
+      const rows=fxRows();
+      const labels=rows.map(row=>row.querySelector?.('.fx-stack-name')?.textContent?.trim()||'Effekt');
+      const signature=labels.map((name,i)=>i+':'+name).join('\\u001f');
+      if(fxPickerSignature!==signature){
+        fxPickerSignature=signature;
+        const options=rows.length?labels.map((name,i)=>{
+          const opt=doc.createElement('option');
+          opt.value=String(i);opt.textContent=(i+1)+'. '+name;
+          return opt;
+        }):(()=>{
+          const opt=doc.createElement('option');
+          opt.value='';opt.textContent='Nincs hozzáadott effekt – adj hozzá Pro módban';
+          return [opt];
+        })();
+        simpleFXPicker.replaceChildren(...options);
+      }
+      simpleFXPicker.disabled=!rows.length;
+      const chosen=rows.findIndex(row=>row.classList?.contains('selected'));
+      simpleFXPicker.value=chosen>=0?String(chosen):'';
+    }
+    simpleFXPicker?.addEventListener('change',()=>{
+      const selected=String(simpleFXPicker.value);
+      const rows=fxRows();
+      const index=/^(0|[1-9]\\d*)$/.test(selected)?Number(selected):-1;
+      const original=index>=0&&index<rows.length
+        ?rows[index].querySelector?.('.fx-stack-name'):null;
+      if(original&&!original.disabled)original.click();
+      syncFXParams();
+    });
+
     // Stage 24: controls operate only on the FX currently selected in Pro.
     // Native sliders, persist() and the GPU FX chain are the single source of truth.
     const FX_PARAMS = Object.freeze([
@@ -333,6 +372,7 @@
       ['simple-fx-strength','fx-strength','simple-fx-strength-value','fx-strength-value']
     ]);
     function syncFXParams(){
+      syncFXPicker();
       const chosen=get('simple-fx-selection');
       const available=FX_PARAMS.every(([,id])=>Boolean(get(id)&&!get(id).disabled));
       const selectedName=doc.querySelector?.('#fx-stack .fx-stack-entry.selected .fx-stack-name')
