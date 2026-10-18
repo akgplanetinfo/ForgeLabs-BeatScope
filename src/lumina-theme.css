@@ -685,3 +685,16 @@ body[data-theme="lumina-pulse"] .simple-tuning-field output{
   }
   body[data-theme="lumina-pulse"] .simple-tuning-field label{flex:0 0 110px}
 }
+
+/* Alpha 17 stage 17: Simple color palette shares the native BeatScope swatches. */
+body[data-theme="lumina-pulse"] #simple-palette{
+  background:#091e26;color:#edfcff;border:1px solid #287080;
+  border-radius:3px;padding:8px;min-height:36px;min-width:158px;
+  font-family:inherit;font-size:11px;
+}
+body[data-theme="lumina-pulse"] #simple-palette:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:2px;
+}
+@media(max-width:980px){
+  body[data-theme="lumina-pulse"] .simple-palette-field{flex:1 1 180px}
+}
