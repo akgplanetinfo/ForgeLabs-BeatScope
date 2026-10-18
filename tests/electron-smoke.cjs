@@ -864,6 +864,47 @@ async function run(){
      .join(',')==='target:vj-mix,action:ai-toggle';
    const restoredHotkeys=[...favoritesButtons.querySelectorAll('.pro-favorite-shortcut')]
      .map(button=>button.dataset.hotkey).join(',')==='Ctrl+Shift+1,Ctrl+Shift+2';
+   // Stage 12: feed a genuine short WAV through the original BeatScope file-input
+   // handler, then verify Simple delegates real seeking and stop (no mock engine).
+   $('studio-simple').click();
+   const simpleTransportVisible=getComputedStyle($('simple-transport')).display!=='none';
+   const simpleInitialStop=$('simple-stop').disabled;
+   const hz=8000,samples=hz,bytes=44+samples*2;
+   const wav=new ArrayBuffer(bytes),dv=new DataView(wav);
+   const word=(at,str)=>{for(let i=0;i<str.length;i++)dv.setUint8(at+i,str.charCodeAt(i));};
+   word(0,'RIFF');dv.setUint32(4,bytes-8,true);word(8,'WAVE');
+   word(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);
+   dv.setUint16(22,1,true);dv.setUint32(24,hz,true);
+   dv.setUint32(28,hz*2,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);
+   word(36,'data');dv.setUint32(40,samples*2,true);
+   for(let i=0;i<samples;i++)dv.setInt16(44+i*2,Math.round(1200*Math.sin(2*Math.PI*200*i/hz)),true);
+   const nativeInput=$('audio-file'),transfer=new DataTransfer();
+   transfer.items.add(new File([wav],'alpha17-stage12.wav',{type:'audio/wav'}));
+   nativeInput.files=transfer.files;
+   const metadata=new Promise(resolve=>{
+     const audio=$('audio');
+     if(Number.isFinite(audio.duration)&&audio.duration>0){resolve(true);return;}
+     audio.addEventListener('loadedmetadata',()=>resolve(true),{once:true});
+     setTimeout(()=>resolve(false),2200);
+   });
+   nativeInput.dispatchEvent(new Event('change',{bubbles:true}));
+   const metadataLoaded=await metadata;
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const transportReady=metadataLoaded&&!$('simple-seek').disabled
+     &&!$('simple-stop').disabled&&$('simple-duration').textContent===$('duration').textContent
+     &&$('simple-play-pause').textContent!=='♫ Zene megnyitása';
+   const targetSeek=$('simple-seek');
+   targetSeek.value='650';
+   targetSeek.dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,70));
+   const transportSeek=Math.abs($('audio').currentTime-$('audio').duration*.65)<.12
+     &&$('seek').value==='650';
+   const transportSynced=$('simple-current-time').textContent===$('current-time').textContent;
+   $('simple-stop').click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const transportStop=$('audio').paused&&$('audio').currentTime<.12;
+   $('studio-pro').click();
+   const transportHiddenPro=getComputedStyle($('simple-control-bar')).display==='none';
    return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
      sourceAccurate,trackAccurate,visualAccurate,aiDelegates,visualDelegates,
      proMode,deckShown,navShown,jumpWorks,activeIndicator,backEnabled,backWorks,
@@ -876,7 +917,9 @@ async function run(){
      favoritesHiddenInSimple,favoritesReturnInPro,hotkeyLabels,hotkeyOneConsumed,
      hotkeyOneNavigates,hotkeyTwoConsumed,hotkeyTwoDelegates,hotkeyRepeatSafe,
      hotkeyTypingSafe,hotkeyDialogSafe,hotkeySimpleSafe,orderReady,reorderEnabled,
-     reordered,reorderedHotkey,reorderedNavigation,leftBoundary,restoredOrder,restoredHotkeys};
+     reordered,reorderedHotkey,reorderedNavigation,leftBoundary,restoredOrder,restoredHotkeys,
+     simpleTransportVisible,simpleInitialStop,transportReady,transportSeek,
+     transportSynced,transportStop,transportHiddenPro};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
