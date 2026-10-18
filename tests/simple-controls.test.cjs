@@ -915,13 +915,13 @@ test('Stage 22 Simple FX bypass delegates once and mirrors the original BeatScop
   const f=fixture(),native=f.nodes['fx-bypass'],quick=f.nodes['simple-fx-bypass'];
   let fxItems=['glow','blur'],nativeClicks=0;
   native.setAttribute('aria-pressed','false');
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
   native.addEventListener('click',()=>{
     nativeClicks++;
     const next=native.getAttribute('aria-pressed')!=='true';
     native.setAttribute('aria-pressed',String(next));
     // Native bypass must not remove or reorder FX in the original Pro chain.
   });
-  const ctrl=attachSimpleControls(f.doc,f.Observer);
   assert.equal(quick.disabled,false);
   assert.equal(quick.getAttribute('aria-pressed'),'false');
   assert.equal(quick.textContent,'◉ FX aktív');
