@@ -114,6 +114,18 @@
         <button type="button" class="simple-action" id="simple-microphone" aria-pressed="false">♩ Mikrofon</button>
         <button type="button" class="simple-action" id="simple-ai" aria-pressed="false">✦ Automata FX</button>
         <button type="button" class="simple-action" id="simple-fullscreen" aria-pressed="false">⛶ Teljes képernyő</button>
+        <div class="simple-visual-tuning" role="group" aria-label="Simple Mode vizualizáció finomhangolása">
+          <div class="simple-tuning-field">
+            <label for="simple-intensity">Vizuál erőssége</label>
+            <input type="range" id="simple-intensity" min="20" max="300" value="115" step="5" aria-label="Vizualizáció erőssége" />
+            <output id="simple-intensity-value" for="simple-intensity">115%</output>
+          </div>
+          <div class="simple-tuning-field">
+            <label for="simple-smooth">Mozgás simítása</label>
+            <input type="range" id="simple-smooth" min="0" max="94" value="75" step="1" aria-label="Vizualizáció simítása" />
+            <output id="simple-smooth-value" for="simple-smooth">75%</output>
+          </div>
+        </div>
         <div class="simple-transport" id="simple-transport" role="group" aria-label="Simple Mode zenelejátszás">
           <button type="button" id="simple-play-pause" class="simple-action" aria-label="Zene megnyitása">♫ Zene megnyitása</button>
           <button type="button" id="simple-stop" class="simple-action" aria-label="Leállítás" disabled>■ Stop</button>
