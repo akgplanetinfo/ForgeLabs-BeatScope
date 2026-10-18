@@ -989,6 +989,37 @@ async function run(){
    document.dispatchEvent(simpleKey('m'));
    const simpleKeyProSafe=$('audio').muted===afterKeyStopMuted;
    const transportHiddenPro=getComputedStyle($('simple-control-bar')).display==='none';
+   // Stage 16: live visual intensity and smoothing must use the original engine.
+   const intensityBefore=$('intensity').value,smoothBefore=$('smooth').value;
+   $('studio-simple').click();
+   const tuningVisible=getComputedStyle(document.querySelector('.simple-visual-tuning')).display!=='none';
+   const tuningInitialSync=$('simple-intensity').value===$('intensity').value
+     &&$('simple-smooth').value===$('smooth').value;
+   $('simple-intensity').value='165';
+   $('simple-intensity').dispatchEvent(new Event('input',{bubbles:true}));
+   $('simple-smooth').value='48';
+   $('simple-smooth').dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const tuningDelegates=$('intensity').value==='165'
+     &&$('smooth').value==='48'
+     &&$('intensity-val').textContent==='165%'
+     &&$('smooth-val').textContent==='48%'
+     &&$('simple-intensity-value').textContent==='165%'
+     &&$('simple-smooth-value').textContent==='48%';
+   $('studio-pro').click();
+   $('intensity').value='90';
+   $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
+   $('smooth').value='82';
+   $('smooth').dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const tuningProSync=$('simple-intensity').value==='90'
+     &&$('simple-smooth').value==='82'
+     &&$('simple-intensity-value').textContent==='90%'
+     &&$('simple-smooth-value').textContent==='82%';
+   $('intensity').value=intensityBefore;
+   $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
+   $('smooth').value=smoothBefore;
+   $('smooth').dispatchEvent(new Event('input',{bubbles:true}));
    return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
      sourceAccurate,trackAccurate,visualAccurate,aiDelegates,visualDelegates,
      proMode,deckShown,navShown,jumpWorks,activeIndicator,backEnabled,backWorks,
@@ -1009,7 +1040,8 @@ async function run(){
      simpleRepeatDelegated,simpleRepeatMirrorsPro,simpleKeyboardHint,
      simpleKeyMConsumed,simpleKeyM,simpleKeyRConsumed,simpleKeyR,
      simpleKeySConsumed,simpleKeyS,simpleKeyTypingSafe,
-     simpleKeyModifierSafe,simpleKeyProSafe};
+     simpleKeyModifierSafe,simpleKeyProSafe,tuningVisible,
+     tuningInitialSync,tuningDelegates,tuningProSync};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
