@@ -986,3 +986,84 @@ test('Stage 22 Simple FX quick action remains connected to original Pro FX stack
   assert.match(js,/syncFXBypass/);
   assert.match(css,/#simple-fx-bypass\[aria-pressed="true"\]/);
 });
+
+test('Stage 23 Simple FX Autopilot invokes the real 120-FX switch, not AI Visual Director',()=>{
+  const f=fixture(),native=f.nodes['fx-auto'],quick=f.nodes['simple-fx-auto'];
+  const director=f.nodes['ai-toggle'];
+  native.setAttribute('aria-checked','false');
+  director.setAttribute('aria-checked','false');
+  let nativeClicks=0;
+  const originalClick=native.click.bind(native);
+  native.click=()=>{
+    nativeClicks++;
+    const active=native.getAttribute('aria-checked')!=='true';
+    native.setAttribute('aria-checked',String(active));
+    originalClick();
+  };
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(ACTIONS['simple-fx-auto'],'fx-auto');
+  assert.equal(quick.disabled,false);
+  assert.equal(quick.getAttribute('aria-checked'),'false');
+  assert.equal(quick.textContent,'✦ 120 FX Autopilot: KI');
+  quick.click();f.observers[0].notify();
+  assert.equal(nativeClicks,1);
+  assert.equal(native.getAttribute('aria-checked'),'true');
+  assert.equal(quick.getAttribute('aria-checked'),'true');
+  assert.equal(quick.getAttribute('aria-label'),'120 FX Autopilot kikapcsolása');
+  assert.equal(quick.textContent,'✦ 120 FX Autopilot: BE');
+  assert.equal(director.getAttribute('aria-checked'),'false','Different AI director must be unaffected');
+  quick.click();f.observers[0].notify();
+  assert.equal(nativeClicks,2);
+  assert.equal(native.getAttribute('aria-checked'),'false');
+  assert.equal(quick.getAttribute('aria-checked'),'false');
+  ctrl.disconnect();
+});
+
+test('Stage 23 native Pro FX Autopilot changes sync to Simple and preserve earlier FX bypass',()=>{
+  const f=fixture(),native=f.nodes['fx-auto'],quick=f.nodes['simple-fx-auto'];
+  native.setAttribute('aria-checked','true');
+  f.nodes['fx-bypass'].setAttribute('aria-pressed','false');
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(quick.getAttribute('aria-checked'),'true');
+  assert.equal(quick.textContent,'✦ 120 FX Autopilot: BE');
+  native.setAttribute('aria-checked','false');f.observers[0].notify();
+  assert.equal(quick.getAttribute('aria-checked'),'false');
+  native.setAttribute('aria-checked','true');f.observers[0].notify();
+  assert.equal(quick.getAttribute('aria-checked'),'true');
+  assert.equal(f.nodes['simple-fx-bypass'].getAttribute('aria-pressed'),'false',
+    'FX Autopilot is not the FX bypass switch');
+  assert.ok(f.observers[0].observed.some(([node,attribute])=>
+    node===native&&attribute==='aria-checked'));
+  ctrl.disconnect();
+});
+
+test('Stage 23 disabled or missing FX Autopilot switch never launches native action',()=>{
+  const f=fixture(),native=f.nodes['fx-auto'],quick=f.nodes['simple-fx-auto'];
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  native.disabled=true;f.observers[0].notify();
+  assert.equal(quick.disabled,true);
+  quick.click();
+  assert.equal(native.clicks,0);
+  native.disabled=false;f.observers[0].notify();
+  assert.equal(quick.disabled,false);
+  quick.click();
+  assert.equal(native.clicks,1);
+  ctrl.disconnect();
+  const g=fixture(),orig=g.doc.getElementById;
+  g.doc.getElementById=id=>id==='fx-auto'?null:orig(id);
+  const missing=attachSimpleControls(g.doc,g.Observer);
+  assert.equal(g.nodes['simple-fx-auto'].disabled,true);
+  g.nodes['simple-fx-auto'].click();
+  missing.disconnect();
+});
+
+test('Stage 23 dedicated FX Autopilot is distinct from AI Visual Director in renderer',()=>{
+  const html=read('index.html'),js=read('src/simple-controls.js'),
+    css=read('src/lumina-theme.css');
+  for(const id of ['simple-fx-auto','fx-auto','simple-ai','ai-toggle','simple-fx-bypass'])
+    assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
+  assert.match(html,/id="simple-fx-auto" role="switch" aria-checked="false"/);
+  assert.match(html,/120 FX Autopilot/);
+  assert.match(js,/nativeFXAuto\?\.addEventListener\('click',syncFXAutopilot\)/);
+  assert.match(css,/#simple-fx-auto\[aria-checked="true"\]/);
+});
