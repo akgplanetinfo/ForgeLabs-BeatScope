@@ -895,11 +895,16 @@ async function run(){
    const transportReady=metadataLoaded&&!$('simple-seek').disabled
      &&!$('simple-stop').disabled&&$('simple-duration').textContent===$('duration').textContent
      &&$('simple-play-pause').textContent!=='♫ Zene megnyitása';
+   // Lock playback while testing a precise seek position; otherwise the
+   // one-second WAV may advance before Windows CI reads currentTime.
+   $('audio').pause();
+   await new Promise(resolve=>setTimeout(resolve,30));
    const targetSeek=$('simple-seek');
    targetSeek.value='650';
    targetSeek.dispatchEvent(new Event('input',{bubbles:true}));
-   await new Promise(resolve=>setTimeout(resolve,70));
-   const transportSeek=Math.abs($('audio').currentTime-$('audio').duration*.65)<.12
+   await new Promise(resolve=>setTimeout(resolve,90));
+   const transportSeek=$('audio').paused
+     &&Math.abs($('audio').currentTime-$('audio').duration*.65)<.12
      &&$('seek').value==='650';
    const transportSynced=$('simple-current-time').textContent===$('current-time').textContent;
    $('simple-stop').click();
