@@ -46,6 +46,9 @@
         // for the native file picker and the microphone permission prompt.
         const target = get(sourceId);
         if (target && !target.disabled) target.click();
+        // Immediately reflect the bypass result in Simple; the observer handles
+        // later changes initiated by Pro or by the original renderer.
+        if (quickId === 'simple-fx-bypass') syncFXBypass();
       });
     }
     visual.addEventListener('change', () => {
