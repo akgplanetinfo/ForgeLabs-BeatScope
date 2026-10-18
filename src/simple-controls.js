@@ -13,6 +13,10 @@
   const SIMPLE_SHORTCUTS = Object.freeze({
     m:'simple-mute',r:'simple-repeat',s:'simple-stop'
   });
+  const VISUAL_TUNING = Object.freeze([
+    ['simple-intensity','intensity','simple-intensity-value','intensity-val'],
+    ['simple-smooth','smooth','simple-smooth-value','smooth-val']
+  ]);
 
   function attachSimpleControls(doc, ObserverClass = doc?.defaultView?.MutationObserver) {
     const root = doc?.getElementById?.('simple-control-bar');
@@ -168,6 +172,38 @@
       'play','pause','ended','emptied','error'];
     for (const name of AUDIO_EVENTS) audio?.addEventListener(name,syncTransport);
 
+    // Stage 16: both sliders forward input into the existing renderer, which
+    // persists intensity and updates the live Web Audio smoothing analyser.
+    function syncVisualTuning(){
+      for(const [quickId,nativeId,outputId,nativeOutputId] of VISUAL_TUNING){
+        const quick=get(quickId),native=get(nativeId);
+        if(!quick)continue;
+        if(!native){quick.disabled=true;continue;}
+        quick.disabled=Boolean(native.disabled);
+        const raw=Number(native.value);
+        const low=Number(native.min),high=Number(native.max);
+        const value=Number.isFinite(raw)?Math.max(low,Math.min(high,raw)):low;
+        quick.value=String(value);
+        const label=get(nativeOutputId)?.textContent||value+'%';
+        if(get(outputId))get(outputId).textContent=label;
+        quick.setAttribute('aria-valuetext',label);
+      }
+    }
+    for(const [quickId,nativeId] of VISUAL_TUNING){
+      const quick=get(quickId),native=get(nativeId);
+      quick?.addEventListener('input',()=>{
+        if(!native||native.disabled||quick.disabled)return;
+        const n=Number(quick.value);
+        if(!Number.isFinite(n))return;
+        const min=Number(native.min),max=Number(native.max);
+        native.value=String(Math.max(min,Math.min(max,n)));
+        const NativeEvent=doc.defaultView?.Event;
+        if(NativeEvent)native.dispatchEvent(new NativeEvent('input',{bubbles:true}));
+        syncVisualTuning();
+      });
+      native?.addEventListener('input',syncVisualTuning);
+    }
+
     const STATUS_FIELDS = [
       ['simple-status-source', 'title-status'],
       ['simple-status-track', 'track-name'],
@@ -193,6 +229,7 @@
         if (display && original) display.textContent = original.textContent;
       }
       syncTransport();
+      syncVisualTuning();
     }
 
     let observer = null;
@@ -210,6 +247,9 @@
       observe(get('repeat'),'class');
       observe(nativeVolume, 'disabled');
       observe(nativeMute, 'disabled');
+      for(const [,nativeId] of VISUAL_TUNING){
+        observe(get(nativeId),'disabled');
+      }
       observe(doc.body, 'class');
       for (const element of doc.querySelectorAll('[data-mode]')) observe(element, 'class');
       // textContent replacement fires childList mutations on the original BeatScope labels.
@@ -217,7 +257,7 @@
         const element = get(originalId);
         if (element) observer.observe(element, { childList: true, subtree: true, characterData: true });
       }
-      for (const id of ['current-time','duration']) {
+      for (const id of ['current-time','duration',...VISUAL_TUNING.map(item=>item[3])]) {
         const element=get(id);
         if(element)observer.observe(element,{childList:true,subtree:true,characterData:true});
       }
@@ -228,11 +268,12 @@
       for (const name of AUDIO_EVENTS) audio?.removeEventListener?.(name,syncTransport);
       audio?.removeEventListener?.('volumechange',syncVolume);
       doc.removeEventListener?.('keydown',onSimpleKeydown,true);
+      for(const [,nativeId] of VISUAL_TUNING)get(nativeId)?.removeEventListener?.('input',syncVisualTuning);
     } };
   }
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { VISUALS, ACTIONS, SIMPLE_SHORTCUTS, attachSimpleControls };
+    module.exports = { VISUALS, ACTIONS, SIMPLE_SHORTCUTS, VISUAL_TUNING, attachSimpleControls };
   }
   if (typeof document !== 'undefined') attachSimpleControls(document);
 })();
