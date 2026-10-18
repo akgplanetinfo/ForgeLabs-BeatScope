@@ -952,7 +952,42 @@ async function run(){
    await new Promise(resolve=>setTimeout(resolve,45));
    const simpleRepeatMirrorsPro=$('audio').loop===loopBefore
      &&$('simple-repeat').getAttribute('aria-pressed')===String(loopBefore);
+   // Stage 15: simulate user keys in the actual Simple renderer, no duplicate
+   // Space handler and no shortcuts while typing or in Pro Mode.
+   const simpleKeyboardHint=getComputedStyle($('simple-keyboard-hint')).display!=='none'
+     &&$('simple-keyboard-hint').textContent.includes('Space')
+     &&$('simple-keyboard-hint').textContent.includes('Némítás');
+   const simpleKey=(key,opts={})=>new KeyboardEvent('keydown',{
+     key,bubbles:true,cancelable:true,...opts
+   });
+   const muteBeforeKey=$('audio').muted;
+   const simpleKeyMConsumed=document.dispatchEvent(simpleKey('m'))===false;
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const simpleKeyM=$('audio').muted!==muteBeforeKey
+     &&$('simple-mute').getAttribute('aria-pressed')===String($('audio').muted);
+   $('mute').click();
+   const repeatBeforeKey=$('audio').loop;
+   const simpleKeyRConsumed=document.dispatchEvent(simpleKey('r'))===false;
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const simpleKeyR=$('audio').loop!==repeatBeforeKey
+     &&$('simple-repeat').getAttribute('aria-pressed')===String($('audio').loop);
+   $('repeat').click();
+   $('simple-seek').value='550';
+   $('simple-seek').dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const beforeKeyStop=$('audio').currentTime;
+   const simpleKeySConsumed=document.dispatchEvent(simpleKey('s'))===false;
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const simpleKeyS=beforeKeyStop>.15&&$('audio').paused&&$('audio').currentTime<.12;
+   const afterKeyStopMuted=$('audio').muted;
+   $('simple-volume').dispatchEvent(simpleKey('m'));
+   const simpleKeyTypingSafe=$('audio').muted===afterKeyStopMuted;
+   document.dispatchEvent(simpleKey('m',{ctrlKey:true}));
+   document.dispatchEvent(simpleKey('m',{repeat:true}));
+   const simpleKeyModifierSafe=$('audio').muted===afterKeyStopMuted;
    $('studio-pro').click();
+   document.dispatchEvent(simpleKey('m'));
+   const simpleKeyProSafe=$('audio').muted===afterKeyStopMuted;
    const transportHiddenPro=getComputedStyle($('simple-control-bar')).display==='none';
    return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
      sourceAccurate,trackAccurate,visualAccurate,aiDelegates,visualDelegates,
@@ -971,7 +1006,10 @@ async function run(){
      transportSynced,transportStop,transportHiddenPro,volumeInitiallySynced,
      volumeDelegated,muteDelegated,muteSyncedFromPro,volumeSyncedFromPro,
      simpleInitialExtras,simpleExtraReady,simpleJumpEnd,simpleJumpStart,
-     simpleRepeatDelegated,simpleRepeatMirrorsPro};
+     simpleRepeatDelegated,simpleRepeatMirrorsPro,simpleKeyboardHint,
+     simpleKeyMConsumed,simpleKeyM,simpleKeyRConsumed,simpleKeyR,
+     simpleKeySConsumed,simpleKeyS,simpleKeyTypingSafe,
+     simpleKeyModifierSafe,simpleKeyProSafe};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
