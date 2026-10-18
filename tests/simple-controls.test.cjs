@@ -910,3 +910,79 @@ test('Stage 21 bars control is part of original renderer and keeps original spec
   assert.match(html,/csak Bars módban/);
   assert.match(css,/\.simple-bars-tuning/);
 });
+
+test('Stage 22 Simple FX bypass delegates once and mirrors the original BeatScope state',()=>{
+  const f=fixture(),native=f.nodes['fx-bypass'],quick=f.nodes['simple-fx-bypass'];
+  let fxItems=['glow','blur'],nativeClicks=0;
+  native.setAttribute('aria-pressed','false');
+  native.addEventListener('click',()=>{
+    nativeClicks++;
+    const next=native.getAttribute('aria-pressed')!=='true';
+    native.setAttribute('aria-pressed',String(next));
+    // Native bypass must not remove or reorder FX in the original Pro chain.
+  });
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(quick.disabled,false);
+  assert.equal(quick.getAttribute('aria-pressed'),'false');
+  assert.equal(quick.textContent,'◉ FX aktív');
+  quick.click();f.observers[0].notify();
+  assert.equal(nativeClicks,1);
+  assert.equal(native.getAttribute('aria-pressed'),'true');
+  assert.equal(quick.getAttribute('aria-pressed'),'true');
+  assert.equal(quick.getAttribute('aria-label'),'Effektek visszakapcsolása');
+  assert.equal(quick.textContent,'◌ FX kikapcsolva');
+  assert.deepEqual(fxItems,['glow','blur'],'Bypass never removes effects');
+  quick.click();f.observers[0].notify();
+  assert.equal(nativeClicks,2);
+  assert.equal(native.getAttribute('aria-pressed'),'false');
+  assert.equal(quick.getAttribute('aria-pressed'),'false');
+  assert.equal(quick.getAttribute('aria-label'),'Effektek kikapcsolása');
+  ctrl.disconnect();
+});
+
+test('Stage 22 Pro native FX bypass changes are visible in Simple including startup state',()=>{
+  const f=fixture(),native=f.nodes['fx-bypass'],quick=f.nodes['simple-fx-bypass'];
+  native.setAttribute('aria-pressed','true');
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(quick.getAttribute('aria-pressed'),'true');
+  native.setAttribute('aria-pressed','false');f.observers[0].notify();
+  assert.equal(quick.getAttribute('aria-pressed'),'false');
+  native.setAttribute('aria-pressed','true');f.observers[0].notify();
+  assert.equal(quick.getAttribute('aria-pressed'),'true');
+  assert.ok(f.observers[0].observed.some(record=>
+    record.element===native&&record.options?.attributeFilter?.includes('aria-pressed')),
+    'Native FX bypass is observed');
+  ctrl.disconnect();
+});
+
+test('Stage 22 cannot bypass disabled or missing native FX control',()=>{
+  const f=fixture(),native=f.nodes['fx-bypass'],quick=f.nodes['simple-fx-bypass'];
+  native.setAttribute('aria-pressed','false');
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  native.disabled=true;f.observers[0].notify();
+  assert.equal(quick.disabled,true);
+  quick.click();
+  assert.equal(native.clicks||0,0,'Disabled native FX button is never invoked');
+  native.disabled=false;f.observers[0].notify();
+  assert.equal(quick.disabled,false);
+  quick.click();
+  assert.equal(native.clicks,1);
+  ctrl.disconnect();
+  const g=fixture(),originalGet=g.doc.getElementById;
+  g.doc.getElementById=id=>id==='fx-bypass'?null:originalGet(id);
+  const missing=attachSimpleControls(g.doc,g.Observer);
+  assert.equal(g.nodes['simple-fx-bypass'].disabled,true);
+  g.nodes['simple-fx-bypass'].click();
+  missing.disconnect();
+});
+
+test('Stage 22 Simple FX quick action remains connected to original Pro FX stack',()=>{
+  const html=read('index.html'),js=read('src/simple-controls.js'),
+    css=read('src/lumina-theme.css');
+  assert.match(html,/id="simple-fx-bypass"/);
+  assert.match(html,/id="fx-bypass"/);
+  assert.match(html,/FX-ek ideiglenes ki- és bekapcsolása/);
+  assert.equal(ACTIONS['simple-fx-bypass'],'fx-bypass');
+  assert.match(js,/syncFXBypass/);
+  assert.match(css,/#simple-fx-bypass\[aria-pressed="true"\]/);
+});
