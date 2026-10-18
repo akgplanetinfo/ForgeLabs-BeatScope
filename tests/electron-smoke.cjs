@@ -903,6 +903,34 @@ async function run(){
    $('simple-stop').click();
    await new Promise(resolve=>setTimeout(resolve,55));
    const transportStop=$('audio').paused&&$('audio').currentTime<.12;
+   // Stage 13: Simple volume/mute must operate the original persistent BeatScope player.
+   const simpleVolume=$('simple-volume');
+   const simpleMute=$('simple-mute');
+   const volumeInitiallySynced=simpleVolume.value===String(Math.round($('audio').volume*100))
+     &&$('simple-volume-value').textContent===simpleVolume.value+'%';
+   simpleVolume.value='36';
+   simpleVolume.dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const volumeDelegated=$('volume').value==='36'
+     &&Math.abs($('audio').volume-.36)<.005
+     &&$('simple-volume-value').textContent==='36%';
+   const initiallyMuted=$('audio').muted;
+   simpleMute.click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const muteDelegated=$('audio').muted!==initiallyMuted
+     &&simpleMute.getAttribute('aria-pressed')===String($('audio').muted);
+   $('mute').click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const muteSyncedFromPro=simpleMute.getAttribute('aria-pressed')===String($('audio').muted)
+     &&$('audio').muted===initiallyMuted;
+   $('volume').value='62';
+   $('volume').dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const volumeSyncedFromPro=simpleVolume.value==='62'
+     &&$('simple-volume-value').textContent==='62%'
+     &&Math.abs($('audio').volume-.62)<.005;
+   $('volume').value='85';
+   $('volume').dispatchEvent(new Event('input',{bubbles:true}));
    $('studio-pro').click();
    const transportHiddenPro=getComputedStyle($('simple-control-bar')).display==='none';
    return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
@@ -919,7 +947,8 @@ async function run(){
      hotkeyTypingSafe,hotkeyDialogSafe,hotkeySimpleSafe,orderReady,reorderEnabled,
      reordered,reorderedHotkey,reorderedNavigation,leftBoundary,restoredOrder,restoredHotkeys,
      simpleTransportVisible,simpleInitialStop,transportReady,transportSeek,
-     transportSynced,transportStop,transportHiddenPro};
+     transportSynced,transportStop,transportHiddenPro,volumeInitiallySynced,
+     volumeDelegated,muteDelegated,muteSyncedFromPro,volumeSyncedFromPro};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
