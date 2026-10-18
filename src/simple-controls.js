@@ -39,6 +39,9 @@
     const nativeSeek = get('seek');
     const play = get('simple-play-pause');
     const stop = get('simple-stop');
+    const previous = get('simple-previous');
+    const next = get('simple-next');
+    const repeatButton = get('simple-repeat');
     const seek = get('simple-seek');
     const current = get('simple-current-time');
     const duration = get('simple-duration');
@@ -96,8 +99,18 @@
       play.setAttribute('aria-pressed',String(isPlaying));
       play.disabled = Boolean(get('play-pause')?.disabled);
       stop.disabled = Boolean(get('stop')?.disabled) || (!hasFile && !microphone);
-      seek.disabled = !canSeek();
-      seek.value = canSeek() ? String(Math.max(0,Math.min(1000,
+      const fileSeekable=canSeek();
+      seek.disabled = !fileSeekable;
+      for (const [quick,nativeId] of [[previous,'previous'],[next,'next'],[repeatButton,'repeat']]) {
+        if(quick)quick.disabled=!fileSeekable || Boolean(get(nativeId)?.disabled);
+      }
+      if(repeatButton){
+        const looping=Boolean(audio.loop);
+        repeatButton.setAttribute('aria-pressed',String(looping));
+        repeatButton.setAttribute('aria-label',looping?'Ismétlés kikapcsolása':'Ismétlés bekapcsolása');
+        repeatButton.textContent=looping?'↻ Ismétlés: be':'↻ Ismétlés';
+      }
+      seek.value = fileSeekable ? String(Math.max(0,Math.min(1000,
         Math.round(audio.currentTime / audio.duration * 1000)))) : '0';
       if (current) current.textContent = get('current-time')?.textContent || '0:00';
       if (duration) duration.textContent = get('duration')?.textContent || '0:00';
@@ -113,6 +126,12 @@
       const original=get('stop');
       if (original && !original.disabled) original.click();
     });
+    for (const [quick,nativeId] of [[previous,'previous'],[next,'next'],[repeatButton,'repeat']]) {
+      quick?.addEventListener('click',()=>{
+        const original=get(nativeId);
+        if(canSeek() && original && !original.disabled)original.click();
+      });
+    }
     seek?.addEventListener('input',() => {
       if (!canSeek()) return;
       nativeSeek.value=seek.value;
@@ -162,6 +181,8 @@
       observe(get('seek'), 'disabled');
       observe(get('play-pause'), 'disabled');
       observe(get('stop'), 'disabled');
+      for(const id of ['previous','next','repeat'])observe(get(id),'disabled');
+      observe(get('repeat'),'class');
       observe(nativeVolume, 'disabled');
       observe(nativeMute, 'disabled');
       observe(doc.body, 'class');
