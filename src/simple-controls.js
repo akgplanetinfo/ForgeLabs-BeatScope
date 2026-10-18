@@ -42,6 +42,41 @@
     const seek = get('simple-seek');
     const current = get('simple-current-time');
     const duration = get('simple-duration');
+    const nativeVolume = get('volume');
+    const nativeMute = get('mute');
+    const simpleVolume = get('simple-volume');
+    const simpleMute = get('simple-mute');
+    const volumeLabel = get('simple-volume-value');
+    function syncVolume() {
+      if (!audio || !nativeVolume || !simpleVolume || !simpleMute) return;
+      // The native BeatScope player owns the persisted volume setting.
+      const volume = Number.isFinite(audio.volume) ? audio.volume : Number(nativeVolume.value)/100;
+      const percent = Math.max(0,Math.min(100,Math.round(volume*100)));
+      simpleVolume.value = String(percent);
+      simpleVolume.disabled = Boolean(nativeVolume.disabled);
+      simpleVolume.setAttribute('aria-valuetext',percent+'%');
+      if (volumeLabel) volumeLabel.textContent = percent+'%';
+      const muted = Boolean(audio.muted);
+      simpleMute.setAttribute('aria-pressed',String(muted));
+      simpleMute.setAttribute('aria-label',muted?'Némítás feloldása':'Némítás');
+      simpleMute.textContent = muted?'◖× Némítva':'◖)) Hang';
+      simpleMute.disabled = Boolean(nativeMute?.disabled);
+    }
+    simpleMute?.addEventListener('click',() => {
+      if (nativeMute && !nativeMute.disabled) nativeMute.click();
+    });
+    simpleVolume?.addEventListener('input',() => {
+      if (!nativeVolume || nativeVolume.disabled) return;
+      const raw = Number(simpleVolume.value);
+      if (!Number.isFinite(raw)) return;
+      const percent = Math.max(0,Math.min(100,Math.round(raw)));
+      nativeVolume.value=String(percent);
+      // The original UI input handler persists and applies volume.
+      const NativeEvent=doc.defaultView?.Event;
+      if (NativeEvent) nativeVolume.dispatchEvent(new NativeEvent('input',{bubbles:true}));
+      syncVolume();
+    });
+    audio?.addEventListener('volumechange',syncVolume);
     function isMicActive() {
       return Boolean(get('microphone')?.classList.contains('active'));
     }
@@ -68,6 +103,7 @@
       if (duration) duration.textContent = get('duration')?.textContent || '0:00';
       seek.setAttribute('aria-valuetext',
         (current?.textContent || '0:00') + ' / ' + (duration?.textContent || '0:00'));
+      syncVolume();
     }
     play?.addEventListener('click',() => {
       const original=get('play-pause');
@@ -126,6 +162,8 @@
       observe(get('seek'), 'disabled');
       observe(get('play-pause'), 'disabled');
       observe(get('stop'), 'disabled');
+      observe(nativeVolume, 'disabled');
+      observe(nativeMute, 'disabled');
       observe(doc.body, 'class');
       for (const element of doc.querySelectorAll('[data-mode]')) observe(element, 'class');
       // textContent replacement fires childList mutations on the original BeatScope labels.
@@ -142,6 +180,7 @@
     return { sync, syncTransport, disconnect: () => {
       observer?.disconnect();
       for (const name of AUDIO_EVENTS) audio?.removeEventListener?.(name,syncTransport);
+      audio?.removeEventListener?.('volumechange',syncVolume);
     } };
   }
 
