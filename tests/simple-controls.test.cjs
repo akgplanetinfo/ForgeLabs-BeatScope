@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { VISUALS, ACTIONS, SIMPLE_SHORTCUTS, VISUAL_TUNING, attachSimpleControls } = require('../src/simple-controls.js');
+const { VISUALS, PALETTES, ACTIONS, SIMPLE_SHORTCUTS, VISUAL_TUNING, attachSimpleControls } = require('../src/simple-controls.js');
 const read = p => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
 
 function element(id, dataset = {}) {
@@ -29,7 +29,7 @@ function element(id, dataset = {}) {
   };
 }
 function fixture() {
-  const ids = ['simple-control-bar', 'simple-visual', ...Object.keys(ACTIONS),
+  const ids = ['simple-control-bar', 'simple-visual', 'simple-palette', ...Object.keys(ACTIONS),
     ...Object.values(ACTIONS), 'title-status', 'track-name', 'mode-label',
     'simple-status-source', 'simple-status-track', 'simple-status-visual',
     'simple-play-pause','simple-stop','simple-seek','simple-current-time',
@@ -58,6 +58,8 @@ function fixture() {
   nodes['current-time'].textContent='0:00';
   nodes.duration.textContent='0:00';
   const sources = VISUALS.map(value => element('source-' + value, { mode: value }));
+  const swatches = PALETTES.map(value => element('swatch-' + value, { palette: value }));
+  swatches[0].classList.toggle('selected',true);
   const body = element('body'),docHandlers=new Map();
   const doc = {
     body,
@@ -68,7 +70,8 @@ function fixture() {
     },
     getElementById: id => nodes[id] ?? null,
     defaultView: { Event: class { constructor(type,opts){this.type=type;this.bubbles=opts?.bubbles;} } },
-    querySelectorAll: selector => selector === '[data-mode]' ? sources : [],
+    querySelectorAll: selector => selector === '[data-mode]' ? sources :
+      selector === '[data-palette]' ? swatches : [],
     querySelector:()=>null
   };
   function key(char,extras={}) {
@@ -85,7 +88,7 @@ function fixture() {
     disconnect() { this.disconnected = true; }
     notify() { this.callback(); }
   }
-  return { nodes, sources, body, doc, Observer, observers, key, docHandlers };
+  return { nodes, sources, swatches, body, doc, Observer, observers, key, docHandlers };
 }
 
 test('Simple shortcuts forward real user clicks to working BeatScope handlers', () => {
@@ -580,4 +583,65 @@ test('Stage 16 two-way visual settings are present in real renderer without new 
   assert.match(css,/\.simple-visual-tuning/);
   assert.match(js,/native\.dispatchEvent\(new NativeEvent\('input'/);
   assert.match(js,/syncVisualTuning/);
+});
+
+test('Stage 17 Simple palette follows the native BeatScope swatches and delegates exactly once',()=>{
+  const f=fixture(),ctrl=attachSimpleControls(f.doc,f.Observer);
+  const simple=f.nodes['simple-palette'];
+  assert.deepEqual(PALETTES,['azure','mint','violet','sunset','rainbow']);
+  assert.equal(simple.value,'azure','Initial selection follows native current palette');
+  // Simulate native renderer setPalette() when the real swatch receives a click.
+  for(const swatch of f.swatches){
+    swatch.addEventListener('click',()=>{
+      for(const item of f.swatches)
+        item.classList.toggle('selected',item===swatch);
+      f.observers[0].notify();
+    });
+  }
+  for(const name of ['mint','violet','sunset','rainbow','azure']){
+    simple.value=name;
+    simple.change();
+    const source=f.swatches.find(node=>node.dataset.palette===name);
+    assert.equal(source.clicks,1,'Native swatch clicked once for '+name);
+    assert.equal(source.classList.contains('selected'),true);
+    assert.equal(simple.value,name);
+  }
+  simple.value='not-supported';
+  simple.change();
+  assert.equal(f.swatches.reduce((count,node)=>count+node.clicks,0),5,
+    'Unknown palette must never click a native swatch');
+  f.swatches[1].disabled=true;
+  simple.value='mint';
+  simple.change();
+  assert.equal(f.swatches[1].clicks,1,'Disabled native swatch must be respected');
+  ctrl.disconnect();
+});
+
+test('Stage 17 Simple selector mirrors palette changes made in Pro or by AI',()=>{
+  const f=fixture(),ctrl=attachSimpleControls(f.doc,f.Observer);
+  const simple=f.nodes['simple-palette'];
+  for(const palette of ['violet','rainbow','sunset']){
+    for(const swatch of f.swatches)
+      swatch.classList.toggle('selected',swatch.dataset.palette===palette);
+    f.observers[0].notify();
+    assert.equal(simple.value,palette,'Mirrors selected native palette '+palette);
+  }
+  assert.ok(f.observers[0].observed.length>=PALETTES.length+7);
+  // No chosen palette is a temporary state; do not replace it arbitrarily.
+  for(const swatch of f.swatches)swatch.classList.toggle('selected',false);
+  f.observers[0].notify();
+  assert.equal(simple.value,'sunset');
+  ctrl.disconnect();
+  assert.equal(f.observers[0].disconnected,true);
+});
+
+test('Stage 17 palette exists in actual renderer, with original palette retained',()=>{
+  const html=read('index.html'),css=read('src/lumina-theme.css'),js=read('src/simple-controls.js');
+  assert.match(html,/id="simple-palette"/);
+  for(const value of PALETTES){
+    assert.ok(html.includes('data-palette="'+value+'"'),'Native swatch '+value);
+    assert.ok(html.includes('<option value="'+value+'">'),'Simple option '+value);
+  }
+  assert.match(css,/#simple-palette:focus-visible/);
+  assert.match(js,/source\.click\(\)/);
 });
