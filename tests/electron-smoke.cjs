@@ -837,6 +837,33 @@ async function run(){
    document.dispatchEvent(digitEvent('Digit2','@'));
    const hotkeySimpleSafe=$('ai-toggle').getAttribute('aria-checked')===repeatedBefore;
    $('studio-pro').click();
+   // Stage 11: native favorite reorder widgets update persisted order and hotkey mapping.
+   const orderSelect=$('pro-favorites-select');
+   const leftArrow=$('pro-favorites-left'),rightArrow=$('pro-favorites-right');
+   const orderReady=orderSelect.options.length===2
+     &&orderSelect.value==='target:vj-mix'
+     &&leftArrow.disabled&& !rightArrow.disabled;
+   orderSelect.value='action:ai-toggle';
+   orderSelect.dispatchEvent(new Event('change',{bubbles:true}));
+   const reorderEnabled=!leftArrow.disabled;
+   leftArrow.click();
+   const newOrder=JSON.parse(localStorage.getItem('lumina-pulse.favorite-commands.v1')||'[]');
+   const reordered=newOrder.join(',')==='action:ai-toggle,target:vj-mix'
+     &&favoritesButtons.querySelector('.pro-favorite-shortcut')?.dataset.hotkey==='Ctrl+Shift+1'
+     &&favoritesButtons.querySelector('.pro-favorite-shortcut')?.textContent.includes('Automatikus FX');
+   const aiBeforeReorderedHotkey=$('ai-toggle').getAttribute('aria-checked');
+   document.dispatchEvent(digitEvent('Digit1','!'));
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const reorderedHotkey=$('ai-toggle').getAttribute('aria-checked')!==aiBeforeReorderedHotkey;
+   $('ai-toggle').click();
+   document.dispatchEvent(digitEvent('Digit2','@'));
+   const reorderedNavigation=document.activeElement===$('vj-mix');
+   const leftBoundary=leftArrow.disabled && !rightArrow.disabled;
+   rightArrow.click();
+   const restoredOrder=JSON.parse(localStorage.getItem('lumina-pulse.favorite-commands.v1')||'[]')
+     .join(',')==='target:vj-mix,action:ai-toggle';
+   const restoredHotkeys=[...favoritesButtons.querySelectorAll('.pro-favorite-shortcut')]
+     .map(button=>button.dataset.hotkey).join(',')==='Ctrl+Shift+1,Ctrl+Shift+2';
    return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
      sourceAccurate,trackAccurate,visualAccurate,aiDelegates,visualDelegates,
      proMode,deckShown,navShown,jumpWorks,activeIndicator,backEnabled,backWorks,
@@ -848,7 +875,8 @@ async function run(){
      favoriteQuickNavigation,favoriteQuickActions,favoriteQuickDelegated,
      favoritesHiddenInSimple,favoritesReturnInPro,hotkeyLabels,hotkeyOneConsumed,
      hotkeyOneNavigates,hotkeyTwoConsumed,hotkeyTwoDelegates,hotkeyRepeatSafe,
-     hotkeyTypingSafe,hotkeyDialogSafe,hotkeySimpleSafe};
+     hotkeyTypingSafe,hotkeyDialogSafe,hotkeySimpleSafe,orderReady,reorderEnabled,
+     reordered,reorderedHotkey,reorderedNavigation,leftBoundary,restoredOrder,restoredHotkeys};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
