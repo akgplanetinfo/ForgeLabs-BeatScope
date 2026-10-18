@@ -1207,6 +1207,8 @@ async function run(){
      fxPickerAdded=nativeRows().length===fxOriginalCount+1;
    }
    $('studio-simple').click();
+   // FX stack and mode changes are synchronized by MutationObserver microtasks.
+   await new Promise(resolve=>setTimeout(resolve,60));
    const chooser=$('simple-fx-picker'),rowsBeforeChoice=nativeRows();
    const chooserReady=rowsBeforeChoice.length>=2&&!chooser.disabled
      &&chooser.options.length===rowsBeforeChoice.length
