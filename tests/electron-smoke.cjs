@@ -1159,6 +1159,44 @@ async function run(){
    await new Promise(resolve=>setTimeout(resolve,35));
    const fxAutopilotProSync=nativeFXAuto.getAttribute('aria-checked')===originalFXAuto
      &&simpleFXAuto.getAttribute('aria-checked')===originalFXAuto;
+   // Stage 24: real selected Pro FX Wet/Dry and Strength in Simple Mode.
+   const nativeWet=$('fx-wet'),nativeStrength=$('fx-strength');
+   const originalWet=nativeWet.value,originalStrength=nativeStrength.value;
+   const originalFXStack=$('fx-stack-count').textContent;
+   const originalFXCount=$('fx-stack').children.length;
+   $('studio-simple').click();
+   const fxParamsReady=!nativeWet.disabled&&!nativeStrength.disabled
+     &&!$('simple-fx-wet').disabled&&!$('simple-fx-strength').disabled
+     &&$('simple-fx-wet').value===originalWet
+     &&$('simple-fx-strength').value===originalStrength;
+   $('simple-fx-wet').value='42';
+   $('simple-fx-wet').dispatchEvent(new Event('input',{bubbles:true}));
+   $('simple-fx-strength').value='155';
+   $('simple-fx-strength').dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fxParamsDelegated=nativeWet.value==='42'&&nativeStrength.value==='155'
+     &&$('fx-wet-value').textContent==='42%'
+     &&$('fx-strength-value').textContent==='155%'
+     &&$('simple-fx-wet-value').textContent==='42%'
+     &&$('simple-fx-strength-value').textContent==='155%';
+   $('studio-pro').click();
+   nativeWet.value='66';nativeWet.dispatchEvent(new Event('input',{bubbles:true}));
+   nativeStrength.value='83';nativeStrength.dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fxParamsProSync=$('simple-fx-wet').value==='66'
+     &&$('simple-fx-strength').value==='83'
+     &&$('simple-fx-wet-value').textContent==='66%'
+     &&$('simple-fx-strength-value').textContent==='83%';
+   nativeWet.value=originalWet;nativeWet.dispatchEvent(new Event('input',{bubbles:true}));
+   nativeStrength.value=originalStrength;
+   nativeStrength.dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fxParamsRestored=nativeWet.value===originalWet
+     &&nativeStrength.value===originalStrength
+     &&$('simple-fx-wet').value===originalWet
+     &&$('simple-fx-strength').value===originalStrength
+     &&$('fx-stack-count').textContent===originalFXStack
+     &&$('fx-stack').children.length===originalFXCount;
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
@@ -1191,7 +1229,8 @@ async function run(){
      gridInitialSync,gridDelegated,gridProSync,barsInitialSync,
      barsDelegated,barsProSync,barsRestored,fxBypassShown,
      fxBypassDelegated,fxStackPreserved,fxBypassProSync,fxBypassRestored,
-     fxAutopilotShown,fxAutopilotDelegated,fxAutopilotDistinct,fxAutopilotProSync};
+     fxAutopilotShown,fxAutopilotDelegated,fxAutopilotDistinct,fxAutopilotProSync,
+     fxParamsReady,fxParamsDelegated,fxParamsProSync,fxParamsRestored};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
