@@ -810,3 +810,31 @@ body[data-theme="lumina-pulse"] #simple-fx-auto:disabled{
 body[data-theme="lumina-pulse"] #simple-fx-auto:focus-visible{
   outline:2px solid #f6fdff;outline-offset:2px;
 }
+
+/* Alpha 17 stage 24: selected FX parameters, shared with Pro. */
+body[data-theme="lumina-pulse"] .simple-fx-parameters{
+  display:flex;align-items:center;flex-wrap:wrap;gap:12px 20px;
+  width:100%;padding:12px 13px;background:#0b1c28;
+  border:1px solid #266176;border-radius:3px;
+}
+body[data-theme="lumina-pulse"] .simple-fx-parameters-head{
+  display:flex;align-items:baseline;flex-wrap:wrap;gap:8px 14px;width:100%;
+}
+body[data-theme="lumina-pulse"] .simple-fx-parameters-head strong{
+  font-size:11px;letter-spacing:.7px;color:#67ddf1;
+}
+body[data-theme="lumina-pulse"] #simple-fx-selection{
+  font-size:10px;color:#a6c7d2;
+}
+body[data-theme="lumina-pulse"] .simple-fx-parameters .simple-tuning-field{
+  flex:1 1 260px;
+}
+body[data-theme="lumina-pulse"] .simple-fx-parameters .simple-tuning-field label{
+  flex:0 0 130px;
+}
+body[data-theme="lumina-pulse"] .simple-fx-parameters input:disabled{
+  opacity:.38;cursor:not-allowed;
+}
+@media(max-width:650px){
+  body[data-theme="lumina-pulse"] .simple-fx-parameters .simple-tuning-field{flex:1 1 100%;}
+}
