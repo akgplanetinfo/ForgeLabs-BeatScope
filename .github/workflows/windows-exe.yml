@@ -70,7 +70,7 @@ jobs:
           $installer = @(Get-ChildItem -Path dist -Filter 'ForgeLabs-BeatScope-Setup-*-x64.exe' -File)
           $portable = @(Get-ChildItem -Path dist -Filter 'ForgeLabs-BeatScope-Portable-*-x64.exe' -File)
           if ($installer.Count -ne 1 -or $portable.Count -ne 1) { throw 'Expected exactly one installer and portable EXE' }
-          node scripts/release-candidate.cjs --app-id lumina --version $version --channel beta --exe $installer[0].FullName --exe $portable[0].FullName --output release-candidates.json
+          node scripts/release-candidate.cjs --app-id lumina --version $version --channel beta --exe "$($installer[0].FullName)" --exe "$($portable[0].FullName)" --output release-candidates.json
           if ($LASTEXITCODE -ne 0) { throw 'Candidate verification failed' }
 
       - name: Archive unpublished candidate report
