@@ -724,3 +724,23 @@ body[data-theme="lumina-pulse"] .simple-auto-palette input:focus-visible{
 @media(max-width:680px){
   body[data-theme="lumina-pulse"] .simple-auto-palette{flex:1 1 100%;}
 }
+
+/* Alpha 17 stage 19: Simple Mode shares the native AI speed profiles. */
+body[data-theme="lumina-pulse"] .simple-ai-speed-field{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:0 1 230px;
+  color:#b5dbe1;font-size:11px;font-weight:750;
+}
+body[data-theme="lumina-pulse"] #simple-ai-speed{
+  flex:1 1 150px;min-width:150px;min-height:36px;
+  padding:8px;background:#091e26;color:#edfcff;
+  border:1px solid #287080;border-radius:3px;font-family:inherit;font-size:11px;
+}
+body[data-theme="lumina-pulse"] #simple-ai-speed:disabled{
+  opacity:.4;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-ai-speed:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:2px;
+}
+@media(max-width:680px){
+  body[data-theme="lumina-pulse"] .simple-ai-speed-field{flex:1 1 100%;}
+}
