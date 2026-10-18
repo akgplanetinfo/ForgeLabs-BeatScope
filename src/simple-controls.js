@@ -25,6 +25,8 @@
     const get = id => doc.getElementById(id);
     const visual = get('simple-visual');
     const palette = get('simple-palette');
+    const autoPalette = get('simple-ai-palette');
+    const nativeAutoPalette = get('ai-palette');
     if (!visual) return null;
 
     for (const [quickId, sourceId] of Object.entries(ACTIONS)) {
@@ -51,6 +53,28 @@
         .find(element => element.dataset.palette === palette.value);
       if (source && !source.disabled) source.click();
     });
+
+    // Stage 18: AI-driven palette changes use the native BeatScope preference.
+    // Native "change" owns persistence; never store a separate Simple preference.
+    function syncAutoPalette() {
+      if (!autoPalette) return;
+      autoPalette.disabled = !nativeAutoPalette || Boolean(nativeAutoPalette.disabled);
+      if (nativeAutoPalette) autoPalette.checked = Boolean(nativeAutoPalette.checked);
+    }
+    autoPalette?.addEventListener('change', () => {
+      if (!nativeAutoPalette || nativeAutoPalette.disabled) {
+        syncAutoPalette();return;
+      }
+      const selected=Boolean(autoPalette.checked);
+      if (nativeAutoPalette.checked !== selected) {
+        nativeAutoPalette.checked=selected;
+        const NativeEvent=doc.defaultView?.Event;
+        if (NativeEvent) nativeAutoPalette.dispatchEvent(
+          new NativeEvent('change',{bubbles:true}));
+      }
+      syncAutoPalette();
+    });
+    nativeAutoPalette?.addEventListener('change',syncAutoPalette);
 
     // Stage 12: transport is a thin adapter to BeatScope's existing player/seek.
     const audio = get('audio');
@@ -226,6 +250,7 @@
         .find(element => element.classList.contains('selected') &&
           PALETTES.includes(element.dataset.palette));
       if (palette && selectedPalette) palette.value = selectedPalette.dataset.palette;
+      syncAutoPalette();
 
       const ai = get('ai-toggle')?.getAttribute('aria-checked') === 'true';
       const microphone = Boolean(get('microphone')?.classList.contains('active'));
@@ -252,6 +277,7 @@
         if (element) observer.observe(element, { attributes: true, attributeFilter: [attr] });
       };
       observe(get('ai-toggle'), 'aria-checked');
+      observe(nativeAutoPalette, 'disabled');
       observe(get('microphone'), 'class');
       observe(get('seek'), 'disabled');
       observe(get('play-pause'), 'disabled');
@@ -282,6 +308,7 @@
       for (const name of AUDIO_EVENTS) audio?.removeEventListener?.(name,syncTransport);
       audio?.removeEventListener?.('volumechange',syncVolume);
       doc.removeEventListener?.('keydown',onSimpleKeydown,true);
+      nativeAutoPalette?.removeEventListener?.('change',syncAutoPalette);
       for(const [,nativeId] of VISUAL_TUNING)get(nativeId)?.removeEventListener?.('input',syncVisualTuning);
     } };
   }
