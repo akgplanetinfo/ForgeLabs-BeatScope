@@ -1034,6 +1034,24 @@ async function run(){
    document.querySelector('[data-palette="'+originalPalette+'"]').click();
    await new Promise(resolve=>setTimeout(resolve,25));
    const paletteRestored=simplePalette.value===originalPalette;
+   // Stage 18: native AI palette preference is shared across the two studios.
+   const nativeAutoPalette=$('ai-palette');
+   const originalAutoPalette=nativeAutoPalette.checked;
+   $('studio-simple').click();
+   const simpleAutoPalette=$('simple-ai-palette');
+   const autoPaletteInitialSync=simpleAutoPalette.checked===nativeAutoPalette.checked
+     && !simpleAutoPalette.disabled;
+   simpleAutoPalette.checked=!nativeAutoPalette.checked;
+   simpleAutoPalette.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const autoPaletteDelegated=nativeAutoPalette.checked===!originalAutoPalette
+     &&simpleAutoPalette.checked===nativeAutoPalette.checked;
+   $('studio-pro').click();
+   nativeAutoPalette.checked=originalAutoPalette;
+   nativeAutoPalette.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const autoPaletteProSync=simpleAutoPalette.checked===originalAutoPalette
+     &&nativeAutoPalette.checked===originalAutoPalette;
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
@@ -1060,7 +1078,8 @@ async function run(){
      simpleKeySConsumed,simpleKeyS,simpleKeyTypingSafe,
      simpleKeyModifierSafe,simpleKeyProSafe,tuningVisible,
      tuningInitialSync,tuningDelegates,tuningProSync,paletteInitialSync,
-     paletteDelegated,paletteProSync,paletteRestored};
+     paletteDelegated,paletteProSync,paletteRestored,autoPaletteInitialSync,
+     autoPaletteDelegated,autoPaletteProSync};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
