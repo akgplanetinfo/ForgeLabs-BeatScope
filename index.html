@@ -114,6 +114,13 @@
         <button type="button" class="simple-action" id="simple-microphone" aria-pressed="false">♩ Mikrofon</button>
         <button type="button" class="simple-action" id="simple-ai" aria-pressed="false">✦ Automata FX</button>
         <button type="button" class="simple-action" id="simple-fullscreen" aria-pressed="false">⛶ Teljes képernyő</button>
+        <div class="simple-transport" id="simple-transport" role="group" aria-label="Simple Mode zenelejátszás">
+          <button type="button" id="simple-play-pause" class="simple-action" aria-label="Zene megnyitása">♫ Zene megnyitása</button>
+          <button type="button" id="simple-stop" class="simple-action" aria-label="Leállítás" disabled>■ Stop</button>
+          <span id="simple-current-time" class="simple-time" aria-label="Eltelt idő">0:00</span>
+          <input type="range" id="simple-seek" min="0" max="1000" step="1" value="0" disabled aria-label="Simple Mode lejátszási pozíció" />
+          <span id="simple-duration" class="simple-time" aria-label="Teljes idő">0:00</span>
+        </div>
         <div class="simple-live-summary" role="group" aria-label="Simple Mode élő állapota">
           <span>FORRÁS <strong id="simple-status-source">Nincs hangforrás</strong></span>
           <span>ZENEFÁJL <strong id="simple-status-track">Nincs kiválasztott zene</strong></span>
