@@ -30,7 +30,8 @@ function element(id, dataset = {}) {
 }
 function fixture() {
   const ids = ['simple-control-bar', 'simple-visual', 'simple-palette',
-    'simple-ai-palette','ai-palette','simple-ai-speed','ai-speed', ...Object.keys(ACTIONS),
+    'simple-ai-palette','ai-palette','simple-ai-speed','ai-speed',
+    'simple-show-grid','show-grid', ...Object.keys(ACTIONS),
     ...Object.values(ACTIONS), 'title-status', 'track-name', 'mode-label',
     'simple-status-source', 'simple-status-track', 'simple-status-visual',
     'simple-play-pause','simple-stop','simple-seek','simple-current-time',
@@ -55,6 +56,8 @@ function fixture() {
   nodes['ai-palette'].checked=false;
   nodes['ai-speed'].value='balanced';
   nodes['simple-ai-speed'].value='balanced';
+  nodes['show-grid'].checked=true;
+  nodes['simple-show-grid'].checked=true;
   nodes.volume.value='85';
   nodes.intensity.value='115';nodes.intensity.min='20';nodes.intensity.max='300';
   nodes.smooth.value='75';nodes.smooth.min='0';nodes.smooth.max='94';
@@ -775,4 +778,65 @@ test('Stage 19 AI speed exposes the same native options with no new AI algorithm
   assert.match(css,/#simple-ai-speed:focus-visible/);
   assert.match(js,/nativeAISpeed\.dispatchEvent/);
   assert.match(js,/nativeAISpeed\?\.addEventListener\('change',syncAISpeed\)/);
+});
+
+test('Stage 20 Simple background grid invokes original renderer exactly once per change',()=>{
+  const f=fixture(),native=f.nodes['show-grid'],quick=f.nodes['simple-show-grid'];
+  let calls=0;
+  const dispatch=native.dispatchEvent.bind(native);
+  native.dispatchEvent=event=>{
+    if(event.type==='change')calls++;
+    return dispatch(event);
+  };
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(native.checked,true);
+  assert.equal(quick.checked,true);
+  quick.checked=false;quick.change();
+  assert.equal(native.checked,false);
+  assert.equal(calls,1,'Native change event fired once for turning grid off');
+  quick.change();
+  assert.equal(calls,1,'Duplicate off state must not fire another event');
+  quick.checked=true;quick.change();
+  assert.equal(native.checked,true);
+  assert.equal(calls,2);
+  ctrl.disconnect();
+});
+
+test('Stage 20 Pro grid updates sync to Simple, including persisted original state',()=>{
+  const f=fixture(),native=f.nodes['show-grid'],quick=f.nodes['simple-show-grid'];
+  native.checked=false;
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(quick.checked,false,'Restores original checkbox state on startup');
+  native.checked=true;native.dispatchEvent(new f.doc.defaultView.Event('change',{bubbles:true}));
+  assert.equal(quick.checked,true);
+  native.checked=false;native.dispatchEvent(new f.doc.defaultView.Event('change',{bubbles:true}));
+  assert.equal(quick.checked,false);
+  ctrl.disconnect();
+  native.checked=true;native.change();
+  assert.equal(quick.checked,false,'Disconnect removes synchronization listener');
+});
+
+test('Stage 20 disabled original grid cannot be modified by Simple Mode',()=>{
+  const f=fixture(),native=f.nodes['show-grid'],quick=f.nodes['simple-show-grid'];
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  native.disabled=true;f.observers[0].notify();
+  assert.equal(quick.disabled,true);
+  quick.checked=false;quick.change();
+  assert.equal(native.checked,true,'Disabled original grid setting remains checked');
+  assert.equal(quick.checked,true,'Rejected Simple change is rolled back');
+  native.disabled=false;f.observers[0].notify();
+  assert.equal(quick.disabled,false);
+  quick.checked=false;quick.change();
+  assert.equal(native.checked,false);
+  ctrl.disconnect();
+});
+
+test('Stage 20 background grid is in the original Electron renderer without a new preference',()=>{
+  const html=read('index.html'),js=read('src/simple-controls.js'),css=read('src/lumina-theme.css');
+  assert.match(html,/id="simple-show-grid" type="checkbox"/);
+  assert.match(html,/id="show-grid" type="checkbox"/);
+  assert.match(html,/Finom háttérrács/);
+  assert.match(js,/nativeGrid\.dispatchEvent/);
+  assert.match(js,/nativeGrid\?\.addEventListener\('change',syncGrid\)/);
+  assert.match(css,/\.simple-grid-toggle/);
 });
