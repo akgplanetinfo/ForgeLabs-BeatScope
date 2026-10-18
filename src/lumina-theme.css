@@ -616,3 +616,25 @@ body[data-theme="lumina-pulse"] #simple-volume-value{
     border-top:1px solid #2a5260;padding:10px 0 0;
   }
 }
+
+/* Alpha 17 stage 14: Simple transport extras always invoke existing player controls. */
+body[data-theme="lumina-pulse"] .simple-transport-extra{
+  display:flex;align-items:center;gap:6px;flex:0 1 auto;flex-wrap:wrap;
+}
+body[data-theme="lumina-pulse"] .simple-transport-extra .simple-action{
+  padding:8px 9px;white-space:nowrap;font-size:10px;
+}
+body[data-theme="lumina-pulse"] #simple-repeat[aria-pressed="true"]{
+  border-color:#00d3f2;color:#adf9ff;background:#0c4c58;
+}
+body[data-theme="lumina-pulse"] .simple-transport-extra .simple-action:disabled{
+  opacity:.42;cursor:not-allowed;
+}
+@media(max-width:780px){
+  body[data-theme="lumina-pulse"] .simple-transport-extra{
+    flex:1 1 100%;
+  }
+  body[data-theme="lumina-pulse"] .simple-transport-extra .simple-action{
+    flex:1 1 80px;
+  }
+}
