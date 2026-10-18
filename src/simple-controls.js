@@ -326,6 +326,53 @@
       native?.addEventListener('input',syncVisualTuning);
     }
 
+    // Stage 24: controls operate only on the FX currently selected in Pro.
+    // Native sliders, persist() and the GPU FX chain are the single source of truth.
+    const FX_PARAMS = Object.freeze([
+      ['simple-fx-wet','fx-wet','simple-fx-wet-value','fx-wet-value'],
+      ['simple-fx-strength','fx-strength','simple-fx-strength-value','fx-strength-value']
+    ]);
+    function syncFXParams(){
+      const chosen=get('simple-fx-selection');
+      const available=FX_PARAMS.every(([,id])=>Boolean(get(id)&&!get(id).disabled));
+      const selectedName=doc.querySelector?.('#fx-stack .fx-stack-entry.selected .fx-stack-name')
+        ?.textContent?.trim();
+      if(chosen)chosen.textContent=available
+        ?(selectedName||'Kiválasztott Pro effekt')
+        :'Válassz egy effektet Pro módban';
+      for(const [quickId,nativeId,outputId,nativeOutputId] of FX_PARAMS){
+        const quick=get(quickId),native=get(nativeId),output=get(outputId);
+        if(!quick)continue;
+        quick.disabled=!available||!native||Boolean(native.disabled);
+        if(!available||!native){
+          if(output)output.textContent='—';
+          quick.setAttribute('aria-valuetext','Nincs kijelölt effekt');
+          continue;
+        }
+        const value=Number(native.value);
+        if(Number.isFinite(value))quick.value=String(value);
+        const label=get(nativeOutputId)?.textContent||quick.value+'%';
+        if(output)output.textContent=label;
+        quick.setAttribute('aria-valuetext',label);
+      }
+    }
+    for(const [quickId,nativeId] of FX_PARAMS){
+      const quick=get(quickId),native=get(nativeId);
+      quick?.addEventListener('input',()=>{
+        if(!quick||!native||quick.disabled||native.disabled){syncFXParams();return;}
+        const raw=Number(quick.value);
+        if(!Number.isFinite(raw)){syncFXParams();return;}
+        const low=Number(native.min),high=Number(native.max);
+        if(!Number.isFinite(low)||!Number.isFinite(high)||high<low)return;
+        const value=Math.max(low,Math.min(high,Math.round(raw)));
+        native.value=String(value);
+        const NativeEvent=doc.defaultView?.Event;
+        if(NativeEvent)native.dispatchEvent(new NativeEvent('input',{bubbles:true}));
+        syncFXParams();
+      });
+      native?.addEventListener('input',syncFXParams);
+    }
+
     const STATUS_FIELDS = [
       ['simple-status-source', 'title-status'],
       ['simple-status-track', 'track-name'],
@@ -361,6 +408,7 @@
       }
       syncTransport();
       syncVisualTuning();
+      syncFXParams();
     }
 
     let observer = null;
@@ -388,6 +436,9 @@
       for(const [,nativeId] of VISUAL_TUNING){
         observe(get(nativeId),'disabled');
       }
+      for(const [,nativeId] of FX_PARAMS)observe(get(nativeId),'disabled');
+      const fxStack=get('fx-stack');
+      if(fxStack)observer.observe(fxStack,{childList:true,subtree:true});
       observe(doc.body, 'class');
       for (const element of doc.querySelectorAll('[data-mode]')) observe(element, 'class');
       for (const element of doc.querySelectorAll('[data-palette]')) observe(element, 'class');
@@ -396,7 +447,7 @@
         const element = get(originalId);
         if (element) observer.observe(element, { childList: true, subtree: true, characterData: true });
       }
-      for (const id of ['current-time','duration',...VISUAL_TUNING.map(item=>item[3])]) {
+      for (const id of ['current-time','duration',...VISUAL_TUNING.map(item=>item[3]),...FX_PARAMS.map(item=>item[3])]) {
         const element=get(id);
         if(element)observer.observe(element,{childList:true,subtree:true,characterData:true});
       }
@@ -413,6 +464,7 @@
       nativeFXBypass?.removeEventListener?.('click',syncFXBypass);
       nativeFXAuto?.removeEventListener?.('click',syncFXAutopilot);
       for(const [,nativeId] of VISUAL_TUNING)get(nativeId)?.removeEventListener?.('input',syncVisualTuning);
+      for(const [,nativeId] of FX_PARAMS)get(nativeId)?.removeEventListener?.('input',syncFXParams);
     } };
   }
 
