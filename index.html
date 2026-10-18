@@ -120,6 +120,12 @@
           <span id="simple-current-time" class="simple-time" aria-label="Eltelt idő">0:00</span>
           <input type="range" id="simple-seek" min="0" max="1000" step="1" value="0" disabled aria-label="Simple Mode lejátszási pozíció" />
           <span id="simple-duration" class="simple-time" aria-label="Teljes idő">0:00</span>
+          <div class="simple-volume" role="group" aria-label="Zenefájl hangerő">
+            <button type="button" id="simple-mute" class="simple-action" aria-label="Némítás" aria-pressed="false">◖)) Hang</button>
+            <label for="simple-volume">Hangerő</label>
+            <input type="range" id="simple-volume" min="0" max="100" value="85" step="1" aria-label="Zenefájl hangereje" />
+            <output for="simple-volume" id="simple-volume-value">85%</output>
+          </div>
         </div>
         <div class="simple-live-summary" role="group" aria-label="Simple Mode élő állapota">
           <span>FORRÁS <strong id="simple-status-source">Nincs hangforrás</strong></span>
