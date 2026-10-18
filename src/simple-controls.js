@@ -3,6 +3,7 @@
 (() => {
   const VISUALS = Object.freeze(['bars', 'wave', 'orbit', 'particles']);
   const PALETTES = Object.freeze(['azure','mint','violet','sunset','rainbow']);
+  const AI_SPEEDS = Object.freeze(['calm','balanced','party']);
   const ACTIONS = Object.freeze({
     'simple-open-file': 'open-file',
     'simple-microphone': 'microphone',
@@ -27,6 +28,8 @@
     const palette = get('simple-palette');
     const autoPalette = get('simple-ai-palette');
     const nativeAutoPalette = get('ai-palette');
+    const simpleAISpeed = get('simple-ai-speed');
+    const nativeAISpeed = get('ai-speed');
     if (!visual) return null;
 
     for (const [quickId, sourceId] of Object.entries(ACTIONS)) {
@@ -75,6 +78,27 @@
       syncAutoPalette();
     });
     nativeAutoPalette?.addEventListener('change',syncAutoPalette);
+
+    // Stage 19: reuse the native AI director's timing, reset and persistence.
+    function syncAISpeed(){
+      if(!simpleAISpeed)return;
+      simpleAISpeed.disabled=!nativeAISpeed||Boolean(nativeAISpeed.disabled);
+      if(nativeAISpeed&&AI_SPEEDS.includes(nativeAISpeed.value))
+        simpleAISpeed.value=nativeAISpeed.value;
+    }
+    simpleAISpeed?.addEventListener('change',()=>{
+      const selected=simpleAISpeed.value;
+      if(!nativeAISpeed||nativeAISpeed.disabled||!AI_SPEEDS.includes(selected)){
+        syncAISpeed();return;
+      }
+      if(nativeAISpeed.value!==selected){
+        nativeAISpeed.value=selected;
+        const NativeEvent=doc.defaultView?.Event;
+        if(NativeEvent)nativeAISpeed.dispatchEvent(new NativeEvent('change',{bubbles:true}));
+      }
+      syncAISpeed();
+    });
+    nativeAISpeed?.addEventListener('change',syncAISpeed);
 
     // Stage 12: transport is a thin adapter to BeatScope's existing player/seek.
     const audio = get('audio');
@@ -251,6 +275,7 @@
           PALETTES.includes(element.dataset.palette));
       if (palette && selectedPalette) palette.value = selectedPalette.dataset.palette;
       syncAutoPalette();
+      syncAISpeed();
 
       const ai = get('ai-toggle')?.getAttribute('aria-checked') === 'true';
       const microphone = Boolean(get('microphone')?.classList.contains('active'));
@@ -278,6 +303,7 @@
       };
       observe(get('ai-toggle'), 'aria-checked');
       observe(nativeAutoPalette, 'disabled');
+      observe(nativeAISpeed, 'disabled');
       observe(get('microphone'), 'class');
       observe(get('seek'), 'disabled');
       observe(get('play-pause'), 'disabled');
@@ -309,12 +335,13 @@
       audio?.removeEventListener?.('volumechange',syncVolume);
       doc.removeEventListener?.('keydown',onSimpleKeydown,true);
       nativeAutoPalette?.removeEventListener?.('change',syncAutoPalette);
+      nativeAISpeed?.removeEventListener?.('change',syncAISpeed);
       for(const [,nativeId] of VISUAL_TUNING)get(nativeId)?.removeEventListener?.('input',syncVisualTuning);
     } };
   }
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { VISUALS, PALETTES, ACTIONS, SIMPLE_SHORTCUTS, VISUAL_TUNING, attachSimpleControls };
+    module.exports = { VISUALS, PALETTES, AI_SPEEDS, ACTIONS, SIMPLE_SHORTCUTS, VISUAL_TUNING, attachSimpleControls };
   }
   if (typeof document !== 'undefined') attachSimpleControls(document);
 })();
