@@ -1197,6 +1197,49 @@ async function run(){
      &&$('simple-fx-strength').value===originalStrength
      &&$('fx-stack-count').textContent===originalFXStack
      &&$('fx-stack').children.length===originalSelectedFXCount;
+   // Stage 25: choose among REAL native Pro FX entries from Simple Mode.
+   const nativeRows=()=>[...document.querySelectorAll('#fx-stack .fx-stack-entry')];
+   const fxOriginalCount=nativeRows().length;
+   const fxOriginalSelection=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   let fxPickerAdded=false;
+   if(fxOriginalCount<2){
+     document.querySelector('.fx-entry-name')?.click();
+     fxPickerAdded=nativeRows().length===fxOriginalCount+1;
+   }
+   $('studio-simple').click();
+   const chooser=$('simple-fx-picker'),rowsBeforeChoice=nativeRows();
+   const chooserReady=rowsBeforeChoice.length>=2&&!chooser.disabled
+     &&chooser.options.length===rowsBeforeChoice.length
+     &&chooser.options[0].textContent.includes(
+       rowsBeforeChoice[0].querySelector('.fx-stack-name').textContent);
+   const firstChoice=chooser.value;
+   const otherChoice=firstChoice==='0'?'1':'0';
+   chooser.value=otherChoice;
+   chooser.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const nativeAfterChoose=nativeRows();
+   const chooserDelegated=chooser.value===otherChoice
+     &&nativeAfterChoose[Number(otherChoice)]?.classList.contains('selected')
+     &&$('simple-fx-selection').textContent.trim()===
+       nativeAfterChoose[Number(otherChoice)]?.querySelector('.fx-stack-name').textContent.trim()
+     &&$('simple-fx-wet').value===nativeWet.value
+     &&$('simple-fx-strength').value===nativeStrength.value;
+   $('studio-pro').click();
+   nativeRows()[0]?.querySelector('.fx-stack-name')?.click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const chooserProSync=chooser.value==='0'&&nativeRows()[0]?.classList.contains('selected')
+     &&$('simple-fx-wet').value===nativeWet.value
+     &&$('simple-fx-strength').value===nativeStrength.value;
+   if(fxPickerAdded){
+     nativeRows()[nativeRows().length-1]?.querySelectorAll('button')[4]?.click();
+     await new Promise(resolve=>setTimeout(resolve,40));
+   }
+   if(fxOriginalSelection>=0&&fxOriginalSelection<nativeRows().length)
+     nativeRows()[fxOriginalSelection]?.querySelector('.fx-stack-name')?.click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const chooserRestored=nativeRows().length===fxOriginalCount
+     &&chooser.disabled===(fxOriginalCount===0)
+     &&(fxOriginalSelection<0||chooser.value===String(fxOriginalSelection));
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
@@ -1230,7 +1273,8 @@ async function run(){
      barsDelegated,barsProSync,barsRestored,fxBypassShown,
      fxBypassDelegated,fxStackPreserved,fxBypassProSync,fxBypassRestored,
      fxAutopilotShown,fxAutopilotDelegated,fxAutopilotDistinct,fxAutopilotProSync,
-     fxParamsReady,fxParamsDelegated,fxParamsProSync,fxParamsRestored};
+     fxParamsReady,fxParamsDelegated,fxParamsProSync,fxParamsRestored,
+     chooserReady,chooserDelegated,chooserProSync,chooserRestored};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
