@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { VISUALS, PALETTES, ACTIONS, SIMPLE_SHORTCUTS, VISUAL_TUNING, attachSimpleControls } = require('../src/simple-controls.js');
+const { VISUALS, PALETTES, AI_SPEEDS, ACTIONS, SIMPLE_SHORTCUTS, VISUAL_TUNING, attachSimpleControls } = require('../src/simple-controls.js');
 const read = p => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
 
 function element(id, dataset = {}) {
@@ -30,7 +30,7 @@ function element(id, dataset = {}) {
 }
 function fixture() {
   const ids = ['simple-control-bar', 'simple-visual', 'simple-palette',
-    'simple-ai-palette','ai-palette', ...Object.keys(ACTIONS),
+    'simple-ai-palette','ai-palette','simple-ai-speed','ai-speed', ...Object.keys(ACTIONS),
     ...Object.values(ACTIONS), 'title-status', 'track-name', 'mode-label',
     'simple-status-source', 'simple-status-track', 'simple-status-visual',
     'simple-play-pause','simple-stop','simple-seek','simple-current-time',
@@ -53,6 +53,8 @@ function fixture() {
   nodes.audio.loop=false;
   nodes['simple-ai-palette'].checked=false;
   nodes['ai-palette'].checked=false;
+  nodes['ai-speed'].value='balanced';
+  nodes['simple-ai-speed'].value='balanced';
   nodes.volume.value='85';
   nodes.intensity.value='115';nodes.intensity.min='20';nodes.intensity.max='300';
   nodes.smooth.value='75';nodes.smooth.min='0';nodes.smooth.max='94';
@@ -706,4 +708,71 @@ test('Stage 18 Simple AI palette uses real native preference and documents AI de
   assert.match(js,/nativeAutoPalette\.dispatchEvent/);
   assert.match(js,/nativeAutoPalette\?\.addEventListener\('change',syncAutoPalette\)/);
   assert.match(css,/\.simple-auto-palette/);
+});
+
+test('Stage 19 Simple AI speed delegates exactly one change to native BeatScope director',()=>{
+  const f=fixture(),native=f.nodes['ai-speed'],simple=f.nodes['simple-ai-speed'];
+  let nativeChanges=0;
+  const originalDispatch=native.dispatchEvent.bind(native);
+  native.dispatchEvent=event=>{
+    if(event.type==='change')nativeChanges++;
+    return originalDispatch(event);
+  };
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.deepEqual(AI_SPEEDS,['calm','balanced','party']);
+  assert.equal(simple.value,'balanced');
+  assert.equal(simple.disabled,false);
+  for(const [speed,count] of [['calm',1],['party',2],['balanced',3]]){
+    simple.value=speed;simple.change();
+    assert.equal(native.value,speed,'Native renderer speed '+speed);
+    assert.equal(nativeChanges,count,'Exactly one native change per real change');
+    assert.equal(simple.value,speed);
+  }
+  simple.change();
+  assert.equal(nativeChanges,3,'Duplicate selected value does not redispatch');
+  ctrl.disconnect();
+});
+
+test('Stage 19 Pro AI speed changes propagate back to Simple without a second timer',()=>{
+  const f=fixture(),native=f.nodes['ai-speed'],simple=f.nodes['simple-ai-speed'];
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  for(const speed of ['party','calm','balanced']){
+    native.value=speed;
+    native.dispatchEvent(new f.doc.defaultView.Event('change',{bubbles:true}));
+    assert.equal(simple.value,speed);
+  }
+  ctrl.disconnect();
+  native.value='party';native.change();
+  assert.equal(simple.value,'balanced','Listener is removed on disconnect');
+});
+
+test('Stage 19 unsupported or disabled AI speed never changes native preference',()=>{
+  const f=fixture(),native=f.nodes['ai-speed'],simple=f.nodes['simple-ai-speed'];
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  native.disabled=true;f.observers[0].notify();
+  assert.equal(simple.disabled,true);
+  simple.value='party';simple.change();
+  assert.equal(native.value,'balanced');
+  assert.equal(simple.value,'balanced','Rejected change rolls back to real native value');
+  native.disabled=false;f.observers[0].notify();
+  assert.equal(simple.disabled,false);
+  simple.value='invalid';simple.change();
+  assert.equal(native.value,'balanced');
+  assert.equal(simple.value,'balanced');
+  simple.value='party';simple.change();
+  assert.equal(native.value,'party');
+  ctrl.disconnect();
+});
+
+test('Stage 19 AI speed exposes the same native options with no new AI algorithm',()=>{
+  const html=read('index.html'),css=read('src/lumina-theme.css'),js=read('src/simple-controls.js');
+  assert.match(html,/id="simple-ai-speed"/);
+  assert.match(html,/id="ai-speed"/);
+  for(const value of AI_SPEEDS){
+    assert.equal((html.match(new RegExp('<option value="'+value+'"','g'))||[]).length,2,
+      'Simple and Pro speed '+value);
+  }
+  assert.match(css,/#simple-ai-speed:focus-visible/);
+  assert.match(js,/nativeAISpeed\.dispatchEvent/);
+  assert.match(js,/nativeAISpeed\?\.addEventListener\('change',syncAISpeed\)/);
 });
