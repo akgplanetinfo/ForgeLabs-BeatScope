@@ -638,3 +638,18 @@ body[data-theme="lumina-pulse"] .simple-transport-extra .simple-action:disabled{
     flex:1 1 80px;
   }
 }
+
+/* Alpha 17 stage 15: unobtrusive keyboard help for the Simple workspace. */
+body[data-theme="lumina-pulse"] .simple-keyboard-hint{
+  display:flex;align-items:center;flex-wrap:wrap;gap:7px 10px;
+  width:100%;padding:7px 10px;border:1px solid #224450;border-radius:3px;
+  color:#a9cad4;background:#07161e;font-size:10px;line-height:1.7;
+}
+body[data-theme="lumina-pulse"] .simple-keyboard-hint>span{
+  margin-right:4px;color:#74d5e3;font-weight:850;letter-spacing:.8px;
+}
+body[data-theme="lumina-pulse"] .simple-keyboard-hint kbd{
+  font:750 10px/1.3 inherit;color:#e3faff;white-space:nowrap;
+  border:1px solid #3c7a88;border-radius:3px;background:#122e37;
+  padding:3px 6px;box-shadow:0 1px 0 #0b3e4a;
+}
