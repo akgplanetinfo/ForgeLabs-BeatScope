@@ -698,3 +698,29 @@ body[data-theme="lumina-pulse"] #simple-palette:focus-visible{
 @media(max-width:980px){
   body[data-theme="lumina-pulse"] .simple-palette-field{flex:1 1 180px}
 }
+
+/* Alpha 17 stage 18: Simple AI palette switch shares the native BeatScope preference. */
+body[data-theme="lumina-pulse"] .simple-auto-palette{
+  display:flex;align-items:center;gap:7px 9px;flex-wrap:wrap;
+  flex:0 1 auto;min-height:36px;padding:7px 10px;
+  background:#0d252b;border:1px solid #2d6170;border-radius:3px;
+  color:#d2f1f4;font-size:11px;font-weight:740;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] .simple-auto-palette input{
+  margin:0;width:16px;height:16px;accent-color:#00d3f2;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] .simple-auto-palette small{
+  flex:1 1 100%;color:#8cbdc8;font-size:10px;font-weight:400;
+}
+body[data-theme="lumina-pulse"] .simple-auto-palette:has(input:checked){
+  border-color:#21b7cf;background:#12323e;
+}
+body[data-theme="lumina-pulse"] .simple-auto-palette:has(input:disabled){
+  opacity:.44;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] .simple-auto-palette input:focus-visible{
+  outline:2px solid #ebfdff;outline-offset:3px;
+}
+@media(max-width:680px){
+  body[data-theme="lumina-pulse"] .simple-auto-palette{flex:1 1 100%;}
+}
