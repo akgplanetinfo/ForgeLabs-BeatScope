@@ -1052,6 +1052,29 @@ async function run(){
    await new Promise(resolve=>setTimeout(resolve,30));
    const autoPaletteProSync=simpleAutoPalette.checked===originalAutoPalette
      &&nativeAutoPalette.checked===originalAutoPalette;
+   // Stage 19: use the actual AI director change handler for three speed profiles.
+   const nativeSpeed=$('ai-speed'),simpleSpeed=$('simple-ai-speed');
+   const originalSpeed=nativeSpeed.value;
+   $('studio-simple').click();
+   const aiSpeedInitialSync=simpleSpeed.value===originalSpeed;
+   simpleSpeed.value='calm';
+   simpleSpeed.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const aiSpeedDelegated=nativeSpeed.value==='calm'&&simpleSpeed.value==='calm';
+   simpleSpeed.value='party';
+   simpleSpeed.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const aiSpeedParty=nativeSpeed.value==='party'&&simpleSpeed.value==='party';
+   $('studio-pro').click();
+   nativeSpeed.value='balanced';
+   nativeSpeed.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const aiSpeedProSync=simpleSpeed.value==='balanced';
+   nativeSpeed.value=originalSpeed;
+   nativeSpeed.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const aiSpeedRestored=nativeSpeed.value===originalSpeed
+     &&simpleSpeed.value===originalSpeed;
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
@@ -1079,7 +1102,8 @@ async function run(){
      simpleKeyModifierSafe,simpleKeyProSafe,tuningVisible,
      tuningInitialSync,tuningDelegates,tuningProSync,paletteInitialSync,
      paletteDelegated,paletteProSync,paletteRestored,autoPaletteInitialSync,
-     autoPaletteDelegated,autoPaletteProSync};
+     autoPaletteDelegated,autoPaletteProSync,aiSpeedInitialSync,
+     aiSpeedDelegated,aiSpeedParty,aiSpeedProSync,aiSpeedRestored};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
