@@ -18,6 +18,9 @@ function element(id, dataset = {}) {
       toggle(name, on) { if (on) classes.add(name); else classes.delete(name); }
     },
     addEventListener(name, callback) { handlers[name] = callback; },
+    removeEventListener(name, callback) { if(handlers[name]===callback)delete handlers[name]; },
+    dispatchEvent(event) { handlers[event.type]?.(event); return true; },
+    emit(name) { handlers[name]?.({type:name}); },
     setAttribute(name, val) { attrs.set(name, String(val)); },
     getAttribute(name) { return attrs.get(name) ?? null; },
     click() { clicks += 1; handlers.click?.(); },
@@ -28,16 +31,26 @@ function element(id, dataset = {}) {
 function fixture() {
   const ids = ['simple-control-bar', 'simple-visual', ...Object.keys(ACTIONS),
     ...Object.values(ACTIONS), 'title-status', 'track-name', 'mode-label',
-    'simple-status-source', 'simple-status-track', 'simple-status-visual'];
+    'simple-status-source', 'simple-status-track', 'simple-status-visual',
+    'simple-play-pause','simple-stop','simple-seek','simple-current-time',
+    'simple-duration','play-pause','stop','seek','current-time','duration','audio'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['title-status'].textContent = 'Élő mikrofon';
   nodes['track-name'].textContent = 'teszt-zene.wav';
   nodes['mode-label'].textContent = 'ORBIT / RADIAL SPECTRUM';
+  nodes.seek.disabled=true;
+  nodes.audio.paused=true;
+  nodes.audio.ended=false;
+  nodes.audio.duration=NaN;
+  nodes.audio.currentTime=0;
+  nodes['current-time'].textContent='0:00';
+  nodes.duration.textContent='0:00';
   const sources = VISUALS.map(value => element('source-' + value, { mode: value }));
   const body = element('body');
   const doc = {
     body,
     getElementById: id => nodes[id] ?? null,
+    defaultView: { Event: class { constructor(type,opts){this.type=type;this.bubbles=opts?.bubbles;} } },
     querySelectorAll: selector => selector === '[data-mode]' ? sources : []
   };
   const observers = [];
@@ -128,4 +141,105 @@ test('Simple HUD reads original audio/track/visual labels and observes changes',
   assert.equal(f.nodes['simple-status-visual'].textContent,'SPECTRUM / REAL TIME');
   assert.ok(f.observers[0].observed.filter(([_,kind])=>kind==='text').length>=3);
   controller.disconnect();
+});
+
+test('Stage 12 Simple transport forwards clicks to original play/stop and obeys no-file state', () => {
+  const f=fixture();
+  const controller=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(f.nodes['simple-play-pause'].textContent,'♫ Zene megnyitása');
+  assert.equal(f.nodes['simple-stop'].disabled,true);
+  assert.equal(f.nodes['simple-seek'].disabled,true);
+  f.nodes['simple-play-pause'].click();
+  assert.equal(f.nodes['play-pause'].clicks,1,'Delegates native opener/play behavior');
+  f.nodes['simple-stop'].click();
+  assert.equal(f.nodes.stop.clicks,1,'Direct invocation must still forward only to native control');
+  f.nodes.seek.disabled=false;
+  f.nodes.audio.duration=120;
+  f.nodes.audio.currentTime=15;
+  f.nodes['current-time'].textContent='0:15';
+  f.nodes.duration.textContent='2:00';
+  f.nodes.audio.emit('loadedmetadata');
+  assert.equal(f.nodes['simple-play-pause'].textContent,'▶ Lejátszás');
+  assert.equal(f.nodes['simple-stop'].disabled,false);
+  assert.equal(f.nodes['simple-seek'].disabled,false);
+  assert.equal(f.nodes['simple-seek'].value,'125');
+  f.nodes.audio.paused=false;
+  f.nodes.audio.emit('play');
+  assert.equal(f.nodes['simple-play-pause'].textContent,'❚❚ Szünet');
+  assert.equal(f.nodes['simple-play-pause'].getAttribute('aria-pressed'),'true');
+  f.nodes['simple-play-pause'].click();
+  assert.equal(f.nodes['play-pause'].clicks,2);
+  f.nodes.audio.paused=true;
+  f.nodes.audio.emit('pause');
+  assert.equal(f.nodes['simple-play-pause'].getAttribute('aria-pressed'),'false');
+  assert.equal(f.nodes['simple-play-pause'].textContent,'▶ Lejátszás');
+  controller.disconnect();
+});
+
+test('Stage 12 seeking delegates original BeatScope seek input and updates accessibility', () => {
+  const f=fixture();
+  let nativeInputs=0;
+  f.nodes.seek.addEventListener('input',()=>{nativeInputs++;});
+  const controller=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-seek'].value='900';
+  f.nodes['simple-seek'].emit('input');
+  assert.equal(nativeInputs,0,'No seek while no file is loaded');
+  f.nodes.seek.disabled=false;
+  f.nodes.audio.duration=100;
+  f.nodes.audio.currentTime=25;
+  f.nodes['current-time'].textContent='0:25';
+  f.nodes.duration.textContent='1:40';
+  f.nodes.audio.emit('loadedmetadata');
+  assert.equal(f.nodes['simple-seek'].value,'250');
+  f.nodes['simple-seek'].value='600';
+  f.nodes['simple-seek'].emit('input');
+  assert.equal(nativeInputs,1);
+  assert.equal(f.nodes.seek.value,'600');
+  f.nodes.audio.currentTime=60;
+  f.nodes['current-time'].textContent='1:00';
+  f.nodes.audio.emit('timeupdate');
+  assert.equal(f.nodes['simple-seek'].value,'600');
+  assert.equal(f.nodes['simple-current-time'].textContent,'1:00');
+  assert.equal(f.nodes['simple-duration'].textContent,'1:40');
+  assert.equal(f.nodes['simple-seek'].getAttribute('aria-valuetext'),'1:00 / 1:40');
+  controller.disconnect();
+});
+
+test('Stage 12 microphone and invalid metadata cannot seek a file timeline', () => {
+  const f=fixture();
+  f.nodes.seek.disabled=false;
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(f.nodes['simple-seek'].disabled,true,'Metadata missing');
+  f.nodes.audio.duration=Infinity;
+  f.nodes.audio.emit('durationchange');
+  assert.equal(f.nodes['simple-seek'].disabled,true,'Invalid duration');
+  f.nodes.audio.duration=90;
+  f.nodes.microphone.classList.toggle('active',true);
+  f.observers[0].notify();
+  assert.equal(f.nodes['simple-seek'].disabled,true,'Live microphone has no file seek');
+  assert.equal(f.nodes['simple-play-pause'].textContent,'■ Mikrofon leállítása');
+  f.nodes['simple-play-pause'].click();
+  assert.equal(f.nodes['play-pause'].clicks,1,'Native Mic stop action');
+  f.nodes.microphone.classList.toggle('active',false);
+  f.nodes.audio.paused=false;
+  f.nodes.audio.ended=true;
+  f.nodes.audio.emit('ended');
+  assert.equal(f.nodes['simple-play-pause'].textContent,'▶ Lejátszás');
+  f.nodes['play-pause'].disabled=true;
+  f.nodes.stop.disabled=true;
+  f.observers[0].notify();
+  assert.equal(f.nodes['simple-play-pause'].disabled,true);
+  assert.equal(f.nodes['simple-stop'].disabled,true);
+  ctrl.disconnect();
+});
+
+test('Stage 12 real HTML includes Simple playback and timeline controls, original player retained',()=>{
+  const html=read('index.html'),css=read('src/lumina-theme.css'),js=read('src/simple-controls.js');
+  for(const id of ['simple-transport','simple-play-pause','simple-stop',
+    'simple-seek','simple-current-time','simple-duration',
+    'play-pause','stop','seek','audio'])
+    assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
+  assert.match(css,/data-studio-mode="simple"\] \.simple-control-bar/);
+  assert.match(css,/\.simple-transport/);
+  assert.match(js,/nativeSeek\.dispatchEvent/);
 });
