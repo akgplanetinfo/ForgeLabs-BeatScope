@@ -539,7 +539,7 @@ test('Stage 16 Simple visual intensity and smoothing use native BeatScope input 
     };
   }
   const ctrl=attachSimpleControls(f.doc,f.Observer);
-  assert.deepEqual(VISUAL_TUNING.map(entry=>entry[1]),['intensity','smooth']);
+  assert.deepEqual(VISUAL_TUNING.slice(0,2).map(entry=>entry[1]),['intensity','smooth']);
   assert.equal(f.nodes['simple-intensity'].value,'115');
   assert.equal(f.nodes['simple-smooth'].value,'75');
   f.nodes['simple-intensity'].value='185';
@@ -848,10 +848,14 @@ test('Stage 20 background grid is in the original Electron renderer without a ne
 test('Stage 21 Simple Spectrum Bars count delegates to native visual engine exactly once',()=>{
   const f=fixture(),native=f.nodes['bars-count'],quick=f.nodes['simple-bars-count'];
   let nativeInputs=0;
-  native.addEventListener('input',()=>{
-    nativeInputs++;
-    f.nodes['bars-val'].textContent=native.value;
-  });
+  const originalDispatch=native.dispatchEvent.bind(native);
+  native.dispatchEvent=event=>{
+    if(event.type==='input'){
+      nativeInputs++;
+      f.nodes['bars-val'].textContent=native.value;
+    }
+    return originalDispatch(event);
+  };
   const ctrl=attachSimpleControls(f.doc,f.Observer);
   assert.ok(VISUAL_TUNING.some(([quickId,nativeId])=>
     quickId==='simple-bars-count'&&nativeId==='bars-count'));
