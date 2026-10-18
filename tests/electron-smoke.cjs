@@ -1138,6 +1138,27 @@ async function run(){
      &&simpleBypass.getAttribute('aria-pressed')===originalBypass;
    const fxBypassRestored=$('fx-stack-count').textContent===originalFXCount
      &&$('fx-stack').children.length===originalFXItems;
+   // Stage 23: real FX Autopilot, separate from AI Visual Director and FX bypass.
+   const nativeFXAuto=$('fx-auto'),simpleFXAuto=$('simple-fx-auto');
+   const originalFXAuto=nativeFXAuto.getAttribute('aria-checked');
+   const originalDirector=$('ai-toggle').getAttribute('aria-checked');
+   const originalFXBypass=nativeBypass.getAttribute('aria-pressed');
+   $('studio-simple').click();
+   const fxAutopilotShown=getComputedStyle(simpleFXAuto).display!=='none'
+     &&simpleFXAuto.getAttribute('aria-checked')===originalFXAuto
+     &&!simpleFXAuto.disabled;
+   simpleFXAuto.click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fxAutopilotDelegated=nativeFXAuto.getAttribute('aria-checked')!==originalFXAuto
+     &&simpleFXAuto.getAttribute('aria-checked')===nativeFXAuto.getAttribute('aria-checked')
+     &&simpleFXAuto.textContent.includes(nativeFXAuto.getAttribute('aria-checked')==='true'?'BE':'KI');
+   const fxAutopilotDistinct=$('ai-toggle').getAttribute('aria-checked')===originalDirector
+     &&nativeBypass.getAttribute('aria-pressed')===originalFXBypass;
+   $('studio-pro').click();
+   nativeFXAuto.click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fxAutopilotProSync=nativeFXAuto.getAttribute('aria-checked')===originalFXAuto
+     &&simpleFXAuto.getAttribute('aria-checked')===originalFXAuto;
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
@@ -1169,7 +1190,8 @@ async function run(){
      aiSpeedDelegated,aiSpeedParty,aiSpeedProSync,aiSpeedRestored,
      gridInitialSync,gridDelegated,gridProSync,barsInitialSync,
      barsDelegated,barsProSync,barsRestored,fxBypassShown,
-     fxBypassDelegated,fxStackPreserved,fxBypassProSync,fxBypassRestored};
+     fxBypassDelegated,fxStackPreserved,fxBypassProSync,fxBypassRestored,
+     fxAutopilotShown,fxAutopilotDelegated,fxAutopilotDistinct,fxAutopilotProSync};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
