@@ -1163,7 +1163,7 @@ async function run(){
    const nativeWet=$('fx-wet'),nativeStrength=$('fx-strength');
    const originalWet=nativeWet.value,originalStrength=nativeStrength.value;
    const originalFXStack=$('fx-stack-count').textContent;
-   const originalFXCount=$('fx-stack').children.length;
+   const originalSelectedFXCount=$('fx-stack').children.length;
    $('studio-simple').click();
    const fxParamsReady=!nativeWet.disabled&&!nativeStrength.disabled
      &&!$('simple-fx-wet').disabled&&!$('simple-fx-strength').disabled
@@ -1196,7 +1196,7 @@ async function run(){
      &&$('simple-fx-wet').value===originalWet
      &&$('simple-fx-strength').value===originalStrength
      &&$('fx-stack-count').textContent===originalFXStack
-     &&$('fx-stack').children.length===originalFXCount;
+     &&$('fx-stack').children.length===originalSelectedFXCount;
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
