@@ -1075,6 +1075,22 @@ async function run(){
    await new Promise(resolve=>setTimeout(resolve,30));
    const aiSpeedRestored=nativeSpeed.value===originalSpeed
      &&simpleSpeed.value===originalSpeed;
+   // Stage 20: verify real background grid setting is shared between both modes.
+   const nativeGrid=$('show-grid'),simpleGrid=$('simple-show-grid');
+   const originalGrid=nativeGrid.checked;
+   $('studio-simple').click();
+   const gridInitialSync=simpleGrid.checked===originalGrid&&!simpleGrid.disabled;
+   simpleGrid.checked=!originalGrid;
+   simpleGrid.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const gridDelegated=nativeGrid.checked!==originalGrid
+     &&simpleGrid.checked===nativeGrid.checked;
+   $('studio-pro').click();
+   nativeGrid.checked=originalGrid;
+   nativeGrid.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const gridProSync=simpleGrid.checked===originalGrid
+     &&nativeGrid.checked===originalGrid;
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
@@ -1103,7 +1119,8 @@ async function run(){
      tuningInitialSync,tuningDelegates,tuningProSync,paletteInitialSync,
      paletteDelegated,paletteProSync,paletteRestored,autoPaletteInitialSync,
      autoPaletteDelegated,autoPaletteProSync,aiSpeedInitialSync,
-     aiSpeedDelegated,aiSpeedParty,aiSpeedProSync,aiSpeedRestored};
+     aiSpeedDelegated,aiSpeedParty,aiSpeedProSync,aiSpeedRestored,
+     gridInitialSync,gridDelegated,gridProSync};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
