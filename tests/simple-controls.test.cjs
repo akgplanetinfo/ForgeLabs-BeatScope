@@ -23,6 +23,7 @@ function element(id, dataset = {}) {
     emit(name) { handlers[name]?.({type:name}); },
     setAttribute(name, val) { attrs.set(name, String(val)); },
     getAttribute(name) { return attrs.get(name) ?? null; },
+    replaceChildren(...items) { this.children=items; },
     click() { clicks += 1; handlers.click?.(); },
     change() { handlers.change?.(); },
     get clicks() { return clicks; }
@@ -43,7 +44,7 @@ function fixture() {
     'bars-count','bars-val','simple-bars-count','simple-bars-value',
     'simple-fx-wet','fx-wet','simple-fx-wet-value','fx-wet-value',
     'simple-fx-strength','fx-strength','simple-fx-strength-value','fx-strength-value',
-    'simple-fx-selection','fx-stack'];
+    'simple-fx-selection','fx-stack','simple-fx-picker'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['title-status'].textContent = 'Élő mikrofon';
   nodes['track-name'].textContent = 'teszt-zene.wav';
@@ -79,6 +80,7 @@ function fixture() {
   const sources = VISUALS.map(value => element('source-' + value, { mode: value }));
   const swatches = PALETTES.map(value => element('swatch-' + value, { palette: value }));
   swatches[0].classList.toggle('selected',true);
+  const fxRows=[];
   const body = element('body'),docHandlers=new Map();
   const doc = {
     body,
@@ -88,10 +90,14 @@ function fixture() {
       if(docHandlers.get(name)===callback)docHandlers.delete(name);
     },
     getElementById: id => nodes[id] ?? null,
+    createElement: tag => element(tag),
     defaultView: { Event: class { constructor(type,opts){this.type=type;this.bubbles=opts?.bubbles;} } },
     querySelectorAll: selector => selector === '[data-mode]' ? sources :
-      selector === '[data-palette]' ? swatches : [],
-    querySelector:()=>null
+      selector === '[data-palette]' ? swatches :
+      selector === '#fx-stack .fx-stack-entry' ? fxRows : [],
+    querySelector:selector => selector === '#fx-stack .fx-stack-entry.selected .fx-stack-name'
+      ?fxRows.find(row=>row.classList.contains('selected'))?.querySelector('.fx-stack-name')??null
+      :null
   };
   function key(char,extras={}) {
     let prevented=false,stopped=false;
@@ -107,7 +113,7 @@ function fixture() {
     disconnect() { this.disconnected = true; }
     notify() { this.callback(); }
   }
-  return { nodes, sources, swatches, body, doc, Observer, observers, key, docHandlers };
+  return { nodes, sources, swatches, fxRows, body, doc, Observer, observers, key, docHandlers };
 }
 
 test('Simple shortcuts forward real user clicks to working BeatScope handlers', () => {
@@ -1169,4 +1175,112 @@ test('Stage 24 Simple FX parameter panel reuses native Pro effects and keeps it 
   assert.match(js,/native\.dispatchEvent\(new NativeEvent\('input'/);
   assert.match(js,/function syncFXParams\(\)/);
   assert.match(css,/\.simple-fx-parameters/);
+});
+
+function addFXRow(f,name,wet,strength,selected=false){
+  const row=element('fx-row'),button=element('fx-name');
+  button.textContent=name;
+  row.classList.toggle('selected',selected);
+  row.querySelector=selector=>selector==='.fx-stack-name'?button:null;
+  row.nativeNameButton=button;
+  const index=f.fxRows.length;
+  button.addEventListener('click',()=>{
+    for(const item of f.fxRows)item.classList.toggle('selected',item===row);
+    f.nodes['fx-wet'].disabled=false;
+    f.nodes['fx-strength'].disabled=false;
+    f.nodes['fx-wet'].value=String(wet);
+    f.nodes['fx-strength'].value=String(strength);
+    f.nodes['fx-wet-value'].textContent=wet+'%';
+    f.nodes['fx-strength-value'].textContent=strength+'%';
+  });
+  f.fxRows.push(row);
+  return row;
+}
+
+test('Stage 25 Empty native FX stack shows disabled Simple chooser without fabricated effects',()=>{
+  const f=fixture(),ctrl=attachSimpleControls(f.doc,f.Observer);
+  const picker=f.nodes['simple-fx-picker'];
+  assert.equal(picker.disabled,true);
+  assert.equal(picker.value,'');
+  assert.equal(picker.children.length,1);
+  assert.match(picker.children[0].textContent,/Nincs hozzáadott effekt/);
+  assert.equal(f.nodes['simple-fx-wet'].disabled,true);
+  ctrl.disconnect();
+});
+
+test('Stage 25 Simple chooser selects real Pro FX and switches parameter context',()=>{
+  const f=fixture();
+  const first=addFXRow(f,'Hue Rotate',25,120,true);
+  const second=addFXRow(f,'Glow',75,160);
+  const third=addFXRow(f,'Blur',40,90);
+  first.nativeNameButton.click();
+  const ctrl=attachSimpleControls(f.doc,f.Observer),picker=f.nodes['simple-fx-picker'];
+  assert.equal(picker.disabled,false);
+  assert.deepEqual(picker.children.map(item=>item.value),['0','1','2']);
+  assert.deepEqual(picker.children.map(item=>item.textContent),
+    ['1. Hue Rotate','2. Glow','3. Blur']);
+  assert.equal(picker.value,'0');
+  picker.value='1';picker.change();
+  assert.equal(second.nativeNameButton.clicks,1,'Calls original Pro selection button');
+  assert.equal(picker.value,'1');
+  assert.equal(f.nodes['simple-fx-selection'].textContent,'Glow');
+  assert.equal(f.nodes['simple-fx-wet'].value,'75');
+  assert.equal(f.nodes['simple-fx-strength'].value,'160');
+  picker.value='2';picker.change();
+  assert.equal(third.nativeNameButton.clicks,1);
+  assert.equal(f.nodes['simple-fx-selection'].textContent,'Blur');
+  assert.equal(f.nodes['simple-fx-strength'].value,'90');
+  ctrl.disconnect();
+});
+
+test('Stage 25 Pro selection, rename, reorder and remove refresh Simple chooser',()=>{
+  const f=fixture();
+  const hue=addFXRow(f,'Hue Rotate',40,100,true);
+  const glow=addFXRow(f,'Glow',66,120);
+  hue.nativeNameButton.click();
+  const ctrl=attachSimpleControls(f.doc,f.Observer),picker=f.nodes['simple-fx-picker'];
+  glow.nativeNameButton.click();f.observers[0].notify();
+  assert.equal(picker.value,'1');
+  assert.equal(f.nodes['simple-fx-selection'].textContent,'Glow');
+  glow.nativeNameButton.textContent='Glow - edited';
+  f.fxRows.reverse();f.observers[0].notify();
+  assert.equal(picker.value,'0','Selected row follows native reorder');
+  assert.equal(picker.children[0].textContent,'1. Glow - edited');
+  f.fxRows.splice(0,1);hue.nativeNameButton.click();f.observers[0].notify();
+  assert.deepEqual(picker.children.map(x=>x.textContent),['1. Hue Rotate']);
+  assert.equal(picker.value,'0');
+  f.fxRows.splice(0,1);
+  f.nodes['fx-wet'].disabled=true;f.nodes['fx-strength'].disabled=true;
+  f.observers[0].notify();
+  assert.equal(picker.disabled,true);
+  assert.equal(picker.children.length,1);
+  assert.equal(picker.value,'');
+  ctrl.disconnect();
+});
+
+test('Stage 25 invalid, stale or disabled FX options cannot invoke another effect',()=>{
+  const f=fixture();
+  const first=addFXRow(f,'Glow',30,50,true);
+  const second=addFXRow(f,'Echo',60,90);
+  first.nativeNameButton.click();
+  const ctrl=attachSimpleControls(f.doc,f.Observer),picker=f.nodes['simple-fx-picker'];
+  for(const invalid of ['-1','123','1evil','unknown','']){
+    picker.value=invalid;picker.change();
+    assert.equal(second.nativeNameButton.clicks,0,'Reject '+invalid);
+    assert.equal(picker.value,'0','Restore native selected FX');
+  }
+  second.nativeNameButton.disabled=true;
+  picker.value='1';picker.change();
+  assert.equal(second.nativeNameButton.clicks,0);
+  assert.equal(picker.value,'0');
+  ctrl.disconnect();
+});
+
+test('Stage 25 FX picker reuses the actual Pro effect name buttons and observes native stack',()=>{
+  const html=read('index.html'),js=read('src/simple-controls.js'),css=read('src/lumina-theme.css');
+  assert.match(html,/id="simple-fx-picker"/);
+  assert.match(html,/Nincs hozzáadott effekt/);
+  assert.match(js,/\.querySelector\?\.\('\.fx-stack-name'\)/);
+  assert.match(js,/original\.click\(\)/);
+  assert.match(css,/#simple-fx-picker:focus-visible/);
 });
