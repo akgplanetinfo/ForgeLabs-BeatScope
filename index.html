@@ -154,6 +154,22 @@
             <output id="simple-bars-value" for="simple-bars-count">56</output>
           </div>
         </div>
+        <div class="simple-fx-parameters" role="group" aria-label="Kiválasztott Pro effekt finomhangolása">
+          <div class="simple-fx-parameters-head">
+            <strong>✦ FX finomhangolás</strong>
+            <span id="simple-fx-selection" aria-live="polite">Válassz egy effektet Pro módban</span>
+          </div>
+          <div class="simple-tuning-field">
+            <label for="simple-fx-wet">FX keverés (Dry/Wet)</label>
+            <input id="simple-fx-wet" type="range" min="0" max="100" value="100" step="1" disabled aria-label="Kiválasztott effekt Dry/Wet keverése" />
+            <output for="simple-fx-wet" id="simple-fx-wet-value">—</output>
+          </div>
+          <div class="simple-tuning-field">
+            <label for="simple-fx-strength">FX erősség</label>
+            <input id="simple-fx-strength" type="range" min="0" max="200" value="100" step="1" disabled aria-label="Kiválasztott effekt erőssége" />
+            <output for="simple-fx-strength" id="simple-fx-strength-value">—</output>
+          </div>
+        </div>
         <label class="simple-grid-toggle" for="simple-show-grid">
           <input id="simple-show-grid" type="checkbox" checked />
           <span>▦ Finom háttérrács</span>
