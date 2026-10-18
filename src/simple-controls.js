@@ -30,6 +30,8 @@
     const nativeAutoPalette = get('ai-palette');
     const simpleAISpeed = get('simple-ai-speed');
     const nativeAISpeed = get('ai-speed');
+    const simpleGrid = get('simple-show-grid');
+    const nativeGrid = get('show-grid');
     if (!visual) return null;
 
     for (const [quickId, sourceId] of Object.entries(ACTIONS)) {
@@ -99,6 +101,25 @@
       syncAISpeed();
     });
     nativeAISpeed?.addEventListener('change',syncAISpeed);
+
+    // Stage 20: use the renderer's original showGrid change handler and
+    // settings persistence, without a duplicate renderer or stored preference.
+    function syncGrid(){
+      if(!simpleGrid)return;
+      simpleGrid.disabled=!nativeGrid||Boolean(nativeGrid.disabled);
+      if(nativeGrid)simpleGrid.checked=Boolean(nativeGrid.checked);
+    }
+    simpleGrid?.addEventListener('change',()=>{
+      if(!nativeGrid||nativeGrid.disabled){syncGrid();return;}
+      const wanted=Boolean(simpleGrid.checked);
+      if(nativeGrid.checked!==wanted){
+        nativeGrid.checked=wanted;
+        const NativeEvent=doc.defaultView?.Event;
+        if(NativeEvent)nativeGrid.dispatchEvent(new NativeEvent('change',{bubbles:true}));
+      }
+      syncGrid();
+    });
+    nativeGrid?.addEventListener('change',syncGrid);
 
     // Stage 12: transport is a thin adapter to BeatScope's existing player/seek.
     const audio = get('audio');
@@ -276,6 +297,7 @@
       if (palette && selectedPalette) palette.value = selectedPalette.dataset.palette;
       syncAutoPalette();
       syncAISpeed();
+      syncGrid();
 
       const ai = get('ai-toggle')?.getAttribute('aria-checked') === 'true';
       const microphone = Boolean(get('microphone')?.classList.contains('active'));
@@ -304,6 +326,7 @@
       observe(get('ai-toggle'), 'aria-checked');
       observe(nativeAutoPalette, 'disabled');
       observe(nativeAISpeed, 'disabled');
+      observe(nativeGrid, 'disabled');
       observe(get('microphone'), 'class');
       observe(get('seek'), 'disabled');
       observe(get('play-pause'), 'disabled');
@@ -336,6 +359,7 @@
       doc.removeEventListener?.('keydown',onSimpleKeydown,true);
       nativeAutoPalette?.removeEventListener?.('change',syncAutoPalette);
       nativeAISpeed?.removeEventListener?.('change',syncAISpeed);
+      nativeGrid?.removeEventListener?.('change',syncGrid);
       for(const [,nativeId] of VISUAL_TUNING)get(nativeId)?.removeEventListener?.('input',syncVisualTuning);
     } };
   }
