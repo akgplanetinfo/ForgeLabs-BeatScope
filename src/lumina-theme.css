@@ -795,3 +795,18 @@ body[data-theme="lumina-pulse"] #simple-fx-bypass:disabled{
 body[data-theme="lumina-pulse"] #simple-fx-bypass:focus-visible{
   outline:2px solid #e5fbff;outline-offset:2px;
 }
+
+/* Alpha 17 stage 23: separate, real 120-effect FX Autopilot switch. */
+body[data-theme="lumina-pulse"] #simple-fx-auto{
+  min-width:164px;border-color:#356c81;white-space:nowrap;
+}
+body[data-theme="lumina-pulse"] #simple-fx-auto[aria-checked="true"]{
+  color:#bafcff;border-color:#00cbe8;background:#0b475a;
+  box-shadow:inset 0 0 0 1px #006f82;
+}
+body[data-theme="lumina-pulse"] #simple-fx-auto:disabled{
+  opacity:.42;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-fx-auto:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:2px;
+}
