@@ -40,7 +40,10 @@ function fixture() {
     'previous','next','repeat','simple-previous','simple-next','simple-repeat',
     'intensity','smooth','intensity-val','smooth-val',
     'simple-intensity','simple-smooth','simple-intensity-value','simple-smooth-value',
-    'bars-count','bars-val','simple-bars-count','simple-bars-value'];
+    'bars-count','bars-val','simple-bars-count','simple-bars-value',
+    'simple-fx-wet','fx-wet','simple-fx-wet-value','fx-wet-value',
+    'simple-fx-strength','fx-strength','simple-fx-strength-value','fx-strength-value',
+    'simple-fx-selection','fx-stack'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['title-status'].textContent = 'Élő mikrofon';
   nodes['track-name'].textContent = 'teszt-zene.wav';
@@ -66,6 +69,10 @@ function fixture() {
   nodes['bars-count'].max='128';nodes['bars-count'].step='8';
   nodes['intensity-val'].textContent='115%';nodes['smooth-val'].textContent='75%';
   nodes['bars-val'].textContent='56';
+  nodes['fx-wet'].value='100';nodes['fx-wet'].min='0';nodes['fx-wet'].max='100';
+  nodes['fx-strength'].value='100';nodes['fx-strength'].min='0';nodes['fx-strength'].max='200';
+  nodes['fx-wet'].disabled=true;nodes['fx-strength'].disabled=true;
+  nodes['fx-wet-value'].textContent='100%';nodes['fx-strength-value'].textContent='100%';
   nodes['simple-volume'].value='85';
   nodes['current-time'].textContent='0:00';
   nodes.duration.textContent='0:00';
@@ -1066,4 +1073,100 @@ test('Stage 23 dedicated FX Autopilot is distinct from AI Visual Director in ren
   assert.match(html,/120 FX Autopilot/);
   assert.match(js,/nativeFXAuto\?\.addEventListener\('click',syncFXAutopilot\)/);
   assert.match(css,/#simple-fx-auto\[aria-checked="true"\]/);
+});
+
+test('Stage 24 Simple FX parameters are unavailable until Pro selects an effect',()=>{
+  const f=fixture();
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  for(const id of ['simple-fx-wet','simple-fx-strength'])
+    assert.equal(f.nodes[id].disabled,true,id);
+  assert.equal(f.nodes['simple-fx-wet-value'].textContent,'—');
+  assert.equal(f.nodes['simple-fx-strength-value'].textContent,'—');
+  assert.equal(f.nodes['simple-fx-selection'].textContent,'Válassz egy effektet Pro módban');
+  f.nodes['simple-fx-wet'].value='24';f.nodes['simple-fx-wet'].emit('input');
+  assert.equal(f.nodes['fx-wet'].value,'100','Disabled FX cannot be edited');
+  ctrl.disconnect();
+});
+
+test('Stage 24 Simple Wet/Dry and strength forward native inputs to the selected FX',()=>{
+  const f=fixture();
+  f.nodes['fx-wet'].disabled=false;
+  f.nodes['fx-strength'].disabled=false;
+  const nativeInputs={wet:0,strength:0};
+  for(const [id,name] of [['fx-wet','wet'],['fx-strength','strength']]){
+    const control=f.nodes[id],original=control.dispatchEvent.bind(control);
+    control.dispatchEvent=ev=>{
+      if(ev.type==='input'){
+        nativeInputs[name]++;
+        f.nodes[id+'-value'].textContent=control.value+'%';
+      }
+      return original(ev);
+    };
+  }
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(f.nodes['simple-fx-wet'].disabled,false);
+  assert.equal(f.nodes['simple-fx-strength'].disabled,false);
+  assert.equal(f.nodes['simple-fx-selection'].textContent,'Kiválasztott Pro effekt');
+  f.nodes['simple-fx-wet'].value='38';f.nodes['simple-fx-wet'].emit('input');
+  assert.equal(f.nodes['fx-wet'].value,'38');
+  assert.equal(nativeInputs.wet,1,'One event to native Wet/Dry');
+  assert.equal(f.nodes['simple-fx-wet-value'].textContent,'38%');
+  assert.equal(f.nodes['simple-fx-wet'].getAttribute('aria-valuetext'),'38%');
+  f.nodes['simple-fx-strength'].value='145';f.nodes['simple-fx-strength'].emit('input');
+  assert.equal(f.nodes['fx-strength'].value,'145');
+  assert.equal(nativeInputs.strength,1,'One event to native Strength');
+  assert.equal(f.nodes['simple-fx-strength-value'].textContent,'145%');
+  ctrl.disconnect();
+});
+
+test('Stage 24 native Pro FX parameter changes and selection refresh synchronize Simple',()=>{
+  const f=fixture();
+  const wet=f.nodes['fx-wet'],strength=f.nodes['fx-strength'];
+  wet.disabled=false;strength.disabled=false;
+  wet.value='32';strength.value='175';
+  f.nodes['fx-wet-value'].textContent='32%';
+  f.nodes['fx-strength-value'].textContent='175%';
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(f.nodes['simple-fx-wet'].value,'32');
+  assert.equal(f.nodes['simple-fx-strength'].value,'175');
+  wet.value='81';f.nodes['fx-wet-value'].textContent='81%';
+  wet.dispatchEvent(new f.doc.defaultView.Event('input',{bubbles:true}));
+  assert.equal(f.nodes['simple-fx-wet'].value,'81');
+  f.nodes['fx-wet-value'].textContent='81%';
+  strength.value='115';f.nodes['fx-strength-value'].textContent='115%';
+  strength.dispatchEvent(new f.doc.defaultView.Event('input',{bubbles:true}));
+  assert.equal(f.nodes['simple-fx-strength'].value,'115');
+  assert.ok(f.observers[0].observed.some(([node])=>node===f.nodes['fx-stack']),
+    'FX selection stack must be observed');
+  strength.disabled=true;f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-wet'].disabled,true,'No complete FX selection');
+  assert.equal(f.nodes['simple-fx-strength'].disabled,true);
+  assert.equal(f.nodes['simple-fx-selection'].textContent,'Válassz egy effektet Pro módban');
+  ctrl.disconnect();
+});
+
+test('Stage 24 invalid/clamped FX values and native disabled state cannot corrupt settings',()=>{
+  const f=fixture(),wet=f.nodes['fx-wet'],strength=f.nodes['fx-strength'];
+  wet.disabled=false;strength.disabled=false;
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-strength'].value='999';f.nodes['simple-fx-strength'].emit('input');
+  assert.equal(strength.value,'200');
+  f.nodes['simple-fx-wet'].value='-20';f.nodes['simple-fx-wet'].emit('input');
+  assert.equal(wet.value,'0');
+  f.nodes['simple-fx-wet'].value='invalid';f.nodes['simple-fx-wet'].emit('input');
+  assert.equal(wet.value,'0');
+  wet.disabled=true;f.observers[0].notify();
+  f.nodes['simple-fx-strength'].value='130';f.nodes['simple-fx-strength'].emit('input');
+  assert.equal(strength.value,'200','No selected FX should be editable');
+  ctrl.disconnect();
+});
+
+test('Stage 24 Simple FX parameter panel reuses native Pro effects and keeps it separate from visuals',()=>{
+  const html=read('index.html'),js=read('src/simple-controls.js'),css=read('src/lumina-theme.css');
+  for(const id of ['simple-fx-wet','simple-fx-strength','simple-fx-selection','fx-wet','fx-strength'])
+    assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
+  assert.match(html,/Válassz egy effektet Pro módban/);
+  assert.match(js,/native\.dispatchEvent\(new NativeEvent\('input'/);
+  assert.match(js,/function syncFXParams\(\)/);
+  assert.match(css,/\.simple-fx-parameters/);
 });
