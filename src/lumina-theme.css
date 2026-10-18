@@ -744,3 +744,26 @@ body[data-theme="lumina-pulse"] #simple-ai-speed:focus-visible{
 @media(max-width:680px){
   body[data-theme="lumina-pulse"] .simple-ai-speed-field{flex:1 1 100%;}
 }
+
+/* Alpha 17 stage 20: one-click native background grid preference in Simple. */
+body[data-theme="lumina-pulse"] .simple-grid-toggle{
+  display:flex;align-items:center;gap:7px 10px;flex-wrap:wrap;
+  width:100%;min-height:37px;padding:8px 12px;
+  background:#0d252b;border:1px solid #2b5b67;border-radius:3px;
+  color:#d4f2f5;font-size:11px;font-weight:750;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] .simple-grid-toggle input{
+  width:16px;height:16px;margin:0;accent-color:#00d3f2;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] .simple-grid-toggle small{
+  color:#91c0ca;font-size:10px;font-weight:400;
+}
+body[data-theme="lumina-pulse"] .simple-grid-toggle:has(input:checked){
+  background:#12303a;border-color:#28798b;
+}
+body[data-theme="lumina-pulse"] .simple-grid-toggle:has(input:disabled){
+  opacity:.45;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] .simple-grid-toggle input:focus-visible{
+  outline:2px solid #edfdff;outline-offset:3px;
+}
