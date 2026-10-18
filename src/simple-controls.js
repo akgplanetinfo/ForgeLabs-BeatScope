@@ -17,7 +17,8 @@
   });
   const VISUAL_TUNING = Object.freeze([
     ['simple-intensity','intensity','simple-intensity-value','intensity-val'],
-    ['simple-smooth','smooth','simple-smooth-value','smooth-val']
+    ['simple-smooth','smooth','simple-smooth-value','smooth-val'],
+    ['simple-bars-count','bars-count','simple-bars-value','bars-val']
   ]);
 
   function attachSimpleControls(doc, ObserverClass = doc?.defaultView?.MutationObserver) {
@@ -274,7 +275,12 @@
         const n=Number(quick.value);
         if(!Number.isFinite(n))return;
         const min=Number(native.min),max=Number(native.max);
-        native.value=String(Math.max(min,Math.min(max,n)));
+        const clamped=Math.max(min,Math.min(max,n));
+        // Spectrum density is quantized to the native 8-bar steps.
+        const step=Number(native.step);
+        native.value=String(Number.isFinite(step)&&step>0
+          ?Math.max(min,Math.min(max,min+Math.round((clamped-min)/step)*step))
+          :clamped);
         const NativeEvent=doc.defaultView?.Event;
         if(NativeEvent)native.dispatchEvent(new NativeEvent('input',{bubbles:true}));
         syncVisualTuning();
