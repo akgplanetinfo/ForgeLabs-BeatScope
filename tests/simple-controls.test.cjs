@@ -652,9 +652,15 @@ test('Stage 17 palette exists in actual renderer, with original palette retained
 test('Stage 18 Simple auto palette delegates a single native change and syncs both modes',()=>{
   const f=fixture();
   let nativeChanges=0;
-  f.nodes['ai-palette'].addEventListener('change',()=>{nativeChanges++;});
+  const native=f.nodes['ai-palette'];
+  const originalDispatch=native.dispatchEvent.bind(native);
+  // Count DOM dispatches without overriding the fixture's single listener slot.
+  native.dispatchEvent=event=>{
+    if(event.type==='change')nativeChanges++;
+    return originalDispatch(event);
+  };
   const ctrl=attachSimpleControls(f.doc,f.Observer);
-  const simple=f.nodes['simple-ai-palette'],native=f.nodes['ai-palette'];
+  const simple=f.nodes['simple-ai-palette'];
   assert.equal(simple.checked,false);
   assert.equal(simple.disabled,false);
   simple.checked=true;simple.change();
@@ -664,10 +670,10 @@ test('Stage 18 Simple auto palette delegates a single native change and syncs bo
   assert.equal(simple.disabled,false);
   simple.change();
   assert.equal(nativeChanges,1,'Unchanged value never dispatches duplicate change');
-  native.checked=false;native.change();
+  native.checked=false;native.dispatchEvent(new f.doc.defaultView.Event('change',{bubbles:true}));
   assert.equal(nativeChanges,2);
   assert.equal(simple.checked,false,'Pro mode change must sync the Simple control');
-  native.checked=true;native.change();
+  native.checked=true;native.dispatchEvent(new f.doc.defaultView.Event('change',{bubbles:true}));
   assert.equal(nativeChanges,3);
   assert.equal(simple.checked,true);
   ctrl.disconnect();
