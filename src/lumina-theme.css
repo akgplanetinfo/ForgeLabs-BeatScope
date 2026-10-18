@@ -547,3 +547,37 @@ body[data-theme="lumina-pulse"] .pro-favorites-order :is(button,select):focus-vi
   }
   body[data-theme="lumina-pulse"] #pro-favorites-select{flex:1 1 auto;max-width:none;}
 }
+
+/* Alpha 17 stage 12: real Simple Mode transport (same native BeatScope player). */
+body[data-theme="lumina-pulse"] .simple-transport{
+  display:flex;align-items:center;gap:9px 11px;flex-wrap:wrap;width:100%;
+  padding:10px 12px;background:#09202a;border:1px solid #266472;border-radius:3px;
+}
+body[data-theme="lumina-pulse"] #simple-play-pause{
+  min-width:128px;background:#075064;border-color:#00c9e6;color:#ddfcff;
+}
+body[data-theme="lumina-pulse"] #simple-stop{
+  min-width:68px;
+}
+body[data-theme="lumina-pulse"] .simple-transport .simple-action:disabled{
+  opacity:.42;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] .simple-time{
+  font-size:12px;font-weight:720;color:#c7e9ee;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+body[data-theme="lumina-pulse"] #simple-seek{
+  flex:1 1 180px;min-width:100px;accent-color:#00d3f2;
+  height:22px;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] #simple-seek:disabled{
+  opacity:.43;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-seek:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:3px;
+}
+@media(max-width:600px){
+  body[data-theme="lumina-pulse"] .simple-transport{gap:8px;}
+  body[data-theme="lumina-pulse"] #simple-play-pause{flex:1 1 160px;}
+  body[data-theme="lumina-pulse"] #simple-seek{flex:1 1 100%;}
+}
