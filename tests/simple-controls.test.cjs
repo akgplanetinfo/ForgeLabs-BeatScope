@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { VISUALS, ACTIONS, attachSimpleControls } = require('../src/simple-controls.js');
+const { VISUALS, ACTIONS, SIMPLE_SHORTCUTS, attachSimpleControls } = require('../src/simple-controls.js');
 const read = p => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
 
 function element(id, dataset = {}) {
@@ -53,13 +53,26 @@ function fixture() {
   nodes['current-time'].textContent='0:00';
   nodes.duration.textContent='0:00';
   const sources = VISUALS.map(value => element('source-' + value, { mode: value }));
-  const body = element('body');
+  const body = element('body'),docHandlers=new Map();
   const doc = {
     body,
+    activeElement:null,
+    addEventListener:(name,callback)=>docHandlers.set(name,callback),
+    removeEventListener:(name,callback)=>{
+      if(docHandlers.get(name)===callback)docHandlers.delete(name);
+    },
     getElementById: id => nodes[id] ?? null,
     defaultView: { Event: class { constructor(type,opts){this.type=type;this.bubbles=opts?.bubbles;} } },
-    querySelectorAll: selector => selector === '[data-mode]' ? sources : []
+    querySelectorAll: selector => selector === '[data-mode]' ? sources : [],
+    querySelector:()=>null
   };
+  function key(char,extras={}) {
+    let prevented=false,stopped=false;
+    const event={key:char,target:{tagName:'DIV'},preventDefault(){prevented=true;},
+      stopPropagation(){stopped=true;},...extras};
+    docHandlers.get('keydown')?.(event);
+    return {prevented,stopped};
+  }
   const observers = [];
   class Observer {
     constructor(callback) { this.callback = callback; this.observed = []; observers.push(this); }
@@ -67,7 +80,7 @@ function fixture() {
     disconnect() { this.disconnected = true; }
     notify() { this.callback(); }
   }
-  return { nodes, sources, body, doc, Observer, observers };
+  return { nodes, sources, body, doc, Observer, observers, key, docHandlers };
 }
 
 test('Simple shortcuts forward real user clicks to working BeatScope handlers', () => {
@@ -415,4 +428,81 @@ test('Stage 14 HTML retains separate native source controls and visible Simple l
   assert.match(html,/Ugrás a zene végére/);
   assert.match(css,/\.simple-transport-extra/);
   assert.match(js,/get\('repeat'\)/);
+});
+
+test('Stage 15 Simple M, R, S shortcuts delegate exactly once to the native player',()=>{
+  const f=fixture();
+  f.body.dataset.studioMode='simple';
+  f.nodes.seek.disabled=false;f.nodes.audio.duration=80;
+  f.nodes.mute.addEventListener('click',()=>{
+    f.nodes.audio.muted=!f.nodes.audio.muted;f.nodes.audio.emit('volumechange');
+  });
+  f.nodes.repeat.addEventListener('click',()=>{
+    f.nodes.audio.loop=!f.nodes.audio.loop;
+    f.nodes.repeat.classList.toggle('toggled',f.nodes.audio.loop);
+  });
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.deepEqual(SIMPLE_SHORTCUTS,{m:'simple-mute',r:'simple-repeat',s:'simple-stop'});
+  const mute=f.key('m');
+  assert.equal(mute.prevented,true);
+  assert.equal(mute.stopped,true);
+  assert.equal(f.nodes.mute.clicks,1);
+  assert.equal(f.nodes.audio.muted,true);
+  assert.equal(f.nodes['simple-mute'].getAttribute('aria-pressed'),'true');
+  const repeat=f.key('R');
+  assert.equal(repeat.prevented,true);
+  assert.equal(f.nodes.repeat.clicks,1);
+  assert.equal(f.nodes.audio.loop,true);
+  f.observers[0].notify();
+  assert.equal(f.nodes['simple-repeat'].getAttribute('aria-pressed'),'true');
+  const stop=f.key('s');
+  assert.equal(stop.prevented,true);
+  assert.equal(f.nodes.stop.clicks,1);
+  assert.equal(f.key(' ').prevented,false,'Native BeatScope owns Space; no duplicate');
+  assert.equal(f.key('a').prevented,false,'Native BeatScope owns A key');
+  ctrl.disconnect();
+  assert.equal(f.docHandlers.has('keydown'),false,'Disconnect removes document listener');
+});
+
+test('Stage 15 shortcuts never hijack typing, modifiers, repeat or dialog controls',()=>{
+  const f=fixture();
+  f.body.dataset.studioMode='simple';
+  f.nodes.seek.disabled=false;f.nodes.audio.duration=90;
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  const denied=[
+    ['m',{target:{tagName:'INPUT'}}],
+    ['m',{target:{tagName:'TEXTAREA'}}],
+    ['m',{target:{tagName:'SELECT'}}],
+    ['m',{target:{tagName:'DIV',isContentEditable:true}}],
+    ['m',{target:{tagName:'DIV',closest:()=>({})}}],
+    ['m',{ctrlKey:true}],['m',{altKey:true}],['m',{metaKey:true}],
+    ['m',{shiftKey:true}],['m',{repeat:true}],['m',{isComposing:true}],
+    ['m',{defaultPrevented:true}]
+  ];
+  for(const [key,event] of denied)
+    assert.equal(f.key(key,event).prevented,false,'Must ignore '+JSON.stringify(event));
+  assert.equal(f.nodes.mute.clicks||0,0);
+  f.doc.querySelector=()=>({id:'open-dialog'});
+  assert.equal(f.key('m').prevented,false,'Modal should keep its keys');
+  f.doc.querySelector=()=>null;
+  f.body.dataset.studioMode='pro';
+  assert.equal(f.key('m').prevented,false);
+  f.body.dataset.studioMode='simple';
+  assert.equal(f.key('s').prevented,true);
+  assert.equal(f.nodes.stop.clicks,1);
+  f.nodes.stop.disabled=true;f.observers[0].notify();
+  assert.equal(f.key('s').prevented,false);
+  assert.equal(f.nodes.stop.clicks,1);
+  f.nodes.seek.disabled=true;f.observers[0].notify();
+  assert.equal(f.key('r').prevented,false);
+  assert.equal(f.nodes.repeat.clicks||0,0);
+  ctrl.disconnect();
+});
+
+test('Stage 15 Simple keyboard hint documents only shortcuts actually available',()=>{
+  const html=read('index.html'),css=read('src/lumina-theme.css'),js=read('src/simple-controls.js');
+  assert.match(html,/id="simple-keyboard-hint"/);
+  for(const letter of ['Space','M','R','S'])assert.ok(html.includes('<kbd>'+letter+'</kbd>'),letter);
+  assert.match(css,/\.simple-keyboard-hint/);
+  assert.match(js,/SIMPLE_SHORTCUTS/);
 });
