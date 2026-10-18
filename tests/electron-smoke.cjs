@@ -1091,6 +1091,29 @@ async function run(){
    await new Promise(resolve=>setTimeout(resolve,30));
    const gridProSync=simpleGrid.checked===originalGrid
      &&nativeGrid.checked===originalGrid;
+   // Stage 21: native Spectrum Bars count must be the same in Simple/Pro.
+   const nativeBars=$('bars-count'),simpleBars=$('simple-bars-count');
+   const originalBars=nativeBars.value;
+   $('studio-simple').click();
+   const barsInitialSync=simpleBars.value===originalBars
+     &&$('simple-bars-value').textContent===$('bars-val').textContent;
+   simpleBars.value='88';
+   simpleBars.dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const barsDelegated=nativeBars.value==='88'
+     &&$('bars-val').textContent==='88'
+     &&$('simple-bars-value').textContent==='88';
+   $('studio-pro').click();
+   nativeBars.value='112';
+   nativeBars.dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const barsProSync=simpleBars.value==='112'
+     &&$('simple-bars-value').textContent==='112';
+   nativeBars.value=originalBars;
+   nativeBars.dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const barsRestored=simpleBars.value===originalBars
+     &&nativeBars.value===originalBars;
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
@@ -1120,7 +1143,8 @@ async function run(){
      paletteDelegated,paletteProSync,paletteRestored,autoPaletteInitialSync,
      autoPaletteDelegated,autoPaletteProSync,aiSpeedInitialSync,
      aiSpeedDelegated,aiSpeedParty,aiSpeedProSync,aiSpeedRestored,
-     gridInitialSync,gridDelegated,gridProSync};
+     gridInitialSync,gridDelegated,gridProSync,barsInitialSync,
+     barsDelegated,barsProSync,barsRestored};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
