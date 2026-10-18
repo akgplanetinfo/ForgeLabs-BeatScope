@@ -869,6 +869,8 @@ async function run(){
    $('studio-simple').click();
    const simpleTransportVisible=getComputedStyle($('simple-transport')).display!=='none';
    const simpleInitialStop=$('simple-stop').disabled;
+   const simpleInitialExtras=['simple-previous','simple-next','simple-repeat']
+     .every(id=>$(id).disabled);
    const hz=8000,samples=hz,bytes=44+samples*2;
    const wav=new ArrayBuffer(bytes),dv=new DataView(wav);
    const word=(at,str)=>{for(let i=0;i<str.length;i++)dv.setUint8(at+i,str.charCodeAt(i));};
@@ -931,6 +933,25 @@ async function run(){
      &&Math.abs($('audio').volume-.62)<.005;
    $('volume').value='85';
    $('volume').dispatchEvent(new Event('input',{bubbles:true}));
+   // Stage 14: use real native transport handlers and repeat state from the Pro player.
+   const simpleExtraReady=['simple-previous','simple-next','simple-repeat']
+     .every(id=>!$(id).disabled);
+   $('simple-next').click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const simpleJumpEnd=$('audio').duration>0
+     &&Math.abs($('audio').currentTime-Math.max(0,$('audio').duration-.1))<.15;
+   $('simple-previous').click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const simpleJumpStart=$('audio').currentTime<.12;
+   const loopBefore=$('audio').loop;
+   $('simple-repeat').click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const simpleRepeatDelegated=$('audio').loop!==loopBefore
+     &&$('simple-repeat').getAttribute('aria-pressed')===String($('audio').loop);
+   $('repeat').click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const simpleRepeatMirrorsPro=$('audio').loop===loopBefore
+     &&$('simple-repeat').getAttribute('aria-pressed')===String(loopBefore);
    $('studio-pro').click();
    const transportHiddenPro=getComputedStyle($('simple-control-bar')).display==='none';
    return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
@@ -948,7 +969,9 @@ async function run(){
      reordered,reorderedHotkey,reorderedNavigation,leftBoundary,restoredOrder,restoredHotkeys,
      simpleTransportVisible,simpleInitialStop,transportReady,transportSeek,
      transportSynced,transportStop,transportHiddenPro,volumeInitiallySynced,
-     volumeDelegated,muteDelegated,muteSyncedFromPro,volumeSyncedFromPro};
+     volumeDelegated,muteDelegated,muteSyncedFromPro,volumeSyncedFromPro,
+     simpleInitialExtras,simpleExtraReady,simpleJumpEnd,simpleJumpStart,
+     simpleRepeatDelegated,simpleRepeatMirrorsPro};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
