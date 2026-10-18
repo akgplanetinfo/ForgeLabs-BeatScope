@@ -1114,6 +1114,30 @@ async function run(){
    await new Promise(resolve=>setTimeout(resolve,35));
    const barsRestored=simpleBars.value===originalBars
      &&nativeBars.value===originalBars;
+   // Stage 22: test the REAL native FX bypass, preserving the Pro FX stack.
+   const nativeBypass=$('fx-bypass'),simpleBypass=$('simple-fx-bypass');
+   const originalBypass=nativeBypass.getAttribute('aria-pressed');
+   const originalFXCount=$('fx-stack-count').textContent;
+   const originalFXItems=$('fx-stack').children.length;
+   $('studio-simple').click();
+   const fxBypassShown=getComputedStyle(simpleBypass).display!=='none'
+     &&simpleBypass.getAttribute('aria-pressed')===originalBypass;
+   simpleBypass.click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const bypassed=nativeBypass.getAttribute('aria-pressed')!==originalBypass;
+   const fxBypassDelegated=bypassed
+     &&simpleBypass.getAttribute('aria-pressed')===nativeBypass.getAttribute('aria-pressed')
+     &&simpleBypass.getAttribute('aria-label')===(nativeBypass.getAttribute('aria-pressed')==='true'
+       ?'Effektek visszakapcsolása':'Effektek kikapcsolása');
+   const fxStackPreserved=$('fx-stack-count').textContent===originalFXCount
+     &&$('fx-stack').children.length===originalFXItems;
+   $('studio-pro').click();
+   nativeBypass.click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fxBypassProSync=nativeBypass.getAttribute('aria-pressed')===originalBypass
+     &&simpleBypass.getAttribute('aria-pressed')===originalBypass;
+   const fxBypassRestored=$('fx-stack-count').textContent===originalFXCount
+     &&$('fx-stack').children.length===originalFXItems;
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
@@ -1144,7 +1168,8 @@ async function run(){
      autoPaletteDelegated,autoPaletteProSync,aiSpeedInitialSync,
      aiSpeedDelegated,aiSpeedParty,aiSpeedProSync,aiSpeedRestored,
      gridInitialSync,gridDelegated,gridProSync,barsInitialSync,
-     barsDelegated,barsProSync,barsRestored};
+     barsDelegated,barsProSync,barsRestored,fxBypassShown,
+     fxBypassDelegated,fxStackPreserved,fxBypassProSync,fxBypassRestored};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
