@@ -117,6 +117,11 @@
         <div class="simple-transport" id="simple-transport" role="group" aria-label="Simple Mode zenelejátszás">
           <button type="button" id="simple-play-pause" class="simple-action" aria-label="Zene megnyitása">♫ Zene megnyitása</button>
           <button type="button" id="simple-stop" class="simple-action" aria-label="Leállítás" disabled>■ Stop</button>
+          <div class="simple-transport-extra" role="group" aria-label="Ugrás és ismétlés">
+            <button type="button" id="simple-previous" class="simple-action" aria-label="Ugrás a zene elejére" title="Vissza a zene elejére" disabled>◀◀ Elejére</button>
+            <button type="button" id="simple-next" class="simple-action" aria-label="Ugrás a zene végére" title="Ugrás a zene végére" disabled>Végére ▶▶</button>
+            <button type="button" id="simple-repeat" class="simple-action" aria-label="Ismétlés bekapcsolása" aria-pressed="false" disabled>↻ Ismétlés</button>
+          </div>
           <span id="simple-current-time" class="simple-time" aria-label="Eltelt idő">0:00</span>
           <input type="range" id="simple-seek" min="0" max="1000" step="1" value="0" disabled aria-label="Simple Mode lejátszási pozíció" />
           <span id="simple-duration" class="simple-time" aria-label="Teljes idő">0:00</span>
