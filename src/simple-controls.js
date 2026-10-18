@@ -8,6 +8,7 @@
     'simple-open-file': 'open-file',
     'simple-microphone': 'microphone',
     'simple-ai': 'ai-toggle',
+    'simple-fx-bypass': 'fx-bypass',
     'simple-fullscreen': 'fullscreen'
   });
   // Space already belongs to the native BeatScope keyboard listener.
@@ -33,6 +34,8 @@
     const nativeAISpeed = get('ai-speed');
     const simpleGrid = get('simple-show-grid');
     const nativeGrid = get('show-grid');
+    const simpleFXBypass = get('simple-fx-bypass');
+    const nativeFXBypass = get('fx-bypass');
     if (!visual) return null;
 
     for (const [quickId, sourceId] of Object.entries(ACTIONS)) {
@@ -121,6 +124,18 @@
       syncGrid();
     });
     nativeGrid?.addEventListener('change',syncGrid);
+
+    // Stage 22: the native FX-bypass action only bypasses rendering;
+    // the entire Pro FX stack and its settings remain untouched.
+    function syncFXBypass(){
+      if(!simpleFXBypass)return;
+      const bypassed=nativeFXBypass?.getAttribute('aria-pressed')==='true';
+      simpleFXBypass.disabled=!nativeFXBypass||Boolean(nativeFXBypass.disabled);
+      simpleFXBypass.setAttribute('aria-pressed',String(bypassed));
+      simpleFXBypass.setAttribute('aria-label',bypassed
+        ?'Effektek visszakapcsolása':'Effektek kikapcsolása');
+      simpleFXBypass.textContent=bypassed?'◌ FX kikapcsolva':'◉ FX aktív';
+    }
 
     // Stage 12: transport is a thin adapter to BeatScope's existing player/seek.
     const audio = get('audio');
@@ -304,6 +319,7 @@
       syncAutoPalette();
       syncAISpeed();
       syncGrid();
+      syncFXBypass();
 
       const ai = get('ai-toggle')?.getAttribute('aria-checked') === 'true';
       const microphone = Boolean(get('microphone')?.classList.contains('active'));
@@ -333,6 +349,8 @@
       observe(nativeAutoPalette, 'disabled');
       observe(nativeAISpeed, 'disabled');
       observe(nativeGrid, 'disabled');
+      observe(nativeFXBypass, 'aria-pressed');
+      observe(nativeFXBypass, 'disabled');
       observe(get('microphone'), 'class');
       observe(get('seek'), 'disabled');
       observe(get('play-pause'), 'disabled');
