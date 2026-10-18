@@ -62,6 +62,25 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Validate UNPUBLISHED Lumina release candidate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = node -p "require('./package.json').version"
+          $installer = @(Get-ChildItem -Path dist -Filter 'ForgeLabs-BeatScope-Setup-*-x64.exe' -File)
+          $portable = @(Get-ChildItem -Path dist -Filter 'ForgeLabs-BeatScope-Portable-*-x64.exe' -File)
+          if ($installer.Count -ne 1 -or $portable.Count -ne 1) { throw 'Expected exactly one installer and portable EXE' }
+          node scripts/release-candidate.cjs --app-id lumina --version $version --channel beta --exe $installer[0].FullName --exe $portable[0].FullName --output release-candidates.json
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate verification failed' }
+
+      - name: Archive unpublished candidate report
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lumina-Pulse-Release-Candidate
+          path: release-candidates.json
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Create GitHub Release with direct EXE downloads
         if: github.ref == 'refs/heads/main'
         shell: bash
