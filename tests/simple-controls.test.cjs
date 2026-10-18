@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { VISUALS, ACTIONS, SIMPLE_SHORTCUTS, attachSimpleControls } = require('../src/simple-controls.js');
+const { VISUALS, ACTIONS, SIMPLE_SHORTCUTS, VISUAL_TUNING, attachSimpleControls } = require('../src/simple-controls.js');
 const read = p => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
 
 function element(id, dataset = {}) {
@@ -35,7 +35,9 @@ function fixture() {
     'simple-play-pause','simple-stop','simple-seek','simple-current-time',
     'simple-duration','play-pause','stop','seek','current-time','duration','audio',
     'mute','volume','simple-mute','simple-volume','simple-volume-value',
-    'previous','next','repeat','simple-previous','simple-next','simple-repeat'];
+    'previous','next','repeat','simple-previous','simple-next','simple-repeat',
+    'intensity','smooth','intensity-val','smooth-val',
+    'simple-intensity','simple-smooth','simple-intensity-value','simple-smooth-value'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['title-status'].textContent = 'Élő mikrofon';
   nodes['track-name'].textContent = 'teszt-zene.wav';
@@ -49,6 +51,9 @@ function fixture() {
   nodes.audio.muted=false;
   nodes.audio.loop=false;
   nodes.volume.value='85';
+  nodes.intensity.value='115';nodes.intensity.min='20';nodes.intensity.max='300';
+  nodes.smooth.value='75';nodes.smooth.min='0';nodes.smooth.max='94';
+  nodes['intensity-val'].textContent='115%';nodes['smooth-val'].textContent='75%';
   nodes['simple-volume'].value='85';
   nodes['current-time'].textContent='0:00';
   nodes.duration.textContent='0:00';
@@ -505,4 +510,74 @@ test('Stage 15 Simple keyboard hint documents only shortcuts actually available'
   for(const letter of ['Space','M','R','S'])assert.ok(html.includes('<kbd>'+letter+'</kbd>'),letter);
   assert.match(css,/\.simple-keyboard-hint/);
   assert.match(js,/SIMPLE_SHORTCUTS/);
+});
+
+test('Stage 16 Simple visual intensity and smoothing use native BeatScope input exactly once',()=>{
+  const f=fixture();
+  const events={intensity:0,smooth:0};
+  for(const id of ['intensity','smooth']){
+    const node=f.nodes[id],dispatch=node.dispatchEvent.bind(node);
+    node.dispatchEvent=event=>{
+      events[id]++;
+      f.nodes[id+'-val'].textContent=node.value+'%';
+      return dispatch(event);
+    };
+  }
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.deepEqual(VISUAL_TUNING.map(entry=>entry[1]),['intensity','smooth']);
+  assert.equal(f.nodes['simple-intensity'].value,'115');
+  assert.equal(f.nodes['simple-smooth'].value,'75');
+  f.nodes['simple-intensity'].value='185';
+  f.nodes['simple-intensity'].emit('input');
+  assert.equal(events.intensity,1);
+  assert.equal(f.nodes.intensity.value,'185');
+  assert.equal(f.nodes['simple-intensity-value'].textContent,'185%');
+  assert.equal(f.nodes['simple-intensity'].getAttribute('aria-valuetext'),'185%');
+  f.nodes['simple-smooth'].value='32';
+  f.nodes['simple-smooth'].emit('input');
+  assert.equal(events.smooth,1);
+  assert.equal(f.nodes.smooth.value,'32');
+  assert.equal(f.nodes['simple-smooth-value'].textContent,'32%');
+  ctrl.disconnect();
+});
+
+test('Stage 16 Pro changes restore exact slider values and reject disabled/invalid input',()=>{
+  const f=fixture(),ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes.intensity.value='230';
+  f.nodes['intensity-val'].textContent='230%';
+  f.nodes.intensity.emit('input');
+  assert.equal(f.nodes['simple-intensity'].value,'230');
+  assert.equal(f.nodes['simple-intensity-value'].textContent,'230%');
+  f.nodes.smooth.value='12';
+  f.nodes['smooth-val'].textContent='12%';
+  f.nodes.smooth.emit('input');
+  assert.equal(f.nodes['simple-smooth'].value,'12');
+  assert.equal(f.nodes['simple-smooth-value'].textContent,'12%');
+  f.nodes.intensity.disabled=true;
+  f.nodes.smooth.disabled=true;
+  f.observers[0].notify();
+  assert.equal(f.nodes['simple-intensity'].disabled,true);
+  assert.equal(f.nodes['simple-smooth'].disabled,true);
+  f.nodes['simple-intensity'].value='80';
+  f.nodes['simple-intensity'].emit('input');
+  assert.equal(f.nodes.intensity.value,'230');
+  f.nodes.intensity.disabled=false;
+  f.observers[0].notify();
+  f.nodes['simple-intensity'].value='not a number';
+  f.nodes['simple-intensity'].emit('input');
+  assert.equal(f.nodes.intensity.value,'230');
+  f.nodes['simple-intensity'].value='999';
+  f.nodes['simple-intensity'].emit('input');
+  assert.equal(f.nodes.intensity.value,'300','Hard clamp to native max');
+  ctrl.disconnect();
+});
+
+test('Stage 16 two-way visual settings are present in real renderer without new generator',()=>{
+  const html=read('index.html'),css=read('src/lumina-theme.css'),js=read('src/simple-controls.js');
+  for(const id of ['intensity','smooth','simple-intensity','simple-smooth',
+    'simple-intensity-value','simple-smooth-value'])
+    assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
+  assert.match(css,/\.simple-visual-tuning/);
+  assert.match(js,/native\.dispatchEvent\(new NativeEvent\('input'/);
+  assert.match(js,/syncVisualTuning/);
 });
