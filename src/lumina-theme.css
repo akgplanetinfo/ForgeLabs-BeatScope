@@ -767,3 +767,17 @@ body[data-theme="lumina-pulse"] .simple-grid-toggle:has(input:disabled){
 body[data-theme="lumina-pulse"] .simple-grid-toggle input:focus-visible{
   outline:2px solid #edfdff;outline-offset:3px;
 }
+
+/* Alpha 17 stage 21: native Spectrum Bars density control, Simple Mode. */
+body[data-theme="lumina-pulse"] .simple-bars-tuning{
+  flex:1 1 250px;padding:5px 0;
+}
+body[data-theme="lumina-pulse"] .simple-bars-tuning label{
+  display:flex;flex-direction:column;gap:2px;
+}
+body[data-theme="lumina-pulse"] .simple-bars-tuning label small{
+  color:#80abb5;font-size:9px;font-weight:450;
+}
+body[data-theme="lumina-pulse"] #simple-bars-count{
+  accent-color:#00d3f2;
+}
