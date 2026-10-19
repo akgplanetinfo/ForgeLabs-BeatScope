@@ -365,6 +365,33 @@
       syncFXParams();
     });
 
+    // Stage 26: the second button of a native Pro FX row enables/disables
+    // just that effect. Never edit fxStack, its parameters or a parallel state.
+    const simpleFXEnabled=get('simple-fx-enabled');
+    function selectedFXControls(){
+      const row=fxRows().find(item=>item.classList?.contains('selected'));
+      const name=row?.querySelector?.('.fx-stack-name');
+      const nativeToggle=row?.querySelectorAll?.('button')?.[1];
+      return {row,name,nativeToggle};
+    }
+    function syncFXEnabled(){
+      if(!simpleFXEnabled)return;
+      const {name,nativeToggle}=selectedFXControls();
+      const available=Boolean(name&&nativeToggle&&!nativeToggle.disabled);
+      const enabled=available&&!name.classList?.contains('inactive');
+      simpleFXEnabled.disabled=!available;
+      simpleFXEnabled.setAttribute('aria-checked',String(enabled));
+      simpleFXEnabled.setAttribute('aria-label',enabled
+        ?'Kijelölt effekt kikapcsolása':'Kijelölt effekt bekapcsolása');
+      simpleFXEnabled.textContent=enabled?'● Kijelölt FX: BE':'○ Kijelölt FX: KI';
+    }
+    simpleFXEnabled?.addEventListener('click',()=>{
+      const {name,nativeToggle}=selectedFXControls();
+      if(simpleFXEnabled.disabled||!name||!nativeToggle||nativeToggle.disabled)return;
+      nativeToggle.click(); // existing Pro handler persists the unchanged FX stack
+      syncFXParams();
+    });
+
     // Stage 24: controls operate only on the FX currently selected in Pro.
     // Native sliders, persist() and the GPU FX chain are the single source of truth.
     const FX_PARAMS = Object.freeze([
@@ -373,6 +400,7 @@
     ]);
     function syncFXParams(){
       syncFXPicker();
+      syncFXEnabled();
       const chosen=get('simple-fx-selection');
       const available=FX_PARAMS.every(([,id])=>Boolean(get(id)&&!get(id).disabled));
       const selectedName=doc.querySelector?.('#fx-stack .fx-stack-entry.selected .fx-stack-name')
