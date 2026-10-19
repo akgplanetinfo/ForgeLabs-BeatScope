@@ -44,7 +44,8 @@ function fixture() {
     'bars-count','bars-val','simple-bars-count','simple-bars-value',
     'simple-fx-wet','fx-wet','simple-fx-wet-value','fx-wet-value',
     'simple-fx-strength','fx-strength','simple-fx-strength-value','fx-strength-value',
-    'simple-fx-selection','fx-stack','simple-fx-picker','simple-fx-enabled'];
+    'simple-fx-selection','fx-stack','simple-fx-picker','simple-fx-enabled',
+    'simple-fx-up','simple-fx-down','simple-fx-position'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['title-status'].textContent = 'Élő mikrofon';
   nodes['track-name'].textContent = 'teszt-zene.wav';
@@ -1179,14 +1180,24 @@ test('Stage 24 Simple FX parameter panel reuses native Pro effects and keeps it 
 
 function addFXRow(f,name,wet,strength,selected=false){
   const row=element('fx-row'),button=element('fx-name');
-  const toggle=element('fx-toggle');
+  const toggle=element('fx-toggle'),up=element('fx-up'),down=element('fx-down');
   button.textContent=name;
   row.classList.toggle('selected',selected);
   row.querySelector=selector=>selector==='.fx-stack-name'?button:null;
-  row.querySelectorAll=selector=>selector==='button'?[button,toggle]:[];
+  row.querySelectorAll=selector=>selector==='button'?[button,toggle,up,down]:[];
   row.nativeNameButton=button;
   row.nativeToggle=toggle;
+  row.nativeUp=up;
+  row.nativeDown=down;
   row.fxSettings={wet,strength};
+  for(const [control,step] of [[up,-1],[down,1]]){
+    control.addEventListener('click',()=>{
+      const index=f.fxRows.indexOf(row),target=index+step;
+      if(index<0||target<0||target>=f.fxRows.length)return;
+      [f.fxRows[index],f.fxRows[target]]=[f.fxRows[target],f.fxRows[index]];
+      f.observers[0]?.notify();
+    });
+  }
   toggle.textContent='●';
   toggle.addEventListener('click',()=>{
     const next=!button.classList.contains('inactive');
