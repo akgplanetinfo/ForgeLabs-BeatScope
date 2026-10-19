@@ -44,7 +44,7 @@ function fixture() {
     'bars-count','bars-val','simple-bars-count','simple-bars-value',
     'simple-fx-wet','fx-wet','simple-fx-wet-value','fx-wet-value',
     'simple-fx-strength','fx-strength','simple-fx-strength-value','fx-strength-value',
-    'simple-fx-selection','fx-stack','simple-fx-picker'];
+    'simple-fx-selection','fx-stack','simple-fx-picker','simple-fx-enabled'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['title-status'].textContent = 'Élő mikrofon';
   nodes['track-name'].textContent = 'teszt-zene.wav';
@@ -1179,11 +1179,21 @@ test('Stage 24 Simple FX parameter panel reuses native Pro effects and keeps it 
 
 function addFXRow(f,name,wet,strength,selected=false){
   const row=element('fx-row'),button=element('fx-name');
+  const toggle=element('fx-toggle');
   button.textContent=name;
   row.classList.toggle('selected',selected);
   row.querySelector=selector=>selector==='.fx-stack-name'?button:null;
+  row.querySelectorAll=selector=>selector==='button'?[button,toggle]:[];
   row.nativeNameButton=button;
-  const index=f.fxRows.length;
+  row.nativeToggle=toggle;
+  row.fxSettings={wet,strength};
+  toggle.textContent='●';
+  toggle.addEventListener('click',()=>{
+    const next=!button.classList.contains('inactive');
+    button.classList.toggle('inactive',next);
+    toggle.textContent=next?'○':'●';
+    f.observers[0]?.notify();
+  });
   button.addEventListener('click',()=>{
     for(const item of f.fxRows)item.classList.toggle('selected',item===row);
     f.nodes['fx-wet'].disabled=false;
@@ -1283,4 +1293,100 @@ test('Stage 25 FX picker reuses the actual Pro effect name buttons and observes 
   assert.match(js,/\.querySelector\?\.\('\.fx-stack-name'\)/);
   assert.match(js,/original\.click\(\)/);
   assert.match(css,/#simple-fx-picker:focus-visible/);
+});
+
+test('Stage 26 no selected FX means Simple individual effect toggle is safely disabled',()=>{
+  const f=fixture(),ctrl=attachSimpleControls(f.doc,f.Observer);
+  const quick=f.nodes['simple-fx-enabled'];
+  assert.equal(quick.disabled,true);
+  assert.equal(quick.getAttribute('aria-checked'),'false');
+  assert.equal(quick.getAttribute('aria-label'),'Kijelölt effekt bekapcsolása');
+  quick.click();
+  assert.equal(f.fxRows.length,0);
+  ctrl.disconnect();
+});
+
+test('Stage 26 toggle delegates to the native Pro row and retains FX parameters and order',()=>{
+  const f=fixture();
+  const glow=addFXRow(f,'Glow',25,130,true);
+  const blur=addFXRow(f,'Blur',65,80);
+  glow.nativeNameButton.click();
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  const quick=f.nodes['simple-fx-enabled'];
+  assert.equal(quick.disabled,false);
+  assert.equal(quick.getAttribute('aria-checked'),'true');
+  assert.equal(quick.textContent,'● Kijelölt FX: BE');
+  quick.click();
+  assert.equal(glow.nativeToggle.clicks,1,'Only the native FX toggle was clicked');
+  assert.equal(blur.nativeToggle.clicks,0);
+  assert.equal(glow.nativeNameButton.classList.contains('inactive'),true);
+  assert.equal(quick.getAttribute('aria-checked'),'false');
+  assert.equal(quick.getAttribute('aria-label'),'Kijelölt effekt bekapcsolása');
+  assert.equal(quick.textContent,'○ Kijelölt FX: KI');
+  assert.deepEqual(f.fxRows,[glow,blur],'No FX removal, duplication or reordering');
+  assert.deepEqual(glow.fxSettings,{wet:25,strength:130});
+  assert.equal(f.nodes['simple-fx-wet'].value,'25');
+  assert.equal(f.nodes['simple-fx-strength'].value,'130');
+  quick.click();
+  assert.equal(glow.nativeToggle.clicks,2);
+  assert.equal(glow.nativeNameButton.classList.contains('inactive'),false);
+  assert.equal(quick.getAttribute('aria-checked'),'true');
+  assert.equal(quick.getAttribute('aria-label'),'Kijelölt effekt kikapcsolása');
+  ctrl.disconnect();
+});
+
+test('Stage 26 Pro enable and selected effect change synchronize the Simple switch',()=>{
+  const f=fixture();
+  const glow=addFXRow(f,'Glow',60,90,true);
+  const blur=addFXRow(f,'Blur',40,100);
+  glow.nativeNameButton.click();
+  const ctrl=attachSimpleControls(f.doc,f.Observer),quick=f.nodes['simple-fx-enabled'];
+  glow.nativeToggle.click();
+  assert.equal(quick.getAttribute('aria-checked'),'false','Pro disabled FX mirrored');
+  f.nodes['simple-fx-picker'].value='1';f.nodes['simple-fx-picker'].change();
+  assert.equal(blur.nativeNameButton.clicks,1);
+  assert.equal(quick.getAttribute('aria-checked'),'true','New selected FX enabled');
+  blur.nativeToggle.click();
+  assert.equal(quick.getAttribute('aria-checked'),'false');
+  glow.nativeNameButton.click();f.observers[0].notify();
+  assert.equal(quick.getAttribute('aria-checked'),'false');
+  glow.nativeToggle.click();
+  assert.equal(quick.getAttribute('aria-checked'),'true');
+  ctrl.disconnect();
+});
+
+test('Stage 26 deleted or unavailable Pro toggle cannot affect a different FX',()=>{
+  const f=fixture();
+  const glow=addFXRow(f,'Glow',30,70,true);
+  const blur=addFXRow(f,'Blur',45,160);
+  glow.nativeNameButton.click();
+  const ctrl=attachSimpleControls(f.doc,f.Observer),quick=f.nodes['simple-fx-enabled'];
+  glow.nativeToggle.disabled=true;
+  f.observers[0].notify();
+  assert.equal(quick.disabled,true);
+  quick.click();
+  assert.equal(glow.nativeToggle.clicks,0);
+  assert.equal(blur.nativeToggle.clicks,0);
+  glow.nativeToggle.disabled=false;
+  f.fxRows.splice(0,1);
+  blur.nativeNameButton.click();f.observers[0].notify();
+  assert.equal(quick.disabled,false);
+  assert.equal(quick.getAttribute('aria-checked'),'true');
+  quick.click();
+  assert.equal(glow.nativeToggle.clicks,0);
+  assert.equal(blur.nativeToggle.clicks,1,'Only the current, existing Pro FX changes');
+  f.fxRows.splice(0,1);
+  f.observers[0].notify();
+  assert.equal(quick.disabled,true);
+  ctrl.disconnect();
+});
+
+test('Stage 26 selected-effect switch uses native Pro row control with accessible status',()=>{
+  const html=read('index.html'),js=read('src/simple-controls.js'),
+    css=read('src/lumina-theme.css');
+  assert.match(html,/id="simple-fx-enabled"/);
+  assert.match(html,/role="switch" aria-checked="false"/);
+  assert.match(js,/row\?\.querySelectorAll\?\.\('button'\)\?\.\[1\]/);
+  assert.match(js,/nativeToggle\.click\(\)/);
+  assert.match(css,/#simple-fx-enabled\[aria-checked="true"\]/);
 });
