@@ -1281,6 +1281,58 @@ async function run(){
      ?.classList.contains('inactive')===fx26OriginalInactive
      &&fx26Quick.getAttribute('aria-checked')===String(!fx26OriginalInactive)
      &&nativeRows().length===fx26Count;
+   // Stage 27: order the selected native Pro FX in Simple, then restore order.
+   const fx27BeforeCount=nativeRows().length;
+   const fx27BeforeSelection=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   let fx27Added=false;
+   if(nativeRows().length<2){
+     document.querySelector('.fx-entry-name')?.click();
+     fx27Added=nativeRows().length===fx27BeforeCount+1;
+   }
+   const fx27StartOrder=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   nativeRows()[0]?.querySelector('.fx-stack-name')?.click();
+   const fx27Name=nativeRows()[0]?.querySelector('.fx-stack-name')?.textContent;
+   const fx27Wet=nativeWet.value,fx27Strength=nativeStrength.value;
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx27Up=$('simple-fx-up'),fx27Down=$('simple-fx-down');
+   const fx27Ready=nativeRows().length>=2&&fx27Up.disabled&&!fx27Down.disabled
+     &&$('simple-fx-position').textContent==='1 / '+nativeRows().length;
+   fx27Down.click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx27SimpleDown=nativeRows()[1]?.classList.contains('selected')
+     &&nativeRows()[1]?.querySelector('.fx-stack-name')?.textContent===fx27Name
+     &&$('simple-fx-position').textContent==='2 / '+nativeRows().length
+     &&chooser.value==='1'&&nativeWet.value===fx27Wet
+     &&nativeStrength.value===fx27Strength;
+   fx27Up.click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx27SimpleUp=nativeRows()[0]?.classList.contains('selected')
+     &&$('simple-fx-position').textContent==='1 / '+nativeRows().length
+     &&nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent)
+       .every((name,i)=>name===fx27StartOrder[i]);
+   $('studio-pro').click();
+   nativeRows()[0]?.querySelectorAll('button')[3]?.click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx27ProSync=nativeRows()[1]?.classList.contains('selected')
+     &&$('simple-fx-position').textContent==='2 / '+nativeRows().length
+     &&chooser.value==='1';
+   nativeRows()[1]?.querySelectorAll('button')[2]?.click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx27ProRestore=$('simple-fx-position').textContent==='1 / '+nativeRows().length
+     &&nativeRows()[0]?.classList.contains('selected');
+   if(fx27Added){
+     nativeRows()[nativeRows().length-1]?.querySelectorAll('button')[4]?.click();
+     await new Promise(resolve=>setTimeout(resolve,40));
+   }
+   if(fx27BeforeSelection>=0&&fx27BeforeSelection<nativeRows().length)
+     nativeRows()[fx27BeforeSelection]?.querySelector('.fx-stack-name')?.click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const fx27Restored=nativeRows().length===fx27BeforeCount
+     &&(fx27BeforeSelection<0||
+       chooser.value===String(fx27BeforeSelection))
+     &&nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent)
+       .every((name,i)=>name===fx27StartOrder[i]);
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
@@ -1316,7 +1368,9 @@ async function run(){
      fxAutopilotShown,fxAutopilotDelegated,fxAutopilotDistinct,fxAutopilotProSync,
      fxParamsReady,fxParamsDelegated,fxParamsProSync,fxParamsRestored,
      chooserReady,chooserDelegated,chooserProSync,chooserRestored,
-     fx26Ready,fx26Delegated,fx26Preserved,fx26ProSync};
+     fx26Ready,fx26Delegated,fx26Preserved,fx26ProSync,
+     fx27Ready,fx27SimpleDown,fx27SimpleUp,fx27ProSync,
+     fx27ProRestore,fx27Restored};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
