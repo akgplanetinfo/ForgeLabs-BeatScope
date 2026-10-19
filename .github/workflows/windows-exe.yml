@@ -1,6 +1,8 @@
 name: ForgeLabs BeatScope Windows EXE
 
 on:
+  pull_request:
+    branches: ['feature/lumina-alpha17-stage1']
   push:
     branches: [main, 'feature/project-bundles-alpha15', 'feature/lumina-alpha17-stage1']
     paths-ignore:
