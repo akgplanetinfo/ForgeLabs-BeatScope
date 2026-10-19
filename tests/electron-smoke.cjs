@@ -1333,6 +1333,47 @@ async function run(){
        chooser.value===String(fx27BeforeSelection))
      &&nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent)
        .every((name,i)=>name===fx27StartOrder[i]);
+   // Stage 28: add one temporary native Pro FX and remove ONLY that effect
+   // after double confirmation, retaining the original chain and selection.
+   const fx28StartRows=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx28StartSelection=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   let fx28Added=false;
+   if(nativeRows().length<3){
+     document.querySelector('.fx-entry-name')?.click();
+     fx28Added=nativeRows().length===fx28StartRows.length+1;
+   }
+   if(fx28Added)nativeRows()[nativeRows().length-1]?.querySelector('.fx-stack-name')?.click();
+   const fx28CountBefore=nativeRows().length;
+   const fx28Name=nativeRows()[fx28CountBefore-1]?.querySelector('.fx-stack-name')?.textContent;
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx28Button=$('simple-fx-remove'),fx28Cancel=$('simple-fx-remove-cancel');
+   const fx28Ready=fx28Added&&!fx28Button.disabled&&fx28Cancel.hidden
+     &&$('simple-fx-selection').textContent.trim()===fx28Name;
+   fx28Button.click();
+   await new Promise(resolve=>setTimeout(resolve,20));
+   const fx28FirstSafe=nativeRows().length===fx28CountBefore
+     &&!fx28Cancel.hidden&&fx28Button.textContent.includes(fx28Name);
+   fx28Cancel.click();
+   await new Promise(resolve=>setTimeout(resolve,20));
+   const fx28CancelSafe=nativeRows().length===fx28CountBefore
+     &&fx28Cancel.hidden&&fx28Button.textContent==='✕ Effekt eltávolítása';
+   fx28Button.click();
+   await new Promise(resolve=>setTimeout(resolve,20));
+   const fx28Rearmed=nativeRows().length===fx28CountBefore&&!fx28Cancel.hidden;
+   fx28Button.click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx28Confirmed=fx28Added&&nativeRows().length===fx28CountBefore-1
+     &&fx28Cancel.hidden
+     &&nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent)
+       .every((name,i)=>name===fx28StartRows[i]);
+   $('studio-pro').click();
+   if(fx28StartSelection>=0&&fx28StartSelection<nativeRows().length)
+     nativeRows()[fx28StartSelection]?.querySelector('.fx-stack-name')?.click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const fx28Restored=nativeRows().length===fx28StartRows.length
+     &&(fx28StartSelection<0||
+       nativeRows()[fx28StartSelection]?.classList.contains('selected'));
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
@@ -1370,7 +1411,8 @@ async function run(){
      chooserReady,chooserDelegated,chooserProSync,chooserRestored,
      fx26Ready,fx26Delegated,fx26Preserved,fx26ProSync,
      fx27Ready,fx27SimpleDown,fx27SimpleUp,fx27ProSync,
-     fx27ProRestore,fx27Restored};
+     fx27ProRestore,fx27Restored,fx28Ready,fx28FirstSafe,fx28CancelSafe,
+     fx28Rearmed,fx28Confirmed,fx28Restored};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
