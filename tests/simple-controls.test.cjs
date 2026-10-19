@@ -45,7 +45,8 @@ function fixture() {
     'simple-fx-wet','fx-wet','simple-fx-wet-value','fx-wet-value',
     'simple-fx-strength','fx-strength','simple-fx-strength-value','fx-strength-value',
     'simple-fx-selection','fx-stack','simple-fx-picker','simple-fx-enabled',
-    'simple-fx-up','simple-fx-down','simple-fx-position'];
+    'simple-fx-up','simple-fx-down','simple-fx-position',
+    'simple-fx-remove','simple-fx-remove-cancel','simple-fx-remove-note'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['title-status'].textContent = 'Élő mikrofon';
   nodes['track-name'].textContent = 'teszt-zene.wav';
@@ -1180,16 +1181,30 @@ test('Stage 24 Simple FX parameter panel reuses native Pro effects and keeps it 
 
 function addFXRow(f,name,wet,strength,selected=false){
   const row=element('fx-row'),button=element('fx-name');
-  const toggle=element('fx-toggle'),up=element('fx-up'),down=element('fx-down');
+  const toggle=element('fx-toggle'),up=element('fx-up'),down=element('fx-down'),
+    remove=element('fx-remove');
   button.textContent=name;
   row.classList.toggle('selected',selected);
   row.querySelector=selector=>selector==='.fx-stack-name'?button:null;
-  row.querySelectorAll=selector=>selector==='button'?[button,toggle,up,down]:[];
+  row.querySelectorAll=selector=>selector==='button'?[button,toggle,up,down,remove]:[];
   row.nativeNameButton=button;
   row.nativeToggle=toggle;
   row.nativeUp=up;
   row.nativeDown=down;
+  row.nativeRemove=remove;
   row.fxSettings={wet,strength};
+  remove.addEventListener('click',()=>{
+    const index=f.fxRows.indexOf(row);
+    if(index<0)return;
+    f.fxRows.splice(index,1);
+    const next=f.fxRows[Math.min(index,f.fxRows.length-1)];
+    if(next)next.nativeNameButton.click();
+    else{
+      f.nodes['fx-wet'].disabled=true;
+      f.nodes['fx-strength'].disabled=true;
+    }
+    f.observers[0]?.notify();
+  });
   for(const [control,step] of [[up,-1],[down,1]]){
     control.addEventListener('click',()=>{
       const index=f.fxRows.indexOf(row),target=index+step;
