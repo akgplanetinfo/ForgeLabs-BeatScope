@@ -1342,7 +1342,8 @@ async function run(){
      document.querySelector('.fx-entry-name')?.click();
      fx28Added=nativeRows().length===fx28StartRows.length+1;
    }
-   if(fx28Added)nativeRows()[nativeRows().length-1]?.querySelector('.fx-stack-name')?.click();
+   if(!fx28Added)throw new Error('Stage 28: cannot create an isolated temporary FX');
+   nativeRows()[nativeRows().length-1]?.querySelector('.fx-stack-name')?.click();
    const fx28CountBefore=nativeRows().length;
    const fx28Name=nativeRows()[fx28CountBefore-1]?.querySelector('.fx-stack-name')?.textContent;
    $('studio-simple').click();
