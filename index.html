@@ -173,6 +173,13 @@
           <button type="button" id="simple-fx-enabled" class="simple-action simple-fx-enabled"
             role="switch" aria-checked="false" aria-label="Kijelölt effekt bekapcsolása" disabled
             title="Csak a kijelölt effektet kapcsolja; a Pro FX-lánc és paraméterei megmaradnak">○ Kijelölt FX: KI</button>
+          <div class="simple-fx-remove" role="group" aria-label="Kijelölt effekt biztonságos eltávolítása">
+            <button type="button" class="simple-action" id="simple-fx-remove" disabled
+              aria-label="Kijelölt effekt eltávolítása, megerősítés szükséges"
+              title="Eltávolítás két kattintással, a Pro FX-lánc natív törlésével">✕ Effekt eltávolítása</button>
+            <button type="button" class="simple-action" id="simple-fx-remove-cancel" hidden>Mégse</button>
+            <span id="simple-fx-remove-note" aria-live="polite">Az eltávolításhoz megerősítés kell.</span>
+          </div>
           <div class="simple-tuning-field">
             <label for="simple-fx-wet">FX keverés (Dry/Wet)</label>
             <input id="simple-fx-wet" type="range" min="0" max="100" value="100" step="1" disabled aria-label="Kiválasztott effekt Dry/Wet keverése" />
