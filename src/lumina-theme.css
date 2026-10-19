@@ -877,3 +877,26 @@ body[data-theme="lumina-pulse"] #simple-fx-enabled:focus-visible{
     flex:1 1 100%;margin-left:0;
   }
 }
+
+/* Alpha 17 stage 27: reorder selected native Pro FX without leaving Simple. */
+body[data-theme="lumina-pulse"] .simple-fx-order{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:8px;width:100%;padding:4px 0;
+}
+body[data-theme="lumina-pulse"] .simple-fx-order .simple-action{
+  flex:1 1 100px;max-width:210px;padding:8px 10px;
+}
+body[data-theme="lumina-pulse"] #simple-fx-position{
+  flex:0 0 auto;min-width:82px;color:#b5dce3;
+  font-size:11px;text-align:center;font-variant-numeric:tabular-nums;
+}
+body[data-theme="lumina-pulse"] .simple-fx-order button:disabled{
+  opacity:.4;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] .simple-fx-order button:focus-visible{
+  outline:2px solid #e5fbff;outline-offset:2px;
+}
+@media(max-width:640px){
+  body[data-theme="lumina-pulse"] .simple-fx-order .simple-action{flex:1 1 85px;}
+  body[data-theme="lumina-pulse"] #simple-fx-position{min-width:60px;}
+}
