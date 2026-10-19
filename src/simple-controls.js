@@ -419,6 +419,66 @@
       });
     }
 
+    // Stage 28: removal requires two clicks on the SAME selected native FX.
+    // Native Pro delete owns persistence and updates fxSelected. Confirmation is
+    // cancelled if the Pro stack is recreated or a different FX is selected.
+    const fxRemove=get('simple-fx-remove'),fxRemoveCancel=get('simple-fx-remove-cancel');
+    const fxRemoveNote=get('simple-fx-remove-note');
+    let pendingFXRemoval=null;
+    function currentFXRemoval(){
+      const rows=fxRows(),index=rows.findIndex(row=>row.classList?.contains('selected'));
+      const row=index>=0?rows[index]:null;
+      const native=row?.querySelectorAll?.('button')?.[4];
+      const name=row?.querySelector?.('.fx-stack-name')?.textContent?.trim()||'Effekt';
+      return {row,native,index,name};
+    }
+    function clearFXRemoval(){
+      pendingFXRemoval=null;
+      if(fxRemoveCancel)fxRemoveCancel.hidden=true;
+      if(fxRemoveNote)fxRemoveNote.textContent='Az eltávolításhoz megerősítés kell.';
+    }
+    function syncFXRemoval(){
+      const current=currentFXRemoval();
+      const available=Boolean(current.row&&current.native&&!current.native.disabled);
+      if(pendingFXRemoval&&(
+        !available||current.row!==pendingFXRemoval.row
+        ||current.native!==pendingFXRemoval.native
+        ||current.index!==pendingFXRemoval.index
+        ||doc.body?.dataset?.studioMode!=='simple'
+      ))clearFXRemoval();
+      if(!fxRemove)return;
+      fxRemove.disabled=!available;
+      if(pendingFXRemoval){
+        fxRemove.textContent='✕ Biztosan törlöd: '+pendingFXRemoval.name+'?';
+        fxRemove.setAttribute('aria-label','Megerősítés: '+pendingFXRemoval.name+' eltávolítása');
+      }else{
+        fxRemove.textContent='✕ Effekt eltávolítása';
+        fxRemove.setAttribute('aria-label','Kijelölt effekt eltávolítása, megerősítés szükséges');
+      }
+    }
+    fxRemove?.addEventListener('click',()=>{
+      const current=currentFXRemoval();
+      if(fxRemove.disabled||!current.native||current.native.disabled)return;
+      if(!pendingFXRemoval){
+        pendingFXRemoval=current;
+        if(fxRemoveCancel)fxRemoveCancel.hidden=false;
+        if(fxRemoveNote)fxRemoveNote.textContent='Kattints ismét a törléshez, vagy válaszd a Mégse gombot.';
+        syncFXRemoval();
+        return;
+      }
+      if(pendingFXRemoval.row!==current.row
+        ||pendingFXRemoval.native!==current.native
+        ||pendingFXRemoval.index!==current.index){
+        clearFXRemoval();syncFXRemoval();return;
+      }
+      clearFXRemoval();
+      current.native.click(); // original Pro deletion, no duplicate FX state
+      syncFXParams();
+    });
+    fxRemoveCancel?.addEventListener('click',()=>{
+      clearFXRemoval();syncFXRemoval();
+    });
+
     // Stage 24: controls operate only on the FX currently selected in Pro.
     // Native sliders, persist() and the GPU FX chain are the single source of truth.
     const FX_PARAMS = Object.freeze([
@@ -429,6 +489,7 @@
       syncFXPicker();
       syncFXEnabled();
       syncFXOrder();
+      syncFXRemoval();
       const chosen=get('simple-fx-selection');
       const available=FX_PARAMS.every(([,id])=>Boolean(get(id)&&!get(id).disabled));
       const selectedName=doc.querySelector?.('#fx-stack .fx-stack-entry.selected .fx-stack-name')
