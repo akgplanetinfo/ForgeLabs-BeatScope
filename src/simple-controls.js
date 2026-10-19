@@ -392,6 +392,33 @@
       syncFXParams();
     });
 
+    // Stage 27: use the native up/down buttons on the selected Pro FX row.
+    // Pro refreshFXStack() owns reordering, selection, persistence and rendering.
+    const fxOrderUp=get('simple-fx-up'),fxOrderDown=get('simple-fx-down');
+    const fxOrderPosition=get('simple-fx-position');
+    function syncFXOrder(){
+      const rows=fxRows();
+      const selected=rows.findIndex(row=>row.classList?.contains('selected'));
+      if(fxOrderPosition)fxOrderPosition.textContent=selected>=0
+        ?(selected+1)+' / '+rows.length:'Nincs effekt';
+      for(const [control,step,buttonIndex] of [[fxOrderUp,-1,2],[fxOrderDown,1,3]]){
+        if(!control)continue;
+        const native=selected>=0?rows[selected]?.querySelectorAll?.('button')?.[buttonIndex]:null;
+        control.disabled=selected<0||selected+step<0||selected+step>=rows.length
+          ||!native||Boolean(native.disabled);
+      }
+    }
+    for(const [control,step,buttonIndex] of [[fxOrderUp,-1,2],[fxOrderDown,1,3]]){
+      control?.addEventListener('click',()=>{
+        const rows=fxRows(),selected=rows.findIndex(row=>row.classList?.contains('selected'));
+        if(control.disabled||selected<0||selected+step<0||selected+step>=rows.length)return;
+        const native=rows[selected]?.querySelectorAll?.('button')?.[buttonIndex];
+        if(!native||native.disabled)return;
+        native.click(); // native Pro handler persists order and retains FX parameters
+        syncFXParams();
+      });
+    }
+
     // Stage 24: controls operate only on the FX currently selected in Pro.
     // Native sliders, persist() and the GPU FX chain are the single source of truth.
     const FX_PARAMS = Object.freeze([
@@ -401,6 +428,7 @@
     function syncFXParams(){
       syncFXPicker();
       syncFXEnabled();
+      syncFXOrder();
       const chosen=get('simple-fx-selection');
       const available=FX_PARAMS.every(([,id])=>Boolean(get(id)&&!get(id).disabled));
       const selectedName=doc.querySelector?.('#fx-stack .fx-stack-entry.selected .fx-stack-name')
