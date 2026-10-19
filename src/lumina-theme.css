@@ -900,3 +900,30 @@ body[data-theme="lumina-pulse"] .simple-fx-order button:focus-visible{
   body[data-theme="lumina-pulse"] .simple-fx-order .simple-action{flex:1 1 85px;}
   body[data-theme="lumina-pulse"] #simple-fx-position{min-width:60px;}
 }
+
+/* Alpha 17 stage 28: confirmed native FX deletion in Simple. */
+body[data-theme="lumina-pulse"] .simple-fx-remove{
+  display:flex;align-items:center;flex-wrap:wrap;gap:7px 12px;width:100%;
+}
+body[data-theme="lumina-pulse"] #simple-fx-remove{
+  flex:0 1 auto;min-width:150px;border-color:#885454;
+  color:#ffcdcc;background:#342327;
+}
+body[data-theme="lumina-pulse"] #simple-fx-remove[aria-label^="Megerősítés"]{
+  border-color:#ff9c81;background:#652f30;color:#fff5e9;
+}
+body[data-theme="lumina-pulse"] #simple-fx-remove-cancel{
+  border-color:#638993;color:#d6f1f6;background:#18313b;
+}
+body[data-theme="lumina-pulse"] .simple-fx-remove button[hidden]{
+  display:none;
+}
+body[data-theme="lumina-pulse"] .simple-fx-remove button:disabled{
+  opacity:.4;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] .simple-fx-remove button:focus-visible{
+  outline:2px solid #e5fbff;outline-offset:2px;
+}
+body[data-theme="lumina-pulse"] #simple-fx-remove-note{
+  flex:1 1 220px;font-size:10px;color:#a6c7d2;
+}
