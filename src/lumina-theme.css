@@ -856,3 +856,24 @@ body[data-theme="lumina-pulse"] #simple-fx-picker:disabled{
 body[data-theme="lumina-pulse"] #simple-fx-picker:focus-visible{
   outline:2px solid #eaffff;outline-offset:2px;
 }
+
+/* Alpha 17 stage 26: safely enable or disable just the selected Pro FX. */
+body[data-theme="lumina-pulse"] #simple-fx-enabled{
+  flex:0 1 auto;min-width:160px;margin-left:auto;
+  color:#ffd2a8;border-color:#96704d;background:#32251e;
+  white-space:nowrap;
+}
+body[data-theme="lumina-pulse"] #simple-fx-enabled[aria-checked="true"]{
+  color:#b9faff;border-color:#00acc3;background:#12414c;
+}
+body[data-theme="lumina-pulse"] #simple-fx-enabled:disabled{
+  opacity:.42;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-fx-enabled:focus-visible{
+  outline:2px solid #efffff;outline-offset:2px;
+}
+@media(max-width:680px){
+  body[data-theme="lumina-pulse"] #simple-fx-enabled{
+    flex:1 1 100%;margin-left:0;
+  }
+}
