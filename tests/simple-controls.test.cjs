@@ -1519,3 +1519,115 @@ test('Stage 27 Simple reordering delegates to original Pro FX buttons',()=>{
   assert.match(js,/native\.click\(\)/);
   assert.match(css,/\.simple-fx-order/);
 });
+
+test('Stage 28 empty or disabled native Pro FX cannot be deleted in Simple',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  const remove=f.nodes['simple-fx-remove'];
+  assert.equal(remove.disabled,true);
+  assert.equal(f.nodes['simple-fx-remove-cancel'].hidden,true);
+  remove.click();
+  assert.equal(f.fxRows.length,0);
+  ctrl.disconnect();
+  const g=fixture();g.body.dataset.studioMode='simple';
+  const fx=addFXRow(g,'Glow',35,115,true);fx.nativeNameButton.click();
+  fx.nativeRemove.disabled=true;
+  const c=attachSimpleControls(g.doc,g.Observer);
+  assert.equal(g.nodes['simple-fx-remove'].disabled,true);
+  g.nodes['simple-fx-remove'].click();g.nodes['simple-fx-remove'].click();
+  assert.equal(fx.nativeRemove.clicks,0);
+  assert.equal(g.fxRows.length,1);
+  c.disconnect();
+});
+
+test('Stage 28 first click arms, second click removes only the selected native Pro FX',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  const glow=addFXRow(f,'Glow',35,115,true),blur=addFXRow(f,'Blur',80,90);
+  glow.nativeNameButton.click();
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  const remove=f.nodes['simple-fx-remove'],cancel=f.nodes['simple-fx-remove-cancel'];
+  assert.equal(remove.disabled,false);
+  remove.click();
+  assert.deepEqual(f.fxRows,[glow,blur],'First click must not delete');
+  assert.equal(glow.nativeRemove.clicks,0);
+  assert.equal(cancel.hidden,false);
+  assert.match(remove.textContent,/Biztosan törlöd: Glow/);
+  assert.match(f.nodes['simple-fx-remove-note'].textContent,/Kattints ismét/);
+  remove.click();
+  assert.equal(glow.nativeRemove.clicks,1,'Exactly one native delete');
+  assert.equal(blur.nativeRemove.clicks,0);
+  assert.deepEqual(f.fxRows,[blur]);
+  assert.equal(cancel.hidden,true);
+  assert.equal(f.nodes['simple-fx-picker'].value,'0');
+  assert.equal(f.nodes['simple-fx-selection'].textContent,'Blur');
+  assert.equal(f.nodes['simple-fx-wet'].value,'80');
+  assert.equal(f.nodes['simple-fx-strength'].value,'90');
+  assert.equal(remove.disabled,false);
+  assert.equal(remove.textContent,'✕ Effekt eltávolítása');
+  ctrl.disconnect();
+});
+
+test('Stage 28 Mégse cancels pending deletion without removing any FX',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  const fx=addFXRow(f,'Blur',40,120,true);fx.nativeNameButton.click();
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-remove'].click();
+  assert.equal(f.nodes['simple-fx-remove-cancel'].hidden,false);
+  f.nodes['simple-fx-remove-cancel'].click();
+  assert.equal(f.nodes['simple-fx-remove-cancel'].hidden,true);
+  assert.equal(f.nodes['simple-fx-remove'].textContent,'✕ Effekt eltávolítása');
+  assert.equal(fx.nativeRemove.clicks,0);
+  assert.deepEqual(f.fxRows,[fx]);
+  f.nodes['simple-fx-remove'].click();
+  assert.equal(fx.nativeRemove.clicks,0,'After cancelling requires two clicks again');
+  ctrl.disconnect();
+});
+
+test('Stage 28 changing selected FX or Pro mode invalidates stale confirmation',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  const glow=addFXRow(f,'Glow',20,100,true),blur=addFXRow(f,'Blur',60,140);
+  glow.nativeNameButton.click();
+  const ctrl=attachSimpleControls(f.doc,f.Observer),remove=f.nodes['simple-fx-remove'];
+  remove.click();
+  blur.nativeNameButton.click();f.observers[0].notify();
+  assert.equal(remove.textContent,'✕ Effekt eltávolítása');
+  assert.equal(f.nodes['simple-fx-remove-cancel'].hidden,true);
+  remove.click();
+  assert.equal(glow.nativeRemove.clicks,0);
+  assert.equal(blur.nativeRemove.clicks,0,'First click on newly selected FX arms only');
+  f.body.dataset.studioMode='pro';f.observers[0].notify();
+  assert.equal(remove.textContent,'✕ Effekt eltávolítása');
+  f.body.dataset.studioMode='simple';f.observers[0].notify();
+  remove.click();
+  assert.equal(blur.nativeRemove.clicks,0,'Returning from Pro requires new confirmation');
+  ctrl.disconnect();
+});
+
+test('Stage 28 reordering or removing the FX in Pro invalidates pending deletion',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  const glow=addFXRow(f,'Glow',20,100,true),blur=addFXRow(f,'Blur',60,140);
+  glow.nativeNameButton.click();
+  const ctrl=attachSimpleControls(f.doc,f.Observer),remove=f.nodes['simple-fx-remove'];
+  remove.click();
+  glow.nativeDown.click();
+  assert.deepEqual(f.fxRows,[blur,glow]);
+  assert.equal(remove.textContent,'✕ Effekt eltávolítása','Reorder resets confirmation');
+  remove.click();
+  assert.equal(glow.nativeRemove.clicks,0,'Reordered FX is not deleted without new confirm');
+  f.fxRows.splice(1,1);blur.nativeNameButton.click();f.observers[0].notify();
+  assert.equal(remove.textContent,'✕ Effekt eltávolítása');
+  remove.click();
+  assert.equal(blur.nativeRemove.clicks,0,'Different FX only arms');
+  ctrl.disconnect();
+});
+
+test('Stage 28 confirmation UI delegates only to Pro native fifth delete button',()=>{
+  const html=read('index.html'),js=read('src/simple-controls.js'),
+    css=read('src/lumina-theme.css');
+  for(const id of ['simple-fx-remove','simple-fx-remove-cancel','simple-fx-remove-note'])
+    assert.ok(html.includes('id="'+id+'"'),id);
+  assert.match(html,/megerősítés szükséges/);
+  assert.match(js,/row\?\.querySelectorAll\?\.\('button'\)\?\.\[4\]/);
+  assert.match(js,/current\.native\.click\(\)/);
+  assert.match(css,/#simple-fx-remove\[aria-label\^="Megerősítés"\]/);
+});
