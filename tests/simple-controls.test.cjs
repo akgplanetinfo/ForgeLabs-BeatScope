@@ -1401,3 +1401,106 @@ test('Stage 26 selected-effect switch uses native Pro row control with accessibl
   assert.match(js,/nativeToggle\.click\(\)/);
   assert.match(css,/#simple-fx-enabled\[aria-checked="true"\]/);
 });
+
+test('Stage 27 empty FX chain disables reorder without mutating anything',()=>{
+  const f=fixture(),ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(f.nodes['simple-fx-position'].textContent,'Nincs effekt');
+  assert.equal(f.nodes['simple-fx-up'].disabled,true);
+  assert.equal(f.nodes['simple-fx-down'].disabled,true);
+  f.nodes['simple-fx-up'].click();f.nodes['simple-fx-down'].click();
+  assert.equal(f.fxRows.length,0);
+  ctrl.disconnect();
+});
+
+test('Stage 27 move selected native FX down and back up with preserved parameters',()=>{
+  const f=fixture();
+  const glow=addFXRow(f,'Glow',25,130,true);
+  const blur=addFXRow(f,'Blur',70,90);
+  const hue=addFXRow(f,'Hue Rotate',40,115);
+  glow.nativeNameButton.click();
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  const up=f.nodes['simple-fx-up'],down=f.nodes['simple-fx-down'];
+  const position=f.nodes['simple-fx-position'];
+  assert.equal(position.textContent,'1 / 3');
+  assert.equal(up.disabled,true);
+  assert.equal(down.disabled,false);
+  up.click();
+  assert.equal(glow.nativeUp.clicks,0,'Top boundary never delegates');
+  down.click();
+  assert.equal(glow.nativeDown.clicks,1,'One native Pro down click');
+  assert.deepEqual(f.fxRows,[blur,glow,hue]);
+  assert.equal(position.textContent,'2 / 3');
+  assert.equal(f.nodes['simple-fx-picker'].value,'1');
+  assert.equal(f.nodes['simple-fx-selection'].textContent,'Glow');
+  assert.equal(f.nodes['simple-fx-wet'].value,'25');
+  assert.equal(f.nodes['simple-fx-strength'].value,'130');
+  assert.deepEqual(glow.fxSettings,{wet:25,strength:130});
+  assert.equal(up.disabled,false);
+  up.click();
+  assert.equal(glow.nativeUp.clicks,1,'One native Pro up click');
+  assert.deepEqual(f.fxRows,[glow,blur,hue]);
+  assert.equal(position.textContent,'1 / 3');
+  assert.equal(up.disabled,true);
+  assert.equal(down.disabled,false);
+  ctrl.disconnect();
+});
+
+test('Stage 27 bottom boundary and native disabled state prevent illegal FX moves',()=>{
+  const f=fixture();
+  const glow=addFXRow(f,'Glow',25,130,true);
+  const blur=addFXRow(f,'Blur',70,90);
+  blur.nativeNameButton.click();
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(f.nodes['simple-fx-position'].textContent,'2 / 2');
+  assert.equal(f.nodes['simple-fx-down'].disabled,true);
+  f.nodes['simple-fx-down'].click();
+  assert.equal(blur.nativeDown.clicks,0);
+  blur.nativeUp.disabled=true;
+  f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-up'].disabled,true);
+  f.nodes['simple-fx-up'].click();
+  assert.equal(blur.nativeUp.clicks,0);
+  blur.nativeUp.disabled=false;
+  f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-up'].disabled,false);
+  f.nodes['simple-fx-up'].click();
+  assert.deepEqual(f.fxRows,[blur,glow]);
+  assert.equal(f.nodes['simple-fx-up'].disabled,true);
+  assert.equal(f.nodes['simple-fx-position'].textContent,'1 / 2');
+  ctrl.disconnect();
+});
+
+test('Stage 27 Pro reorder, selection and removal update the Simple FX position',()=>{
+  const f=fixture();
+  const glow=addFXRow(f,'Glow',30,70,true);
+  const blur=addFXRow(f,'Blur',45,160);
+  const hue=addFXRow(f,'Hue',20,120);
+  glow.nativeNameButton.click();
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  hue.nativeNameButton.click();
+  f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-position'].textContent,'3 / 3');
+  assert.equal(f.nodes['simple-fx-down'].disabled,true);
+  hue.nativeUp.click();
+  assert.deepEqual(f.fxRows,[glow,hue,blur]);
+  assert.equal(f.nodes['simple-fx-position'].textContent,'2 / 3');
+  assert.equal(f.nodes['simple-fx-picker'].value,'1');
+  f.fxRows.splice(1,1);
+  glow.nativeNameButton.click();f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-position'].textContent,'1 / 2');
+  f.fxRows.splice(0,2);f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-position'].textContent,'Nincs effekt');
+  assert.equal(f.nodes['simple-fx-up'].disabled,true);
+  assert.equal(f.nodes['simple-fx-down'].disabled,true);
+  ctrl.disconnect();
+});
+
+test('Stage 27 Simple reordering delegates to original Pro FX buttons',()=>{
+  const html=read('index.html'),css=read('src/lumina-theme.css'),js=read('src/simple-controls.js');
+  for(const id of ['simple-fx-up','simple-fx-down','simple-fx-position'])
+    assert.ok(html.includes('id="'+id+'"'),id);
+  assert.match(html,/Kijelölt effekt sorrendjének módosítása/);
+  assert.match(js,/function syncFXOrder\(\)/);
+  assert.match(js,/native\.click\(\)/);
+  assert.match(css,/\.simple-fx-order/);
+});
