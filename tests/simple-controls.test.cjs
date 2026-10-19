@@ -48,6 +48,7 @@ function fixture() {
     'simple-fx-up','simple-fx-down','simple-fx-position',
     'simple-fx-remove','simple-fx-remove-cancel','simple-fx-remove-note'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
+  nodes['simple-fx-remove-cancel'].hidden=true;
   nodes['title-status'].textContent = 'Élő mikrofon';
   nodes['track-name'].textContent = 'teszt-zene.wav';
   nodes['mode-label'].textContent = 'ORBIT / RADIAL SPECTRUM';
