@@ -1247,6 +1247,40 @@ async function run(){
    const chooserRestored=nativeRows().length===fxOriginalCount
      &&chooser.disabled===(fxOriginalCount===0)
      &&(fxOriginalSelection<0||chooser.value===String(fxOriginalSelection));
+   // Stage 26: toggle only the selected Pro FX from Simple and restore it from Pro.
+   const fx26BeforeRows=nativeRows();
+   if(fx26BeforeRows.length&&!fx26BeforeRows.some(row=>row.classList.contains('selected')))
+     fx26BeforeRows[0].querySelector('.fx-stack-name')?.click();
+   const fx26BeforeIndex=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   const fx26BeforeRow=nativeRows()[fx26BeforeIndex];
+   const fx26OriginalInactive=Boolean(fx26BeforeRow?.querySelector('.fx-stack-name')
+     ?.classList.contains('inactive'));
+   const fx26Name=fx26BeforeRow?.querySelector('.fx-stack-name')?.textContent;
+   const fx26Wet=nativeWet.value,fx26Strength=nativeStrength.value;
+   const fx26Count=nativeRows().length;
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const fx26Quick=$('simple-fx-enabled');
+   const fx26Ready=fx26BeforeIndex>=0&&!fx26Quick.disabled
+     &&fx26Quick.getAttribute('aria-checked')===String(!fx26OriginalInactive);
+   fx26Quick.click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx26ChangedRow=nativeRows()[fx26BeforeIndex];
+   const fx26Delegated=fx26ChangedRow?.querySelector('.fx-stack-name')
+     ?.classList.contains('inactive')===!fx26OriginalInactive
+     &&fx26Quick.getAttribute('aria-checked')===String(fx26OriginalInactive)
+     &&fx26ChangedRow?.classList.contains('selected');
+   const fx26Preserved=nativeRows().length===fx26Count
+     &&fx26ChangedRow?.querySelector('.fx-stack-name')?.textContent===fx26Name
+     &&nativeWet.value===fx26Wet&&nativeStrength.value===fx26Strength;
+   $('studio-pro').click();
+   nativeRows()[fx26BeforeIndex]?.querySelectorAll('button')[1]?.click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx26RestoredRow=nativeRows()[fx26BeforeIndex];
+   const fx26ProSync=fx26RestoredRow?.querySelector('.fx-stack-name')
+     ?.classList.contains('inactive')===fx26OriginalInactive
+     &&fx26Quick.getAttribute('aria-checked')===String(!fx26OriginalInactive)
+     &&nativeRows().length===fx26Count;
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
@@ -1281,7 +1315,8 @@ async function run(){
      fxBypassDelegated,fxStackPreserved,fxBypassProSync,fxBypassRestored,
      fxAutopilotShown,fxAutopilotDelegated,fxAutopilotDistinct,fxAutopilotProSync,
      fxParamsReady,fxParamsDelegated,fxParamsProSync,fxParamsRestored,
-     chooserReady,chooserDelegated,chooserProSync,chooserRestored};
+     chooserReady,chooserDelegated,chooserProSync,chooserRestored,
+     fx26Ready,fx26Delegated,fx26Preserved,fx26ProSync};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
