@@ -601,6 +601,88 @@ async function run(){
   if(displays.length===1&&output.isFullScreen())fail('Output hijacked primary monitor in full-screen mode');
  }
 
+ // Output health travels only from its own renderer; preview cannot spoof program.
+ const firstHealth=await win.webContents.executeJavaScript("window.beatAPI.outputState()");
+ const healthRender=await output.webContents.executeJavaScript("({health:window.__beatOutputStats().signalHealth.status,hidden:document.getElementById('signal-loss-screen').hidden,monitor:typeof BeatOutputHealth.createMonitor})");
+ if(firstHealth.health?.output!=='live'||firstHealth.health?.preview!=='live'
+   ||healthRender.health!=='live'||!healthRender.hidden||healthRender.monitor!=='function')
+   fail('Actual output signal health was not live: '+JSON.stringify({firstHealth,healthRender}));
+ await preview.webContents.executeJavaScript("window.outputBridge.sendHealth('output','lost')");
+ await new Promise(resolve=>setTimeout(resolve,120));
+ if((await win.webContents.executeJavaScript("window.beatAPI.outputState()")).health.output!=='live')
+   fail('Preview window spoofed the program output health state');
+ await output.webContents.executeJavaScript("window.outputBridge.sendHealth('output','lost')");
+ await new Promise(resolve=>setTimeout(resolve,160));
+ const signalLost=await win.webContents.executeJavaScript(
+   "(async()=>({health:await window.beatAPI.outputState(),message:document.getElementById('output-status').textContent}))()");
+ if(signalLost.health.health.output!=='lost'
+   ||!signalLost.message.includes('VJ JEL MEGSZAKADT'))
+   fail('Controller did not show interrupted output signal: '+JSON.stringify(signalLost));
+ await output.webContents.executeJavaScript("window.outputBridge.sendHealth('output','live')");
+ await new Promise(resolve=>setTimeout(resolve,160));
+ const signalRestored=await win.webContents.executeJavaScript(
+   "(async()=>({health:await window.beatAPI.outputState(),message:document.getElementById('output-status').textContent}))()");
+ if(signalRestored.health.health.output!=='live'
+   ||signalRestored.message.includes('VJ JEL MEGSZAKADT'))
+   fail('Controller did not restore live signal status: '+JSON.stringify(signalRestored));
+ details.push('OUTPUT SIGNAL MONITOR: actual frames live, spoof rejected, disconnect/recover status reported');
+
+ // v0.4.1: only the public VJ output is blacked out in JPEG mode.
+ const startBlack=await win.webContents.executeJavaScript("window.beatAPI.outputState()");
+ if(startBlack.blackout!==false)fail('VJ BLACKOUT was armed on startup');
+ await win.webContents.executeJavaScript("document.getElementById('output-blackout').click()");
+ await new Promise(resolve=>setTimeout(resolve,350));
+ const stateBlack=await win.webContents.executeJavaScript("window.beatAPI.outputState()");
+ const programBlack=await output.webContents.executeJavaScript("({blackout:window.__beatOutputStats().blackout,visible:!document.getElementById('blackout-screen').hidden,display:getComputedStyle(document.getElementById('blackout-screen')).display,viewport:document.getElementById('blackout-screen').getBoundingClientRect().width===innerWidth})");
+ const previewBlack=await preview.webContents.executeJavaScript("window.__beatOutputStats().blackout");
+ if(!stateBlack.blackout||!programBlack.blackout||!programBlack.visible||programBlack.display==='none'||!programBlack.viewport||previewBlack)
+   fail('JPEG BLACKOUT unexpectedly covers preview or does not cover program output: '+JSON.stringify({stateBlack,programBlack,previewBlack}));
+ const pressed=await win.webContents.executeJavaScript("document.getElementById('output-blackout').getAttribute('aria-pressed')");
+ if(pressed!=='true')fail('BLACKOUT controller button did not show ON');
+ const jpgBefore=(await readStats(output)).painted;
+ // Inject a known valid JPEG from the authorised app controller: no assumption
+ // that an idle audio source will produce another visual frame in 450 ms.
+ await new Promise(resolve=>setTimeout(resolve,80));
+ await win.webContents.executeJavaScript("(()=>{const c=document.createElement('canvas');c.width=64;c.height=64;const cx=c.getContext('2d');cx.fillStyle='#bd2363';cx.fillRect(0,0,64,64);window.beatAPI.pushOutputFrame(c.toDataURL('image/jpeg',.86));return true})()");
+ const blackPaint=await waitFrame(output,x=>x.painted>jpgBefore,3500);
+ if(!blackPaint||blackPaint.painted<=jpgBefore||!blackPaint.blackout)
+   fail('A known JPEG frame was not painted beneath BLACKOUT: '+JSON.stringify(blackPaint));
+ await win.webContents.executeJavaScript("document.getElementById('output-blackout').click()");
+ await new Promise(resolve=>setTimeout(resolve,250));
+ if((await readStats(output)).blackout||(await win.webContents.executeJavaScript('window.beatAPI.outputState()')).blackout)
+   fail('JPEG BLACKOUT restore failed');
+ details.push('BLACKOUT JPEG: program black, preview live, injected JPEG delivered, restored');
+ // F9 toggles the original BLACKOUT button in both modes; Shift+F9 is
+ // an idempotent emergency black command and cannot accidentally unblack.
+ const keyF9=opts=>win.webContents.executeJavaScript(
+   "(function(){const e=new KeyboardEvent('keydown',"+JSON.stringify({key:'F9',bubbles:true,cancelable:true,...opts})+");document.dispatchEvent(e);return e.defaultPrevented})()");
+ const shortcutF9=await keyF9({});
+ await new Promise(resolve=>setTimeout(resolve,160));
+ const shortcutBlack=(await win.webContents.executeJavaScript('window.beatAPI.outputState()')).blackout;
+ const repeatSuppressed=!(await keyF9({repeat:true}));
+ const shiftSafe=await keyF9({shiftKey:true});
+ await new Promise(resolve=>setTimeout(resolve,150));
+ const shiftStillBlack=(await readStats(output)).blackout;
+ const typedIgnored=await win.webContents.executeJavaScript(
+   "(()=>{const i=document.getElementById('fx-search');const e=new KeyboardEvent('keydown',{key:'F9',bubbles:true,cancelable:true});i.dispatchEvent(e);return !e.defaultPrevented})()");
+ const ctrlIgnored=!(await keyF9({ctrlKey:true}));
+ const shortcutOff=await keyF9({});
+ await new Promise(resolve=>setTimeout(resolve,200));
+ const shortcutClear=!(await readStats(output)).blackout;
+ const shiftOn=await keyF9({shiftKey:true});
+ await new Promise(resolve=>setTimeout(resolve,160));
+ const shiftArmed=(await readStats(output)).blackout;
+ await keyF9({});
+ await new Promise(resolve=>setTimeout(resolve,160));
+ if(!shortcutF9||!shortcutBlack||!repeatSuppressed||!shiftSafe||!shiftStillBlack
+   ||!typedIgnored||!ctrlIgnored||!shortcutOff||!shortcutClear||!shiftOn||!shiftArmed
+   ||(await readStats(output)).blackout)
+   fail('F9 / Shift+F9 BLACKOUT hotkey safety failed: '+JSON.stringify({
+     shortcutF9,shortcutBlack,repeatSuppressed,shiftSafe,shiftStillBlack,
+     typedIgnored,ctrlIgnored,shortcutOff,shortcutClear,shiftOn,shiftArmed
+   }));
+ details.push('BLACKOUT HOTKEY: F9 toggle, Shift+F9 arm only, repeat/input/ctrl guards');
+
  // Validate all three output resolutions in actual BrowserWindows with asynchronous JPEG encoding.
  const qualityDefaults=await win.webContents.executeJavaScript("({resolution:document.getElementById('output-resolution').value,fps:document.getElementById('output-fps').value,quality:document.getElementById('output-quality').value})");
  if(qualityDefaults.resolution!=='540'||qualityDefaults.fps!=='12'||qualityDefaults.quality!=='80')
@@ -635,6 +717,23 @@ async function run(){
    fail('WebRTC transport did not produce live frames in both real BrowserWindows: '+JSON.stringify({rtcOutput,rtcPreview,source:await win.webContents.executeJavaScript("window.__beatRtcDebug?.()"),routing:await win.webContents.executeJavaScript("window.beatAPI.outputState()"),supported:await win.webContents.executeJavaScript("({peer:typeof RTCPeerConnection,stream:typeof HTMLCanvasElement.prototype.captureStream})")}));
  const selectedRtc=await win.webContents.executeJavaScript("({mode:document.getElementById('output-transport').value,fps:document.getElementById('output-fps').value})");
  if(selectedRtc.mode!=='webrtc'||selectedRtc.fps!=='60')fail('WebRTC/60 FPS UI selection failed: '+JSON.stringify(selectedRtc));
+ // v0.4.1: the same overlay must protect the WebRTC program output.
+ await win.webContents.executeJavaScript("document.getElementById('output-blackout').click()");
+ await new Promise(resolve=>setTimeout(resolve,250));
+ const blackRtc=await readStats(output),previewRtc=await readStats(preview);
+ if(!blackRtc.blackout||previewRtc.blackout||blackRtc.mode!=='webrtc'||previewRtc.mode!=='webrtc')
+   fail('WebRTC BLACKOUT incorrectly affected preview or stopped the transport: '+JSON.stringify({blackRtc,previewRtc}));
+ // A quiet or static input need not generate fresh frames; the active media
+ // track and video element must remain connected and unobscured underneath.
+ await new Promise(resolve=>setTimeout(resolve,350));
+ const rtcTrack=await output.webContents.executeJavaScript("({track:document.getElementById('live-video').srcObject?.getVideoTracks()[0]?.readyState,hidden:document.getElementById('live-video').hidden})");
+ const rtcBlackStill=await readStats(output);
+ if(rtcTrack.track!=='live'||rtcTrack.hidden||rtcBlackStill.mode!=='webrtc'||!rtcBlackStill.blackout)
+   fail('WebRTC live track was disconnected by BLACKOUT: '+JSON.stringify({rtcTrack,rtcBlackStill}));
+ await win.webContents.executeJavaScript("document.getElementById('output-blackout').click()");
+ await new Promise(resolve=>setTimeout(resolve,200));
+ if((await readStats(output)).blackout)fail('WebRTC BLACKOUT restore failed');
+ details.push('BLACKOUT WebRTC: live video track intact, preview unaffected, restored');
  // A user can switch back to the unchanged JPEG path without restarting the app.
  await win.webContents.executeJavaScript("(()=>{const mode=document.getElementById('output-transport');mode.value='jpeg';mode.dispatchEvent(new Event('change',{bubbles:true}));})()");
  const jpegAgain=await waitFrame(output,x=>x.mode==='jpeg'&&x.painted>rtcOutput.painted,10000);
@@ -649,6 +748,30 @@ async function run(){
  const closed=await win.webContents.executeJavaScript("window.beatAPI.outputState()");
  if(closed.preview||closed.output)fail('Output windows were not released on stop');
  details.push('OUTPUT TEST: displays='+displays.length+', preview and VJ output received live frames and closed');
+ // Reopening a program output while BLACKOUT was armed must be black before
+ // any cached JPEG/WebRTC content paints. Preview remains independent.
+ await win.webContents.executeJavaScript("document.getElementById('output-blackout').click()");
+ await new Promise(resolve=>setTimeout(resolve,130));
+ const prearmed=(await win.webContents.executeJavaScript('window.beatAPI.outputState()')).blackout;
+ const prearmedLabel=await win.webContents.executeJavaScript("document.getElementById('output-status').textContent");
+ await win.webContents.executeJavaScript("document.getElementById('open-output').click()");
+ await new Promise(resolve=>setTimeout(resolve,920));
+ const reopened=BrowserWindow.getAllWindows().find(w=>!w.isDestroyed()&&w.webContents.getURL().includes('output.html')&&w.webContents.getURL().includes('kind=output'));
+ const reopenedURL=reopened?.webContents.getURL()||'';
+ const prearmedVisual=reopened?await reopened.webContents.executeJavaScript(
+   "({blackout:window.__beatOutputStats().blackout,hidden:document.getElementById('blackout-screen').hidden,visible:getComputedStyle(document.getElementById('blackout-screen')).display!=='none'})"):null;
+ if(!prearmed||!prearmedLabel.includes('ELŐKÉSZÍTVE')
+   ||!reopenedURL.includes('blackout=1')||!prearmedVisual?.blackout
+   ||prearmedVisual.hidden||!prearmedVisual.visible)
+   fail('Reopened VJ program output was not black from first frame: '+
+     JSON.stringify({prearmed,prearmedLabel,reopenedURL,prearmedVisual}));
+ await win.webContents.executeJavaScript("document.getElementById('close-output').click()");
+ await new Promise(resolve=>setTimeout(resolve,320));
+ await win.webContents.executeJavaScript("document.getElementById('output-blackout').click()");
+ await new Promise(resolve=>setTimeout(resolve,160));
+ const reopenClean=!(await win.webContents.executeJavaScript('window.beatAPI.outputState()')).blackout;
+ if(!reopenClean)fail('BLACKOUT remained armed after user disarmed while output closed');
+ details.push('BLACKOUT REOPEN: program prearmed before first frame; session disarm resets');
  // Alpha 17: test real mode switching, original BeatScope delegation and navigation in Windows Electron.
  const alpha17UI=await win.webContents.executeJavaScript(`(async()=>{
    const $=id=>document.getElementById(id);

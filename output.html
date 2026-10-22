@@ -10,12 +10,19 @@ html,body{width:100%;height:100%;margin:0;background:#000;overflow:hidden}
 canvas,video{display:block;width:100vw;height:100vh;background:#000;object-fit:contain}\n[hidden]{display:none!important}
 #hint{position:fixed;bottom:18px;left:24px;color:#a6bdcc;font:12px system-ui,sans-serif;pointer-events:none;text-shadow:0 1px 4px #000}
 body.streaming #hint{display:none}
+#signal-loss-screen{position:fixed;inset:0;width:100vw;height:100vh;background:#000;z-index:9000;pointer-events:none}
+#signal-loss-screen[hidden]{display:none!important}
+#blackout-screen{position:fixed;inset:0;width:100vw;height:100vh;background:#000;z-index:9999;pointer-events:none}
+#blackout-screen[hidden]{display:none!important}
 </style>
 </head>
 <body>
 <canvas id="screen" aria-label="ForgeLabs BeatScope élő kimeneti kép"></canvas>
 <video id="live-video" hidden autoplay muted playsinline aria-label="WebRTC VJ élő kép"></video>
 <div id="hint">BeatScope · Vizuáljelre vár…</div>
+<div id="signal-loss-screen" hidden aria-label="Nincs friss VJ-kép"></div>
+<div id="blackout-screen" hidden aria-label="A VJ-kimenet feketére kapcsolva"></div>
+<script src="src/output-health.js"></script>
 <script src="src/output-view.js"></script>
 </body>
 </html>

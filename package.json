@@ -1,7 +1,7 @@
 {
   "name": "forgelabs-beatscope",
   "productName": "ForgeLabs BeatScope",
-  "version": "0.4.0",
+  "version": "0.4.1-dev.1",
   "description": "Lumina Pulse – továbbfejlesztett ForgeLabs BeatScope audio- és VJ-alkalmazás",
   "private": true,
   "main": "src/main.cjs",
@@ -10,7 +10,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test tests/*.test.cjs",
-    "check": "node --check src/main.cjs && node --check src/preload.cjs && node --check src/studio-mode.js && node --check src/simple-controls.js && node --check src/pro-navigation.js && node --check src/vj-command-search.js && node --check src/ui.js && node --check src/audio-math.js && node --check src/ai-director.js && node --check src/fx-engine.js && node --check src/composition.js && node --check src/video-timing.js && node --check src/beat-clock.js && node --check src/auto-scenes.js && node --check src/output-manager.cjs && node --check src/output-preload.cjs && node --check src/output-view.js && node --check src/live-output.js && node --check src/generators.js && node --check src/generators-extra.js && node --check src/media-library.cjs && node --check src/project-bundle.cjs && node --test tests/*.test.cjs",
+    "check": "node --check src/main.cjs && node --check src/preload.cjs && node --check src/studio-mode.js && node --check src/simple-controls.js && node --check src/pro-navigation.js && node --check src/vj-command-search.js && node --check src/ui.js && node --check src/audio-math.js && node --check src/ai-director.js && node --check src/fx-engine.js && node --check src/composition.js && node --check src/video-timing.js && node --check src/beat-clock.js && node --check src/auto-scenes.js && node --check src/output-manager.cjs && node --check src/output-preload.cjs && node --check src/output-view.js && node --check src/output-health.js && node --check src/live-output.js && node --check src/generators.js && node --check src/generators-extra.js && node --check src/media-library.cjs && node --check src/project-bundle.cjs && node --test tests/*.test.cjs",
     "dist:win": "electron-builder --win nsis portable --x64"
   },
   "devDependencies": {

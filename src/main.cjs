@@ -16,6 +16,9 @@ const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.
 let window = null;
 let previewWindow=null,outputWindow=null;
 let selectedDisplayId=null,lastFrame=null,lastFrameSent=0,streamOwner=null;
+// Panic blackout is session-only; never save it to project preferences.
+let outputBlackout=false;
+const outputHealth={preview:'off',output:'off'};
 const signalDiagnostics={seen:0,invalid:0,missingView:0,controllerForwarded:0,viewForwarded:0,rejected:0};
 const preferencesPath = () => path.join(app.getPath('userData'), 'beatscope-preferences.json');
 function validatePrefs(value) {
@@ -81,6 +84,8 @@ function listDisplays(){
 function status(){
  return {preview:!!previewWindow&&!previewWindow.isDestroyed(),
          output:!!outputWindow&&!outputWindow.isDestroyed(),
+         blackout:outputBlackout,
+         health:{...outputHealth},
          displayId:selectedDisplayId,
          displays:listDisplays(),signalDiagnostics:{...signalDiagnostics}};
 }
@@ -113,6 +118,7 @@ function createView(kind,displayId){
      contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:true,backgroundThrottling:false}
  });
  if(kind==='preview')previewWindow=view;else{outputWindow=view;selectedDisplayId=chosen.id;}
+ outputHealth[kind]='waiting';
  view.webContents.on('page-title-updated',event=>event.preventDefault());
  view.webContents.setWindowOpenHandler(()=>({action:'deny'}));
  view.webContents.on('will-navigate',e=>e.preventDefault());
@@ -122,18 +128,22 @@ function createView(kind,displayId){
  view.on('closed',()=>{
    if(kind==='preview')previewWindow=null;
    else{outputWindow=null;selectedDisplayId=null;}
+   outputHealth[kind]='off';
    if(!previewWindow&&!outputWindow)streamOwner=null;
    announceOutputStatus();
  });
  view.webContents.on('did-finish-load',()=>{
-   if(lastFrame&& !view.webContents.isDestroyed())
-     view.webContents.send('beatscope:output-frame',lastFrame);
+   if(view.webContents.isDestroyed())return;
+   if(kind==='output')view.webContents.send('beatscope:output-blackout',outputBlackout);
+   if(lastFrame)view.webContents.send('beatscope:output-frame',lastFrame);
  });
  view.once('ready-to-show',()=>{
    view.show();
    if(external){view.setBounds(chosen.bounds);view.setFullScreen(true);}
  });
- view.loadFile(path.join(__dirname,'../output.html'),{query:{kind}});
+ view.loadFile(path.join(__dirname,'../output.html'),{
+   query:{kind,blackout:kind==='output'&&outputBlackout?'1':'0'}
+ });
  announceOutputStatus();
  return view;
 }
@@ -192,6 +202,17 @@ app.whenReady().then(()=>{
     if(!trustedController(event))throw new Error('Nem engedélyezett ablak.');
     return status();
   });
+  // Program-only BLACKOUT, verified controller-only IPC; JPEG/WebRTC continue running.
+  ipcMain.handle('beatscope:set-output-blackout',(event,enabled)=>{
+    if(!trustedController(event)||typeof enabled!=='boolean')
+      throw new Error('Érvénytelen BLACKOUT művelet.');
+    outputBlackout=enabled;
+    if(outputWindow&&!outputWindow.isDestroyed()
+      &&!outputWindow.webContents.isDestroyed()&&!outputWindow.webContents.isLoading())
+      outputWindow.webContents.send('beatscope:output-blackout',enabled);
+    announceOutputStatus();
+    return status();
+  });
   ipcMain.handle('beatscope:open-view',(event,kind,displayId)=>{
     if(!trustedController(event)||!['preview','output'].includes(kind))
       throw new Error('Érvénytelen kimeneti művelet.');
@@ -206,6 +227,17 @@ app.whenReady().then(()=>{
     if(!trustedController(event)||!['preview','output'].includes(kind))
       throw new Error('Érvénytelen kimeneti művelet.');
     closeView(kind);return status();
+  });
+  // Receiver health reports can only come from their own sandboxed output view.
+  // They never change BLACKOUT or preferences and cannot control other windows.
+  ipcMain.on('beatscope:output-health',(event,kind,health)=>{
+    if(!['preview','output'].includes(kind)
+      ||!['waiting','live','lost'].includes(health))return;
+    const view=kind==='preview'?previewWindow:outputWindow;
+    if(!view||view.isDestroyed()||event.sender!==view.webContents)return;
+    if(outputHealth[kind]===health)return;
+    outputHealth[kind]=health;
+    announceOutputStatus();
   });
   // Relay SDP/ICE messages only between this app's controller and its own isolated output views.
   // Never expose arbitrary IPC destinations or accept network URLs from untrusted renderers.

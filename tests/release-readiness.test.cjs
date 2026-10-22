@@ -4,7 +4,7 @@ const fs=require('node:fs'),path=require('node:path');
 const read=n=>fs.readFileSync(path.join(__dirname,'..',n),'utf8');
 const pkg=JSON.parse(read('package.json'));
 test('stable version and backwards-compatible user-level packaging',()=>{
- assert.equal(pkg.version,'0.4.0');
+ assert.match(pkg.version,/^0\.4\.\d+(?:-dev\.\d+)?$/);
  assert.equal(pkg.build.appId,'team.forgelabs.beatscope');
  assert.equal(pkg.build.productName,'ForgeLabs BeatScope');
  assert.equal(pkg.build.nsis.perMachine,false);
@@ -13,7 +13,7 @@ test('stable version and backwards-compatible user-level packaging',()=>{
  assert.deepEqual(pkg.build.win.target,['nsis','portable']);
 });
 test('stable Lumina Pulse UI branding and version marker',()=>{
- assert.ok(read('index.html').includes('v0.4.0 · STABLE'));
+ assert.ok(read('index.html').includes(pkg.version.includes('-')?'v'+pkg.version.split('-')[0]+' · DEV':'v'+pkg.version+' · STABLE'));
  assert.ok(read('index.html').includes('Lumina Pulse | BeatScope Edition'));
  assert.ok(read('src/main.cjs').includes('Lumina Pulse | BeatScope Edition'));
 });

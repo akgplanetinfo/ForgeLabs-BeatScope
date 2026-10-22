@@ -1031,3 +1031,17 @@ body[data-theme="lumina-pulse"] #simple-fx-clear:focus-visible{
 }
 body[data-theme="lumina-pulse"] #simple-fx-result-count{flex:1 1 140px}
 body[data-theme="lumina-pulse"] #simple-fx-first{order:2}
+
+
+/* v0.4.1: program-only BLACKOUT switch; never covers the controller or preview. */
+body[data-theme="lumina-pulse"] #output-blackout{
+ min-width:148px;min-height:38px;padding:8px 12px;
+ background:#1e2028;color:#f9d8df;border:2px solid #af5262;
+ font-size:11px;font-weight:800;letter-spacing:.06em;border-radius:3px;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] #output-blackout.active{
+ background:#851528;border-color:#ff7183;color:#fff;
+ box-shadow:0 0 0 2px #ec3f5e33,inset 0 0 15px #290008;
+}
+body[data-theme="lumina-pulse"] #output-blackout:disabled{opacity:.55;cursor:wait}
+body[data-theme="lumina-pulse"] #output-blackout:focus-visible{outline:2px solid #eaffff;outline-offset:3px}
