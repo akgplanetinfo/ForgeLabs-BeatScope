@@ -47,10 +47,12 @@ function fixture() {
     'simple-fx-selection','fx-stack','simple-fx-picker','simple-fx-enabled',
     'simple-fx-up','simple-fx-down','simple-fx-position',
     'simple-fx-remove','simple-fx-remove-cancel','simple-fx-remove-note',
-    'simple-fx-add','simple-fx-add-status','fx-browser-open','fx-drawer','fx-search'];
+    'simple-fx-add','simple-fx-add-status','simple-fx-catalog-back',
+    'fx-close','fx-browser-open','fx-drawer','fx-search'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['simple-fx-remove-cancel'].hidden=true;
   nodes['fx-drawer'].hidden=true;
+  nodes['simple-fx-catalog-back'].hidden=true;
   nodes['title-status'].textContent = 'Élő mikrofon';
   nodes['track-name'].textContent = 'teszt-zene.wav';
   nodes['mode-label'].textContent = 'ORBIT / RADIAL SPECTRUM';
@@ -1728,7 +1730,7 @@ test('Stage 30 closing dialog without adding does not close future Pro catalog',
   addFXRow(f,'Blur',65,90,true).nativeNameButton.click();
   f.observers[0].notify();
   assert.equal(f.nodes['fx-drawer'].hidden,false,'Native catalog stays open after cancel');
-  assert.equal(f.nodes['simple-fx-add-status'].textContent,'Válassz effektet a könyvtárból…');
+  assert.equal(f.nodes['simple-fx-add-status'].textContent,'FX-könyvtár bezárva.');
   assert.equal(f.fxRows.length,1);
   ctrl.disconnect();
 });
@@ -1771,4 +1773,90 @@ test('Stage 30 accessibility and native-only wiring are present in UI',()=>{
   assert.match(js,/finishSimpleFXAdd\(\)/);
   assert.match(js,/observe\(get\('fx-drawer'\),'hidden'\)/);
   assert.match(css,/\.simple-fx-add-status/);
+});
+
+
+test('Stage 31 Simple catalog back delegates to native close and preserves FX chain',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  const old=addFXRow(f,'Glow',34,140,true);old.nativeNameButton.click();
+  let focusCount=0;
+  f.nodes['simple-fx-add'].focus=()=>{focusCount++;};
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  f.nodes['fx-close'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=true;});
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(f.nodes['simple-fx-catalog-back'].hidden,true);
+  f.nodes['simple-fx-add'].click();
+  assert.equal(f.nodes['simple-fx-catalog-back'].hidden,false);
+  assert.equal(f.nodes['fx-drawer'].hidden,false);
+  f.nodes['simple-fx-catalog-back'].click();
+  assert.equal(f.nodes['fx-close'].clicks,1,'Delegates exactly once to native close');
+  f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-catalog-back'].hidden,true);
+  assert.equal(f.nodes['fx-drawer'].hidden,true);
+  assert.equal(f.nodes['simple-fx-add-status'].textContent,'FX-könyvtár bezárva.');
+  assert.equal(focusCount,1,'Returns focus to Simple add button');
+  assert.deepEqual(f.fxRows,[old],'Does not mutate effect chain');
+  assert.deepEqual(old.fxSettings,{wet:34,strength:140});
+  ctrl.disconnect();
+});
+
+test('Stage 31 Escape/native X cancellation returns focus without keyboard interception',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  let focusCount=0;
+  f.nodes['simple-fx-add'].focus=()=>{focusCount++;};
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();
+  assert.equal(f.nodes['simple-fx-catalog-back'].hidden,false);
+  // The original app Escape handler hides the drawer, then MutationObserver fires.
+  f.nodes['fx-drawer'].hidden=true;f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-catalog-back'].hidden,true);
+  assert.equal(focusCount,1);
+  assert.equal(f.nodes['fx-close'].clicks,0);
+  assert.equal(f.docHandlers.has('keydown'),true,'Existing Simple shortcuts remain');
+  assert.equal(f.key('Escape').prevented,false,'No new Escape interception');
+  f.nodes['simple-fx-add'].click();
+  assert.equal(f.nodes['simple-fx-catalog-back'].hidden,false);
+  assert.equal(f.nodes['fx-drawer'].hidden,false);
+  ctrl.disconnect();
+});
+
+test('Stage 31 successful addition hides back without cancellation focus',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  let addFocus=0,pickerFocus=0;
+  f.nodes['simple-fx-add'].focus=()=>{addFocus++;};
+  f.nodes['simple-fx-picker'].focus=()=>{pickerFocus++;};
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();
+  assert.equal(f.nodes['simple-fx-catalog-back'].hidden,false);
+  addFXRow(f,'Blur',53,120,true).nativeNameButton.click();f.observers[0].notify();
+  assert.equal(f.nodes['fx-drawer'].hidden,true);
+  assert.equal(f.nodes['simple-fx-catalog-back'].hidden,true);
+  assert.equal(pickerFocus,1,'Successful addition focuses selected FX');
+  assert.equal(addFocus,0,'Successful addition is not treated as cancellation');
+  assert.match(f.nodes['simple-fx-add-status'].textContent,/Blur hozzáadva/);
+  ctrl.disconnect();
+});
+
+test('Stage 31 Pro mode does not show Simple catalog return button',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();
+  f.body.dataset.studioMode='pro';f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-catalog-back'].hidden,true);
+  assert.equal(f.nodes['fx-drawer'].hidden,false,'Original Pro library remains open');
+  f.nodes['simple-fx-catalog-back'].click();
+  assert.equal(f.nodes['fx-close'].clicks,0,'No Simple session, no close action');
+  ctrl.disconnect();
+});
+
+test('Stage 31 cancel affordance is in native catalog, without duplicate escape handler',()=>{
+  const html=read('index.html'),css=read('src/lumina-theme.css'),js=read('src/simple-controls.js');
+  assert.match(html,/id="simple-fx-catalog-back" hidden/);
+  assert.match(html,/Vissza a Simple módba/);
+  assert.match(js,/nativeFXClose\.click\(\)/);
+  assert.match(css,/\.fx-simple-back\[hidden\]/);
+  assert.match(js,/observe\(get\('fx-drawer'\),'hidden'\)/);
 });

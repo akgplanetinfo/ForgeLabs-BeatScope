@@ -1439,6 +1439,32 @@ async function run(){
      &&(fx30OriginalSel<0||nativeRows()[fx30OriginalSel]?.classList.contains('selected'));
    $('studio-pro').click();
    if(!fx30Drawer.hidden)$('fx-close').click();
+   // Stage 31: test both explicit Simple return and the original Escape handler.
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fx31Before=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx31BeforeSel=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   const fx31Button=$('simple-fx-add'),fx31Back=$('simple-fx-catalog-back');
+   const fx31Drawer=$('fx-drawer');
+   fx31Button.click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fx31Opened=!fx31Drawer.hidden&&!fx31Back.hidden;
+   fx31Back.click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx31Return=fx31Drawer.hidden&&fx31Back.hidden
+     &&document.activeElement===fx31Button
+     &&$('simple-fx-add-status').textContent==='FX-könyvtár bezárva.';
+   fx31Button.click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fx31Reopened=!fx31Drawer.hidden&&!fx31Back.hidden;
+   $('fx-search').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx31Esc=fx31Drawer.hidden&&fx31Back.hidden
+     &&document.activeElement===fx31Button;
+   const fx31Preserved=nativeRows().length===fx31Before.length
+     &&nativeRows().every((row,i)=>row.querySelector('.fx-stack-name')?.textContent===fx31Before[i])
+     &&(fx31BeforeSel<0||nativeRows()[fx31BeforeSel]?.classList.contains('selected'));
+   $('studio-pro').click();
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
@@ -1479,7 +1505,8 @@ async function run(){
      fx27ProRestore,fx27Restored,fx28Ready,fx28FirstSafe,fx28CancelSafe,
      fx28Rearmed,fx28Confirmed,fx28Restored,
      fx29Ready,fx29Opened,fx29Added,fx29Restored,
-     fx30Opened,fx30Canceled,fx30Reopened,fx30Added,fx30Closed,fx30Picker,fx30Restored};
+     fx30Opened,fx30Canceled,fx30Reopened,fx30Added,fx30Closed,fx30Picker,fx30Restored,
+     fx31Opened,fx31Return,fx31Reopened,fx31Esc,fx31Preserved};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));

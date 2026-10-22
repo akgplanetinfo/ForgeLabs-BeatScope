@@ -331,6 +331,8 @@
     const simpleFXPicker=get('simple-fx-picker');
     const simpleFXAdd=get('simple-fx-add');
     const simpleFXAddStatus=get('simple-fx-add-status');
+    const simpleFXCatalogBack=get('simple-fx-catalog-back');
+    const nativeFXClose=get('fx-close');
     const nativeFXBrowser=get('fx-browser-open');
     let pendingSimpleFXAdd=null;
     let fxPickerSignature=null;
@@ -348,36 +350,60 @@
         ?'Az effektlánc megtelt, legfeljebb három effekt használható'
         :'Effekt hozzáadása a BeatScope FX-könyvtárból');
     }
-    // Stage 30: a Simple-initiated catalog session closes only after an
-    // observable, native Pro FX addition. No new FX data or duplicate save path.
+    // Stage 31: keep a Simple catalog session scoped to the native FX drawer.
+    // The original window Escape and native close already hide that drawer.
+    // Observe its hidden attribute instead of installing a second Escape handler.
     function finishSimpleFXAdd(){
-      if(!pendingSimpleFXAdd)return;
-      const drawer=get('fx-drawer'),rows=fxRows();
-      if(doc.body?.dataset?.studioMode!=='simple'||!drawer||drawer.hidden
-        ||rows.length<pendingSimpleFXAdd.count){
-        pendingSimpleFXAdd=null;return;
+      if(!pendingSimpleFXAdd){
+        if(simpleFXCatalogBack)simpleFXCatalogBack.hidden=true;
+        return;
       }
-      if(rows.length<=pendingSimpleFXAdd.count)return;
-      // The native renderer already selected and persisted the added FX.
+      const drawer=get('fx-drawer'),rows=fxRows();
+      const inSimple=doc.body?.dataset?.studioMode==='simple';
+      if(!inSimple||!drawer||drawer.hidden||rows.length<pendingSimpleFXAdd.count){
+        pendingSimpleFXAdd=null;
+        if(simpleFXCatalogBack)simpleFXCatalogBack.hidden=true;
+        if(simpleFXAddStatus)simpleFXAddStatus.textContent=drawer?.hidden
+          ?'FX-könyvtár bezárva.':'Effektkeresés megszakítva.';
+        // Only the Simple UI owns focus when an active Simple session closed.
+        if(inSimple&&drawer?.hidden)simpleFXAdd?.focus?.();
+        return;
+      }
+      if(rows.length<=pendingSimpleFXAdd.count){
+        if(simpleFXCatalogBack)simpleFXCatalogBack.hidden=false;
+        return;
+      }
+      // Native Pro addFX() has already persisted and selected the new FX.
       const chosen=rows.find(row=>row.classList?.contains('selected'))||rows[rows.length-1];
       const name=chosen?.querySelector?.('.fx-stack-name')?.textContent?.trim()||'Effekt';
-      pendingSimpleFXAdd=null; // clear first: hidden mutation cannot re-enter
+      pendingSimpleFXAdd=null;
+      if(simpleFXCatalogBack)simpleFXCatalogBack.hidden=true;
       drawer.hidden=true;
       if(simpleFXAddStatus)
         simpleFXAddStatus.textContent='✓ '+name+' hozzáadva ('+rows.length+'/3)';
-      simpleFXPicker?.focus?.(); // FX picker already refreshed by syncFXParams
+      simpleFXPicker?.focus?.(); // existing selected FX and original parameters
     }
+    // Visible only for an FX library opened from Simple Mode. Delegate closing
+    // to the preexisting native close button, never manipulate FX stack data.
+    simpleFXCatalogBack?.addEventListener('click',()=>{
+      if(!pendingSimpleFXAdd||doc.body?.dataset?.studioMode!=='simple'
+        ||get('fx-drawer')?.hidden||!nativeFXClose||nativeFXClose.disabled)return;
+      nativeFXClose.click();
+    });
     simpleFXAdd?.addEventListener('click',()=>{
       if(simpleFXAdd.disabled||doc.body?.dataset?.studioMode!=='simple'
         ||!nativeFXBrowser||nativeFXBrowser.disabled||fxRows().length>=3)return;
-      // Record session before opening; an already-open catalog is not toggled shut.
-      pendingSimpleFXAdd={count:fxRows().length};
-      if(simpleFXAddStatus)
-        simpleFXAddStatus.textContent='Válassz effektet a könyvtárból…';
+      if(!pendingSimpleFXAdd){
+        pendingSimpleFXAdd={count:fxRows().length};
+        if(simpleFXAddStatus)
+          simpleFXAddStatus.textContent='Válassz effektet a könyvtárból…';
+      }
+      if(simpleFXCatalogBack)simpleFXCatalogBack.hidden=false;
+      // Repeated activation must never toggle an open native drawer closed.
       if(get('fx-drawer')?.hidden===false){
         get('fx-search')?.focus?.();return;
       }
-      nativeFXBrowser.click(); // use the original 120 FX catalog and add handler
+      nativeFXBrowser.click(); // original 120-FX catalog and existing addFX()
     });
     function syncFXPicker(){
       if(!simpleFXPicker)return;
