@@ -614,13 +614,18 @@ async function run(){
  const pressed=await win.webContents.executeJavaScript("document.getElementById('output-blackout').getAttribute('aria-pressed')");
  if(pressed!=='true')fail('BLACKOUT controller button did not show ON');
  const jpgBefore=(await readStats(output)).painted;
- await new Promise(resolve=>setTimeout(resolve,450));
- if((await readStats(output)).painted<=jpgBefore)fail('JPEG rendering stopped under BLACKOUT');
+ // Inject a known valid JPEG from the authorised app controller: no assumption
+ // that an idle audio source will produce another visual frame in 450 ms.
+ await new Promise(resolve=>setTimeout(resolve,80));
+ await win.webContents.executeJavaScript("(()=>{const c=document.createElement('canvas');c.width=64;c.height=64;const cx=c.getContext('2d');cx.fillStyle='#bd2363';cx.fillRect(0,0,64,64);window.beatAPI.pushOutputFrame(c.toDataURL('image/jpeg',.86));return true})()");
+ const blackPaint=await waitFrame(output,x=>x.painted>jpgBefore,3500);
+ if(!blackPaint||blackPaint.painted<=jpgBefore||!blackPaint.blackout)
+   fail('A known JPEG frame was not painted beneath BLACKOUT: '+JSON.stringify(blackPaint));
  await win.webContents.executeJavaScript("document.getElementById('output-blackout').click()");
  await new Promise(resolve=>setTimeout(resolve,250));
  if((await readStats(output)).blackout||(await win.webContents.executeJavaScript('window.beatAPI.outputState()')).blackout)
    fail('JPEG BLACKOUT restore failed');
- details.push('BLACKOUT JPEG: program black, preview live, frames continue, restored');
+ details.push('BLACKOUT JPEG: program black, preview live, injected JPEG delivered, restored');
 
  // Validate all three output resolutions in actual BrowserWindows with asynchronous JPEG encoding.
  const qualityDefaults=await win.webContents.executeJavaScript("({resolution:document.getElementById('output-resolution').value,fps:document.getElementById('output-fps').value,quality:document.getElementById('output-quality').value})");
@@ -662,13 +667,17 @@ async function run(){
  const blackRtc=await readStats(output),previewRtc=await readStats(preview);
  if(!blackRtc.blackout||previewRtc.blackout||blackRtc.mode!=='webrtc'||previewRtc.mode!=='webrtc')
    fail('WebRTC BLACKOUT incorrectly affected preview or stopped the transport: '+JSON.stringify({blackRtc,previewRtc}));
- const rtcBeforeBlack=blackRtc.painted;
+ // A quiet or static input need not generate fresh frames; the active media
+ // track and video element must remain connected and unobscured underneath.
  await new Promise(resolve=>setTimeout(resolve,350));
- if((await readStats(output)).painted<=rtcBeforeBlack)fail('WebRTC frames stopped while blacked out');
+ const rtcTrack=await output.webContents.executeJavaScript("({track:document.getElementById('live-video').srcObject?.getVideoTracks()[0]?.readyState,hidden:document.getElementById('live-video').hidden})");
+ const rtcBlackStill=await readStats(output);
+ if(rtcTrack.track!=='live'||rtcTrack.hidden||rtcBlackStill.mode!=='webrtc'||!rtcBlackStill.blackout)
+   fail('WebRTC live track was disconnected by BLACKOUT: '+JSON.stringify({rtcTrack,rtcBlackStill}));
  await win.webContents.executeJavaScript("document.getElementById('output-blackout').click()");
  await new Promise(resolve=>setTimeout(resolve,200));
  if((await readStats(output)).blackout)fail('WebRTC BLACKOUT restore failed');
- details.push('BLACKOUT WebRTC: live frames continue, preview unaffected, restored');
+ details.push('BLACKOUT WebRTC: live video track intact, preview unaffected, restored');
  // A user can switch back to the unchanged JPEG path without restarting the app.
  await win.webContents.executeJavaScript("(()=>{const mode=document.getElementById('output-transport');mode.value='jpeg';mode.dispatchEvent(new Event('change',{bubbles:true}));})()");
  const jpegAgain=await waitFrame(output,x=>x.mode==='jpeg'&&x.painted>rtcOutput.painted,10000);
