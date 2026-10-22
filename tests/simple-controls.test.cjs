@@ -46,9 +46,11 @@ function fixture() {
     'simple-fx-strength','fx-strength','simple-fx-strength-value','fx-strength-value',
     'simple-fx-selection','fx-stack','simple-fx-picker','simple-fx-enabled',
     'simple-fx-up','simple-fx-down','simple-fx-position',
-    'simple-fx-remove','simple-fx-remove-cancel','simple-fx-remove-note'];
+    'simple-fx-remove','simple-fx-remove-cancel','simple-fx-remove-note',
+    'simple-fx-add','fx-browser-open','fx-drawer','fx-search'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['simple-fx-remove-cancel'].hidden=true;
+  nodes['fx-drawer'].hidden=true;
   nodes['title-status'].textContent = 'Élő mikrofon';
   nodes['track-name'].textContent = 'teszt-zene.wav';
   nodes['mode-label'].textContent = 'ORBIT / RADIAL SPECTRUM';
@@ -1631,4 +1633,64 @@ test('Stage 28 confirmation UI delegates only to Pro native fifth delete button'
   assert.match(js,/row\?\.querySelectorAll\?\.\('button'\)\?\.\[4\]/);
   assert.match(js,/current\.native\.click\(\)/);
   assert.match(css,/#simple-fx-remove\[aria-label\^="Megerősítés"\]/);
+});
+
+
+test('Stage 29 Simple opens the native 120-FX browser without changing effects',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  let focused=0;
+  f.nodes['fx-search'].focus=()=>{focused++;};
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{
+    f.nodes['fx-drawer'].hidden=!f.nodes['fx-drawer'].hidden;
+  });
+  const ctrl=attachSimpleControls(f.doc,f.Observer),add=f.nodes['simple-fx-add'];
+  assert.equal(add.disabled,false);
+  assert.equal(f.nodes['fx-drawer'].hidden,true);
+  add.click();
+  assert.equal(f.nodes['fx-browser-open'].clicks,1,'The original native library opens');
+  assert.equal(f.nodes['fx-drawer'].hidden,false);
+  assert.equal(f.fxRows.length,0,'Opening the FX library does not add an effect');
+  add.click();
+  assert.equal(f.nodes['fx-browser-open'].clicks,1,'An open drawer must not be closed');
+  assert.equal(focused,1,'Reopen action focuses the original search');
+  assert.equal(f.nodes['fx-drawer'].hidden,false);
+  ctrl.disconnect();
+});
+
+test('Stage 29 FX capacity, Pro mode and native disabled state are respected',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{
+    f.nodes['fx-drawer'].hidden=!f.nodes['fx-drawer'].hidden;
+  });
+  const a=addFXRow(f,'Glow',35,100,true);
+  addFXRow(f,'Blur',75,110);addFXRow(f,'Edge',25,150);
+  a.nativeNameButton.click();
+  const ctrl=attachSimpleControls(f.doc,f.Observer),add=f.nodes['simple-fx-add'];
+  assert.equal(add.disabled,true);
+  assert.match(add.textContent,/3\/3/);
+  add.click();
+  assert.equal(f.nodes['fx-browser-open'].clicks,0,'Full chain cannot open for adding');
+  f.fxRows[2].nativeRemove.click();
+  f.observers[0].notify();
+  assert.equal(add.disabled,false,'Space becoming available re-enables add');
+  f.body.dataset.studioMode='pro';f.observers[0].notify();
+  add.click();
+  assert.equal(f.nodes['fx-browser-open'].clicks,0,'Pro mode must not delegate Simple action');
+  f.body.dataset.studioMode='simple';f.observers[0].notify();
+  f.nodes['fx-browser-open'].disabled=true;f.observers[0].notify();
+  assert.equal(add.disabled,true,'Native disabled action must stay disabled');
+  add.click();
+  assert.equal(f.nodes['fx-browser-open'].clicks,0);
+  f.nodes['fx-browser-open'].disabled=false;f.observers[0].notify();
+  add.click();
+  assert.equal(f.nodes['fx-browser-open'].clicks,1,'Native library opens once when available');
+  ctrl.disconnect();
+});
+
+test('Stage 29 Simple FX add UI is wired to native library, not a second FX engine',()=>{
+  const html=read('index.html'),js=read('src/simple-controls.js');
+  assert.match(html,/id="simple-fx-add"/);
+  assert.match(html,/120 effektusos könyvtár/);
+  assert.match(js,/nativeFXBrowser\.click\(\)/);
+  assert.match(js,/fxRows\(\)\.length>=3/);
 });

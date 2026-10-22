@@ -1375,6 +1375,34 @@ async function run(){
    const fx28Restored=nativeRows().length===fx28StartRows.length
      &&(fx28StartSelection<0||
        nativeRows()[fx28StartSelection]?.classList.contains('selected'));
+   // Stage 29: Simple delegates effect addition to the original native
+   // 120-FX library; add an isolated effect, then remove only that effect.
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const fx29OriginalRows=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx29OriginalSelection=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   const fx29Add=$('simple-fx-add'),fx29Drawer=$('fx-drawer');
+   if(!fx29Drawer.hidden)$('fx-close').click();
+   const fx29Ready=!fx29Add.disabled&&fx29Drawer.hidden&&nativeRows().length<3;
+   fx29Add.click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const fx29Opened=!fx29Drawer.hidden;
+   if(fx29Opened)document.querySelector('.fx-entry-name')?.click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const fx29Added=nativeRows().length===fx29OriginalRows.length+1
+     &&nativeRows()[nativeRows().length-1]?.classList.contains('selected');
+   if(fx29Added){
+     nativeRows()[nativeRows().length-1]?.querySelectorAll('button')[4]?.click();
+     await new Promise(resolve=>setTimeout(resolve,35));
+   }
+   if(fx29OriginalSelection>=0&&fx29OriginalSelection<nativeRows().length)
+     nativeRows()[fx29OriginalSelection]?.querySelector('.fx-stack-name')?.click();
+   const fx29Restored=nativeRows().length===fx29OriginalRows.length
+     &&nativeRows().every((row,i)=>row.querySelector('.fx-stack-name')?.textContent===fx29OriginalRows[i])
+     &&(fx29OriginalSelection<0||
+       nativeRows()[fx29OriginalSelection]?.classList.contains('selected'));
+   $('studio-pro').click();
+   if(!fx29Drawer.hidden)$('fx-close').click();
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
@@ -1413,7 +1441,8 @@ async function run(){
      fx26Ready,fx26Delegated,fx26Preserved,fx26ProSync,
      fx27Ready,fx27SimpleDown,fx27SimpleUp,fx27ProSync,
      fx27ProRestore,fx27Restored,fx28Ready,fx28FirstSafe,fx28CancelSafe,
-     fx28Rearmed,fx28Confirmed,fx28Restored};
+     fx28Rearmed,fx28Confirmed,fx28Restored,
+     fx29Ready,fx29Opened,fx29Added,fx29Restored};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));

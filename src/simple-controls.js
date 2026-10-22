@@ -329,10 +329,32 @@
     // Stage 25: select an effect already in the native Pro FX chain.
     // The native name button updates fxSelected and refreshes the real FX panel.
     const simpleFXPicker=get('simple-fx-picker');
+    const simpleFXAdd=get('simple-fx-add');
+    const nativeFXBrowser=get('fx-browser-open');
     let fxPickerSignature=null;
     function fxRows(){
       return [...(doc.querySelectorAll?.('#fx-stack .fx-stack-entry')||[])];
     }
+    // Stage 29: open the existing 120-FX drawer in Simple Mode, never
+    // duplicate addFX(), settings.fxStack, or its persistence/render pipeline.
+    function syncFXAdd(){
+      if(!simpleFXAdd)return;
+      const full=fxRows().length>=3;
+      simpleFXAdd.disabled=!nativeFXBrowser||Boolean(nativeFXBrowser.disabled)||full;
+      simpleFXAdd.textContent=full?'✓ Effektlánc tele (3/3)':'＋ Effekt hozzáadása';
+      simpleFXAdd.setAttribute('aria-label',full
+        ?'Az effektlánc megtelt, legfeljebb három effekt használható'
+        :'Effekt hozzáadása a BeatScope FX-könyvtárból');
+    }
+    simpleFXAdd?.addEventListener('click',()=>{
+      if(simpleFXAdd.disabled||doc.body?.dataset?.studioMode!=='simple'
+        ||!nativeFXBrowser||nativeFXBrowser.disabled||fxRows().length>=3)return;
+      // Repeated activation must not toggle an already-open drawer closed.
+      if(get('fx-drawer')?.hidden===false){
+        get('fx-search')?.focus?.();return;
+      }
+      nativeFXBrowser.click(); // use the original 120 FX catalog and add handler
+    });
     function syncFXPicker(){
       if(!simpleFXPicker)return;
       const rows=fxRows();
@@ -486,6 +508,7 @@
       ['simple-fx-strength','fx-strength','simple-fx-strength-value','fx-strength-value']
     ]);
     function syncFXParams(){
+      syncFXAdd();
       syncFXPicker();
       syncFXEnabled();
       syncFXOrder();
