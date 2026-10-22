@@ -330,7 +330,9 @@
     // The native name button updates fxSelected and refreshes the real FX panel.
     const simpleFXPicker=get('simple-fx-picker');
     const simpleFXAdd=get('simple-fx-add');
+    const simpleFXAddStatus=get('simple-fx-add-status');
     const nativeFXBrowser=get('fx-browser-open');
+    let pendingSimpleFXAdd=null;
     let fxPickerSignature=null;
     function fxRows(){
       return [...(doc.querySelectorAll?.('#fx-stack .fx-stack-entry')||[])];
@@ -346,10 +348,32 @@
         ?'Az effektlánc megtelt, legfeljebb három effekt használható'
         :'Effekt hozzáadása a BeatScope FX-könyvtárból');
     }
+    // Stage 30: a Simple-initiated catalog session closes only after an
+    // observable, native Pro FX addition. No new FX data or duplicate save path.
+    function finishSimpleFXAdd(){
+      if(!pendingSimpleFXAdd)return;
+      const drawer=get('fx-drawer'),rows=fxRows();
+      if(doc.body?.dataset?.studioMode!=='simple'||!drawer||drawer.hidden
+        ||rows.length<pendingSimpleFXAdd.count){
+        pendingSimpleFXAdd=null;return;
+      }
+      if(rows.length<=pendingSimpleFXAdd.count)return;
+      // The native renderer already selected and persisted the added FX.
+      const chosen=rows.find(row=>row.classList?.contains('selected'))||rows[rows.length-1];
+      const name=chosen?.querySelector?.('.fx-stack-name')?.textContent?.trim()||'Effekt';
+      pendingSimpleFXAdd=null; // clear first: hidden mutation cannot re-enter
+      drawer.hidden=true;
+      if(simpleFXAddStatus)
+        simpleFXAddStatus.textContent='✓ '+name+' hozzáadva ('+rows.length+'/3)';
+      simpleFXPicker?.focus?.(); // FX picker already refreshed by syncFXParams
+    }
     simpleFXAdd?.addEventListener('click',()=>{
       if(simpleFXAdd.disabled||doc.body?.dataset?.studioMode!=='simple'
         ||!nativeFXBrowser||nativeFXBrowser.disabled||fxRows().length>=3)return;
-      // Repeated activation must not toggle an already-open drawer closed.
+      // Record session before opening; an already-open catalog is not toggled shut.
+      pendingSimpleFXAdd={count:fxRows().length};
+      if(simpleFXAddStatus)
+        simpleFXAddStatus.textContent='Válassz effektet a könyvtárból…';
       if(get('fx-drawer')?.hidden===false){
         get('fx-search')?.focus?.();return;
       }
@@ -510,6 +534,7 @@
     function syncFXParams(){
       syncFXAdd();
       syncFXPicker();
+      finishSimpleFXAdd();
       syncFXEnabled();
       syncFXOrder();
       syncFXRemoval();
@@ -619,6 +644,8 @@
       for(const [,nativeId] of FX_PARAMS)observe(get(nativeId),'disabled');
       const fxStack=get('fx-stack');
       if(fxStack)observer.observe(fxStack,{childList:true,subtree:true});
+      observe(get('fx-drawer'),'hidden');
+      observe(doc.body, 'data-studio-mode');
       observe(doc.body, 'class');
       for (const element of doc.querySelectorAll('[data-mode]')) observe(element, 'class');
       for (const element of doc.querySelectorAll('[data-palette]')) observe(element, 'class');

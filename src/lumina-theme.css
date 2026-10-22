@@ -927,3 +927,13 @@ body[data-theme="lumina-pulse"] .simple-fx-remove button:focus-visible{
 body[data-theme="lumina-pulse"] #simple-fx-remove-note{
   flex:1 1 220px;font-size:10px;color:#a6c7d2;
 }
+
+
+/* Alpha 17 stage 30: Simple FX catalog result and focus announcement. */
+body[data-theme="lumina-pulse"] .simple-fx-add-status{
+  display:block;flex:1 1 100%;min-height:15px;
+  font-size:11px;line-height:1.45;color:#8ec4ce;
+}
+body[data-theme="lumina-pulse"] #simple-fx-picker:focus-visible{
+  outline:2px solid #00d3f2;outline-offset:3px;
+}

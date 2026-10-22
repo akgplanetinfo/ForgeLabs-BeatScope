@@ -47,7 +47,7 @@ function fixture() {
     'simple-fx-selection','fx-stack','simple-fx-picker','simple-fx-enabled',
     'simple-fx-up','simple-fx-down','simple-fx-position',
     'simple-fx-remove','simple-fx-remove-cancel','simple-fx-remove-note',
-    'simple-fx-add','fx-browser-open','fx-drawer','fx-search'];
+    'simple-fx-add','simple-fx-add-status','fx-browser-open','fx-drawer','fx-search'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['simple-fx-remove-cancel'].hidden=true;
   nodes['fx-drawer'].hidden=true;
@@ -1693,4 +1693,82 @@ test('Stage 29 Simple FX add UI is wired to native library, not a second FX engi
   assert.match(html,/120 effektusos könyvtár/);
   assert.match(js,/nativeFXBrowser\.click\(\)/);
   assert.match(js,/fxRows\(\)\.length>=3/);
+});
+
+
+test('Stage 30 native FX addition closes Simple-opened catalog, reports selection and focuses picker',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  let focusCount=0;
+  f.nodes['simple-fx-picker'].focus=()=>{focusCount++;};
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();
+  assert.equal(f.nodes['fx-drawer'].hidden,false);
+  const glow=addFXRow(f,'Glow',44,125,true);
+  glow.nativeNameButton.click();f.observers[0].notify();
+  assert.equal(f.nodes['fx-drawer'].hidden,true,'Finish the session after native add');
+  assert.equal(f.nodes['simple-fx-picker'].value,'0');
+  assert.equal(f.nodes['simple-fx-selection'].textContent,'Glow');
+  assert.equal(f.nodes['simple-fx-wet'].value,'44');
+  assert.match(f.nodes['simple-fx-add-status'].textContent,/Glow hozzáadva \(1\/3\)/);
+  assert.equal(focusCount,1);
+  assert.equal(glow.nativeRemove.clicks,0);
+  assert.equal(f.fxRows.length,1);
+  ctrl.disconnect();
+});
+
+test('Stage 30 closing dialog without adding does not close future Pro catalog',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();
+  f.nodes['fx-drawer'].hidden=true;
+  f.observers[0].notify(); // observer cancels Simple-initiated session
+  f.nodes['fx-drawer'].hidden=false;
+  addFXRow(f,'Blur',65,90,true).nativeNameButton.click();
+  f.observers[0].notify();
+  assert.equal(f.nodes['fx-drawer'].hidden,false,'Native catalog stays open after cancel');
+  assert.equal(f.nodes['simple-fx-add-status'].textContent,'Válassz effektet a könyvtárból…');
+  assert.equal(f.fxRows.length,1);
+  ctrl.disconnect();
+});
+
+test('Stage 30 changing to Pro aborts Simple FX session; Pro additions retain the catalog',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();
+  f.body.dataset.studioMode='pro';f.observers[0].notify();
+  addFXRow(f,'Hue',45,80,true).nativeNameButton.click();
+  f.observers[0].notify();
+  assert.equal(f.nodes['fx-drawer'].hidden,false);
+  assert.equal(f.nodes['simple-fx-picker'].value,'0');
+  assert.equal(f.fxRows.length,1);
+  ctrl.disconnect();
+});
+
+test('Stage 30 preexisting chain has no false success: only a new native row completes',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  const old=addFXRow(f,'Glow',33,120,true);old.nativeNameButton.click();
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();
+  old.nativeNameButton.click();f.observers[0].notify();
+  assert.equal(f.nodes['fx-drawer'].hidden,false,'Selection change alone never completes add');
+  assert.equal(f.nodes['simple-fx-add-status'].textContent,'Válassz effektet a könyvtárból…');
+  const second=addFXRow(f,'Blur',50,100,true);second.nativeNameButton.click();
+  f.observers[0].notify();
+  assert.equal(f.nodes['fx-drawer'].hidden,true);
+  assert.equal(f.nodes['simple-fx-picker'].value,'1');
+  assert.match(f.nodes['simple-fx-add-status'].textContent,/Blur hozzáadva \(2\/3\)/);
+  ctrl.disconnect();
+});
+
+test('Stage 30 accessibility and native-only wiring are present in UI',()=>{
+  const html=read('index.html'),js=read('src/simple-controls.js'),css=read('src/lumina-theme.css');
+  assert.match(html,/id="simple-fx-add-status"/);
+  assert.match(html,/role="status" aria-live="polite"/);
+  assert.match(js,/finishSimpleFXAdd\(\)/);
+  assert.match(js,/observe\(get\('fx-drawer'\),'hidden'\)/);
+  assert.match(css,/\.simple-fx-add-status/);
 });

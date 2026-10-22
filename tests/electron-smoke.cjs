@@ -1403,6 +1403,42 @@ async function run(){
        nativeRows()[fx29OriginalSelection]?.classList.contains('selected'));
    $('studio-pro').click();
    if(!fx29Drawer.hidden)$('fx-close').click();
+   // Stage 30: cancel a Simple catalog visit, then add one native FX and
+   // verify the drawer closes, status announces success and picker has focus.
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fx30Original=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx30OriginalSel=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   const fx30Button=$('simple-fx-add'),fx30Drawer=$('fx-drawer');
+   if(!fx30Drawer.hidden)$('fx-close').click();
+   fx30Button.click();
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const fx30Opened=!fx30Drawer.hidden;
+   $('fx-close').click();
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const fx30Canceled=fx30Drawer.hidden
+     &&nativeRows().length===fx30Original.length;
+   fx30Button.click();
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const fx30Reopened=!fx30Drawer.hidden;
+   if(fx30Reopened)document.querySelector('.fx-entry-name')?.click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx30Added=nativeRows().length===fx30Original.length+1;
+   const fx30Closed=fx30Added&&fx30Drawer.hidden;
+   const fx30Picker=fx30Added&&$('simple-fx-picker').value===String(nativeRows().length-1)
+     &&document.activeElement===$('simple-fx-picker')
+     &&$('simple-fx-add-status').textContent.includes('hozzáadva');
+   if(fx30Added){
+     nativeRows()[nativeRows().length-1]?.querySelectorAll('button')[4]?.click();
+     await new Promise(resolve=>setTimeout(resolve,35));
+   }
+   if(fx30OriginalSel>=0&&fx30OriginalSel<nativeRows().length)
+     nativeRows()[fx30OriginalSel]?.querySelector('.fx-stack-name')?.click();
+   const fx30Restored=nativeRows().length===fx30Original.length
+     &&nativeRows().every((row,i)=>row.querySelector('.fx-stack-name')?.textContent===fx30Original[i])
+     &&(fx30OriginalSel<0||nativeRows()[fx30OriginalSel]?.classList.contains('selected'));
+   $('studio-pro').click();
+   if(!fx30Drawer.hidden)$('fx-close').click();
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
    $('smooth').value=smoothBefore;
@@ -1442,7 +1478,8 @@ async function run(){
      fx27Ready,fx27SimpleDown,fx27SimpleUp,fx27ProSync,
      fx27ProRestore,fx27Restored,fx28Ready,fx28FirstSafe,fx28CancelSafe,
      fx28Rearmed,fx28Confirmed,fx28Restored,
-     fx29Ready,fx29Opened,fx29Added,fx29Restored};
+     fx29Ready,fx29Opened,fx29Added,fx29Restored,
+     fx30Opened,fx30Canceled,fx30Reopened,fx30Added,fx30Closed,fx30Picker,fx30Restored};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
