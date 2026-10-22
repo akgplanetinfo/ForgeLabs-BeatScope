@@ -86,7 +86,8 @@
     $('open-preview').disabled=!!outputState.preview;
     $('open-output').disabled=!!outputState.output||!select.options.length;
     $('output-status').textContent=(outputState.preview?'Előnézet aktív':'Előnézet kikapcsolva')+
-      ' · '+(outputState.output?'VJ-kimenet aktív':'VJ-kimenet kikapcsolva');
+      ' · '+(outputState.output?'VJ-kimenet aktív':'VJ-kimenet kikapcsolva')+
+      (armed?' · BLACKOUT '+(outputState.output?'AKTÍV':'ELŐKÉSZÍTVE'):'');
     liveOutput.sync(outputState,settings.outputTransport==='webrtc');
   }
   async function refreshOutputs(){
@@ -1681,6 +1682,23 @@
     UI.seek.addEventListener('pointerup',()=>isSeeking=false);
     UI.seek.addEventListener('input',()=>{if(Number.isFinite(UI.audio.duration)&&UI.audio.duration>0){UI.audio.currentTime=UI.audio.duration*(+UI.seek.value/1000);$('current-time').textContent=math.formatTime(UI.audio.currentTime);}});
     window.addEventListener('keydown',e=>{
+      // Global stage 0.4.1 show-control shortcut: F9 toggles, Shift+F9
+      // only arms BLACKOUT. The existing controller button owns all IPC.
+      if(e.key==='F9'&&!e.defaultPrevented&&!e.repeat&&!e.isComposing
+        &&!e.ctrlKey&&!e.altKey&&!e.metaKey){
+        const target=e.target||document.activeElement;
+        const tag=target?.tagName?.toUpperCase();
+        const textFocus=target?.isContentEditable
+          ||['INPUT','SELECT','TEXTAREA'].includes(tag)
+          ||target?.closest?.('[contenteditable="true"]');
+        const modal=document.querySelector('[role="dialog"]:not([hidden])');
+        const button=$('output-blackout');
+        if(!textFocus&&!modal&&button&&!button.disabled){
+          e.preventDefault();
+          if(!e.shiftKey||outputState.blackout!==true)button.click();
+          return;
+        }
+      }
       const typing=e.target instanceof HTMLInputElement||e.target instanceof HTMLSelectElement||e.target instanceof HTMLTextAreaElement;
       if(!typing&&e.ctrlKey&&!e.altKey&&!e.shiftKey&&['c','v','x','d'].includes(e.key.toLowerCase())){
         e.preventDefault();editClip({c:'copy',v:'paste',x:'cut',d:'duplicate'}[e.key.toLowerCase()]);return;

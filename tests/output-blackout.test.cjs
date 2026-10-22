@@ -31,3 +31,16 @@ test('both preload bridges and the UI use the same validated controller API',()=
  assert.ok(ui.includes('window.beatAPI.setOutputBlackout(outputState.blackout!==true)'));
  assert.ok(ui.includes("blackout.setAttribute('aria-pressed',String(armed))"));
 });
+
+
+test('BLACKOUT show shortcuts reuse native button and do not modify FX or transport',()=>{
+ const ui=read('src/ui.js'),html=read('index.html');
+ assert.ok(html.includes('aria-keyshortcuts="F9 Shift+F9"'));
+ assert.ok(html.includes('Shift+F9 = azonnal feketére'));
+ assert.ok(ui.includes("if(e.key==='F9'"));
+ assert.ok(ui.includes('!e.defaultPrevented&&!e.repeat&&!e.isComposing'));
+ assert.ok(ui.includes('!e.ctrlKey&&!e.altKey&&!e.metaKey'));
+ assert.ok(ui.includes("const modal=document.querySelector('[role=\"dialog\"]:not([hidden])')"));
+ assert.ok(ui.includes("if(!e.shiftKey||outputState.blackout!==true)button.click()"));
+ assert.ok(ui.includes("outputState.output?'AKTÍV':'ELŐKÉSZÍTVE'"));
+});

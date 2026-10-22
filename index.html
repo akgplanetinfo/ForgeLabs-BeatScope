@@ -252,7 +252,8 @@
           <button type="button" id="open-output">▣ VJ Output indítása</button>
           <button type="button" id="close-output" disabled>Kimenet leállítása</button>
           <button type="button" id="output-blackout" class="vj-blackout" aria-pressed="false"
-            aria-label="VJ-kimenet feketére kapcsolása" title="Csak a közönség VJ Outputja lesz fekete, az előnézet és a renderelés tovább működik">● BLACKOUT: KI</button>
+            aria-keyshortcuts="F9 Shift+F9"
+            aria-label="VJ-kimenet feketére kapcsolása" title="F9: BLACKOUT ki/be · Shift+F9: csak bekapcsolás · kizárólag a közönség VJ-kimenete lesz fekete">● BLACKOUT: KI</button>
         </div>
         <div class="output-quality-controls">
           <label>Képátvitel
@@ -280,7 +281,7 @@
           </label>
           <span id="output-performance" aria-live="off">Tényleges: – FPS · nincs kimenet</span>
         </div>
-        <small>WebRTC: helyi, közvetlenebb videóátvitel JPEG-képkockák helyett; kapcsolódási hiba esetén JPEG-re vált vissza. A 60 FPS célérték, nem garancia. Esc: kimenet bezárása.</small>
+        <small><strong>BLACKOUT:</strong> F9 = ki/be, Shift+F9 = azonnal feketére (nem oldja fel). Előnézet és zene tovább működik. WebRTC: helyi videóátvitel JPEG helyett, hiba esetén JPEG-re vált vissza. A 60 FPS célérték. Esc: kimenet bezárása.</small>
       </section>
       <section class="project-toolbar" id="project-toolbar" tabindex="-1" aria-label="BeatScope projektek kezelése">
         <div class="project-toolbar-label"><strong>PROJEKT</strong><small id="project-status" aria-live="polite">Helyi munkamenet · automatikus beállításmentés</small></div>
