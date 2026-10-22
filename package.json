@@ -1,7 +1,7 @@
 {
   "name": "forgelabs-beatscope",
   "productName": "ForgeLabs BeatScope",
-  "version": "0.4.0-alpha.17",
+  "version": "0.4.0",
   "description": "Lumina Pulse – továbbfejlesztett ForgeLabs BeatScope audio- és VJ-alkalmazás",
   "private": true,
   "main": "src/main.cjs",
