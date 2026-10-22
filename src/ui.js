@@ -39,7 +39,7 @@
   let isSeeking=false,saveTimer=null,repeat=false,lastFrame=0,modeTransition=null,lastAIStatus=0,clipTouched=false,initializing=true;
   const supported=Boolean(window.AudioContext||window.webkitAudioContext);
 
-  let outputState={preview:false,output:false,displayId:null,displays:[]};
+  let outputState={preview:false,output:false,blackout:false,displayId:null,displays:[]};
   let frameCanvas=document.createElement('canvas'),frameLastSent=0,outputFrameError=false,frameBusy=false;
   frameCanvas.width=960;frameCanvas.height=540;
   const liveOutput=window.BeatLiveOutput.createController(window.beatAPI,()=>frameCanvas,()=>{});
@@ -78,6 +78,11 @@
     }
     $('close-preview').disabled=!outputState.preview;
     $('close-output').disabled=!outputState.output;
+    const blackout=$('output-blackout'),armed=outputState.blackout===true;
+    blackout.setAttribute('aria-pressed',String(armed));
+    blackout.setAttribute('aria-label',armed?'VJ-kimenet visszakapcsolása':'VJ-kimenet feketére kapcsolása');
+    blackout.textContent=armed?'■ BLACKOUT: BE':'● BLACKOUT: KI';
+    blackout.classList.toggle('active',armed);
     $('open-preview').disabled=!!outputState.preview;
     $('open-output').disabled=!!outputState.output||!select.options.length;
     $('output-status').textContent=(outputState.preview?'Előnézet aktív':'Előnézet kikapcsolva')+
@@ -100,6 +105,14 @@
       refreshOutputQuality();persist();
     });
     $('refresh-displays').addEventListener('click',refreshOutputs);
+    $('output-blackout').addEventListener('click',async()=>{
+      const button=$('output-blackout');
+      if(button.disabled)return;
+      button.disabled=true;
+      try{updateOutputUI(await window.beatAPI.setOutputBlackout(outputState.blackout!==true));}
+      catch(e){notify('BLACKOUT hiba: '+e.message,true);}
+      finally{button.disabled=false;}
+    });
     for(const [key,id,valid] of [
       ['outputResolution','output-resolution',[540,720,1080]],
       ['outputFps','output-fps',[12,24,30,60]],

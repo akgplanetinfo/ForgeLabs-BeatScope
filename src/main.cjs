@@ -16,6 +16,8 @@ const DEFAULT_PREFS = Object.freeze({ mode:'bars', palette:'azure', intensity:1.
 let window = null;
 let previewWindow=null,outputWindow=null;
 let selectedDisplayId=null,lastFrame=null,lastFrameSent=0,streamOwner=null;
+// Panic blackout is session-only; never save it to project preferences.
+let outputBlackout=false;
 const signalDiagnostics={seen:0,invalid:0,missingView:0,controllerForwarded:0,viewForwarded:0,rejected:0};
 const preferencesPath = () => path.join(app.getPath('userData'), 'beatscope-preferences.json');
 function validatePrefs(value) {
@@ -81,6 +83,7 @@ function listDisplays(){
 function status(){
  return {preview:!!previewWindow&&!previewWindow.isDestroyed(),
          output:!!outputWindow&&!outputWindow.isDestroyed(),
+         blackout:outputBlackout,
          displayId:selectedDisplayId,
          displays:listDisplays(),signalDiagnostics:{...signalDiagnostics}};
 }
@@ -126,14 +129,17 @@ function createView(kind,displayId){
    announceOutputStatus();
  });
  view.webContents.on('did-finish-load',()=>{
-   if(lastFrame&& !view.webContents.isDestroyed())
-     view.webContents.send('beatscope:output-frame',lastFrame);
+   if(view.webContents.isDestroyed())return;
+   if(kind==='output')view.webContents.send('beatscope:output-blackout',outputBlackout);
+   if(lastFrame)view.webContents.send('beatscope:output-frame',lastFrame);
  });
  view.once('ready-to-show',()=>{
    view.show();
    if(external){view.setBounds(chosen.bounds);view.setFullScreen(true);}
  });
- view.loadFile(path.join(__dirname,'../output.html'),{query:{kind}});
+ view.loadFile(path.join(__dirname,'../output.html'),{
+   query:{kind,blackout:kind==='output'&&outputBlackout?'1':'0'}
+ });
  announceOutputStatus();
  return view;
 }
@@ -190,6 +196,17 @@ app.whenReady().then(()=>{
   });
   ipcMain.handle('beatscope:output-state',event=>{
     if(!trustedController(event))throw new Error('Nem engedélyezett ablak.');
+    return status();
+  });
+  // Program-only BLACKOUT, verified controller-only IPC; JPEG/WebRTC continue running.
+  ipcMain.handle('beatscope:set-output-blackout',(event,enabled)=>{
+    if(!trustedController(event)||typeof enabled!=='boolean')
+      throw new Error('Érvénytelen BLACKOUT művelet.');
+    outputBlackout=enabled;
+    if(outputWindow&&!outputWindow.isDestroyed()
+      &&!outputWindow.webContents.isDestroyed()&&!outputWindow.webContents.isLoading())
+      outputWindow.webContents.send('beatscope:output-blackout',enabled);
+    announceOutputStatus();
     return status();
   });
   ipcMain.handle('beatscope:open-view',(event,kind,displayId)=>{

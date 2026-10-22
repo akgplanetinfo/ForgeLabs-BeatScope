@@ -8,6 +8,12 @@ contextBridge.exposeInMainWorld('outputBridge',Object.freeze({
    ipcRenderer.on('beatscope:stream-signal',listener);
    return ()=>ipcRenderer.removeListener('beatscope:stream-signal',listener);
  },
+ onBlackout(callback){
+   if(typeof callback!=='function')return ()=>{};
+   const listener=(_event,enabled)=>callback(enabled);
+   ipcRenderer.on('beatscope:output-blackout',listener);
+   return ()=>ipcRenderer.removeListener('beatscope:output-blackout',listener);
+ },
  onFrame(callback){
    if(typeof callback!=='function')return ()=>{};
    const listener=(_event,image)=>callback(image);

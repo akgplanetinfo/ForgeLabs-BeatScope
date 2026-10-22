@@ -64,7 +64,7 @@
       <div class="control-line"><label for="bars-count">Oszlopok</label><output id="bars-val">56</output></div>
       <input type="range" id="bars-count" min="16" max="128" value="56" step="8" />
       <label class="check-row"><input id="show-grid" type="checkbox" checked /><span>Finom háttérrács</span></label>
-      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 · STABLE</span></div>
+      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.1 · DEV</span></div>
     </aside>
     <main class="workspace">
       <div class="studio-mode-bar" role="group" aria-label="Lumina Pulse munkatér módja">
@@ -251,6 +251,8 @@
           <button type="button" id="refresh-displays" title="Kijelzőlista frissítése">↻</button>
           <button type="button" id="open-output">▣ VJ Output indítása</button>
           <button type="button" id="close-output" disabled>Kimenet leállítása</button>
+          <button type="button" id="output-blackout" class="vj-blackout" aria-pressed="false"
+            aria-label="VJ-kimenet feketére kapcsolása" title="Csak a közönség VJ Outputja lesz fekete, az előnézet és a renderelés tovább működik">● BLACKOUT: KI</button>
         </div>
         <div class="output-quality-controls">
           <label>Képátvitel

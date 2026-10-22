@@ -1,6 +1,17 @@
 'use strict';
 (()=>{
- const kind=new URLSearchParams(location.search).get('kind');
+ const params=new URLSearchParams(location.search);
+ const kind=params.get('kind');
+ const blackoutOverlay=document.getElementById('blackout-screen');
+ let blackout=false;
+ function applyBlackout(enabled){
+  blackout=kind==='output'&&enabled===true;
+  if(blackoutOverlay)blackoutOverlay.hidden=!blackout;
+  document.body.classList.toggle('blackout',blackout);
+ }
+ // The prearmed state is applied before first output paint.
+ applyBlackout(params.get('blackout')==='1');
+ window.outputBridge?.onBlackout(enabled=>applyBlackout(enabled));
  const canvas=document.getElementById('screen'),ctx=canvas.getContext('2d',{alpha:false});
  const video=document.getElementById('live-video');
  let accepted=0,painted=0,busy=false,nextFrame=null,sourceWidth=0,sourceHeight=0,decodeMs=0,lastPaintedAt=0;
@@ -103,7 +114,7 @@
  window.addEventListener('resize',fit);
  window.addEventListener('beforeunload',stopLive);
  fit();
- window.__beatOutputStats=()=>({accepted,painted,width:canvas.width,height:canvas.height,sourceWidth,sourceHeight,decodeMs,lastPaintedAt,mode,offers,answers,lastError,rtcState:pc?.connectionState||null,iceState:pc?.iceConnectionState||null});
+ window.__beatOutputStats=()=>({accepted,painted,width:canvas.width,height:canvas.height,sourceWidth,sourceHeight,decodeMs,lastPaintedAt,mode,blackout,offers,answers,lastError,rtcState:pc?.connectionState||null,iceState:pc?.iceConnectionState||null});
  // The controller must not send an offer before this isolated renderer is listening.
  if(['preview','output'].includes(kind))signal({type:'ready'});
 })();

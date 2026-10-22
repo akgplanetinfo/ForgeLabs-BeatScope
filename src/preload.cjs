@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('beatAPI', Object.freeze({
   newProject: ()=>ipcRenderer.invoke('beatscope:project-new'),
   displays: ()=>ipcRenderer.invoke('beatscope:displays'),
   outputState: ()=>ipcRenderer.invoke('beatscope:output-state'),
+  setOutputBlackout: (enabled)=>ipcRenderer.invoke('beatscope:set-output-blackout',enabled),
   openView: (kind,displayId)=>ipcRenderer.invoke('beatscope:open-view',kind,displayId),
   closeView: (kind)=>ipcRenderer.invoke('beatscope:close-view',kind),
   pushOutputFrame: (frame)=>ipcRenderer.send('beatscope:push-frame',frame),
