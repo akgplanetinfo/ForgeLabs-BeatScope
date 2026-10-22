@@ -2190,7 +2190,7 @@ test('Stage 35 clear resets native and Simple query, redraws once and returns fo
   assert.equal(f.nodes['simple-fx-clear'].disabled,true);
   assert.match(f.nodes['simple-fx-result-count'].textContent,/1 találat/);
   assert.equal(f.nodes['fx-drawer'].hidden,false);
-  assert.equal(focus,3,'Opening, query search and cleared search focus native search');
+  assert.equal(focus,2,'Query and clear both focus the native FX search');
   assert.equal(f.fxRows.length,0);
   ctrl.disconnect();
 });
