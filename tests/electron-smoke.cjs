@@ -626,6 +626,36 @@ async function run(){
  if((await readStats(output)).blackout||(await win.webContents.executeJavaScript('window.beatAPI.outputState()')).blackout)
    fail('JPEG BLACKOUT restore failed');
  details.push('BLACKOUT JPEG: program black, preview live, injected JPEG delivered, restored');
+ // F9 toggles the original BLACKOUT button in both modes; Shift+F9 is
+ // an idempotent emergency black command and cannot accidentally unblack.
+ const keyF9=opts=>win.webContents.executeJavaScript(
+   "(function(){const e=new KeyboardEvent('keydown',"+JSON.stringify({key:'F9',bubbles:true,cancelable:true,...opts})+");document.dispatchEvent(e);return e.defaultPrevented})()");
+ const shortcutF9=await keyF9({});
+ await new Promise(resolve=>setTimeout(resolve,160));
+ const shortcutBlack=(await win.webContents.executeJavaScript('window.beatAPI.outputState()')).blackout;
+ const repeatSuppressed=!(await keyF9({repeat:true}));
+ const shiftSafe=await keyF9({shiftKey:true});
+ await new Promise(resolve=>setTimeout(resolve,150));
+ const shiftStillBlack=(await readStats(output)).blackout;
+ const typedIgnored=await win.webContents.executeJavaScript(
+   "(()=>{const i=document.getElementById('fx-search');const e=new KeyboardEvent('keydown',{key:'F9',bubbles:true,cancelable:true});i.dispatchEvent(e);return !e.defaultPrevented})()");
+ const ctrlIgnored=!(await keyF9({ctrlKey:true}));
+ const shortcutOff=await keyF9({});
+ await new Promise(resolve=>setTimeout(resolve,200));
+ const shortcutClear=!(await readStats(output)).blackout;
+ const shiftOn=await keyF9({shiftKey:true});
+ await new Promise(resolve=>setTimeout(resolve,160));
+ const shiftArmed=(await readStats(output)).blackout;
+ await keyF9({});
+ await new Promise(resolve=>setTimeout(resolve,160));
+ if(!shortcutF9||!shortcutBlack||!repeatSuppressed||!shiftSafe||!shiftStillBlack
+   ||!typedIgnored||!ctrlIgnored||!shortcutOff||!shortcutClear||!shiftOn||!shiftArmed
+   ||(await readStats(output)).blackout)
+   fail('F9 / Shift+F9 BLACKOUT hotkey safety failed: '+JSON.stringify({
+     shortcutF9,shortcutBlack,repeatSuppressed,shiftSafe,shiftStillBlack,
+     typedIgnored,ctrlIgnored,shortcutOff,shortcutClear,shiftOn,shiftArmed
+   }));
+ details.push('BLACKOUT HOTKEY: F9 toggle, Shift+F9 arm only, repeat/input/ctrl guards');
 
  // Validate all three output resolutions in actual BrowserWindows with asynchronous JPEG encoding.
  const qualityDefaults=await win.webContents.executeJavaScript("({resolution:document.getElementById('output-resolution').value,fps:document.getElementById('output-fps').value,quality:document.getElementById('output-quality').value})");
@@ -692,6 +722,30 @@ async function run(){
  const closed=await win.webContents.executeJavaScript("window.beatAPI.outputState()");
  if(closed.preview||closed.output)fail('Output windows were not released on stop');
  details.push('OUTPUT TEST: displays='+displays.length+', preview and VJ output received live frames and closed');
+ // Reopening a program output while BLACKOUT was armed must be black before
+ // any cached JPEG/WebRTC content paints. Preview remains independent.
+ await win.webContents.executeJavaScript("document.getElementById('output-blackout').click()");
+ await new Promise(resolve=>setTimeout(resolve,130));
+ const prearmed=(await win.webContents.executeJavaScript('window.beatAPI.outputState()')).blackout;
+ const prearmedLabel=await win.webContents.executeJavaScript("document.getElementById('output-status').textContent");
+ await win.webContents.executeJavaScript("document.getElementById('open-output').click()");
+ await new Promise(resolve=>setTimeout(resolve,920));
+ const reopened=BrowserWindow.getAllWindows().find(w=>!w.isDestroyed()&&w.webContents.getURL().includes('output.html')&&w.webContents.getURL().includes('kind=output'));
+ const reopenedURL=reopened?.webContents.getURL()||'';
+ const prearmedVisual=reopened?await reopened.webContents.executeJavaScript(
+   "({blackout:window.__beatOutputStats().blackout,hidden:document.getElementById('blackout-screen').hidden,visible:getComputedStyle(document.getElementById('blackout-screen')).display!=='none'})"):null;
+ if(!prearmed||!prearmedLabel.includes('ELŐKÉSZÍTVE')
+   ||!reopenedURL.includes('blackout=1')||!prearmedVisual?.blackout
+   ||prearmedVisual.hidden||!prearmedVisual.visible)
+   fail('Reopened VJ program output was not black from first frame: '+
+     JSON.stringify({prearmed,prearmedLabel,reopenedURL,prearmedVisual}));
+ await win.webContents.executeJavaScript("document.getElementById('close-output').click()");
+ await new Promise(resolve=>setTimeout(resolve,320));
+ await win.webContents.executeJavaScript("document.getElementById('output-blackout').click()");
+ await new Promise(resolve=>setTimeout(resolve,160));
+ const reopenClean=!(await win.webContents.executeJavaScript('window.beatAPI.outputState()')).blackout;
+ if(!reopenClean)fail('BLACKOUT remained armed after user disarmed while output closed');
+ details.push('BLACKOUT REOPEN: program prearmed before first frame; session disarm resets');
  // Alpha 17: test real mode switching, original BeatScope delegation and navigation in Windows Electron.
  const alpha17UI=await win.webContents.executeJavaScript(`(async()=>{
    const $=id=>document.getElementById(id);
