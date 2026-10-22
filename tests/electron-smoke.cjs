@@ -1464,6 +1464,39 @@ async function run(){
    const fx31Preserved=nativeRows().length===fx31Before.length
      &&nativeRows().every((row,i)=>row.querySelector('.fx-stack-name')?.textContent===fx31Before[i])
      &&(fx31BeforeSel<0||nativeRows()[fx31BeforeSel]?.classList.contains('selected'));
+   // Stage 32: simple query forwards to the original 120-FX catalog search.
+   // Verify filtering and add a temporary native FX, then restore the stack.
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const fx32Original=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx32OriginalSel=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   const fx32Query=$('simple-fx-query'),fx32Search=$('simple-fx-search');
+   const fx32Drawer=$('fx-drawer');
+   const fx32EmptyBlocked=fx32Search.disabled;
+   fx32Query.value='Kaleidoscope';
+   fx32Query.dispatchEvent(new Event('input',{bubbles:true}));
+   const fx32Ready=!fx32Search.disabled&&!fx32Drawer.hidden===false;
+   fx32Search.click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const fx32Open=!fx32Drawer.hidden&&$('fx-search').value==='Kaleidoscope';
+   const fx32Matches=[...document.querySelectorAll('#fx-results .fx-entry-name')];
+   const fx32Filtered=fx32Open&&fx32Matches.length>0
+     &&fx32Matches.every(el=>el.textContent.includes('Kaleidoscope'))
+     &&nativeRows().length===fx32Original.length;
+   if(fx32Filtered)fx32Matches[0].click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx32Added=nativeRows().length===fx32Original.length+1&&fx32Drawer.hidden
+     &&$('simple-fx-picker').value===String(nativeRows().length-1);
+   if(fx32Added){
+     nativeRows()[nativeRows().length-1]?.querySelectorAll('button')[4]?.click();
+     await new Promise(resolve=>setTimeout(resolve,35));
+   }
+   if(fx32OriginalSel>=0&&fx32OriginalSel<nativeRows().length)
+     nativeRows()[fx32OriginalSel]?.querySelector('.fx-stack-name')?.click();
+   const fx32Restored=nativeRows().length===fx32Original.length
+     &&nativeRows().every((row,i)=>row.querySelector('.fx-stack-name')?.textContent===fx32Original[i])
+     &&(fx32OriginalSel<0||nativeRows()[fx32OriginalSel]?.classList.contains('selected'));
+   if(!fx32Drawer.hidden)$('fx-close').click();
    $('studio-pro').click();
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
@@ -1506,7 +1539,8 @@ async function run(){
      fx28Rearmed,fx28Confirmed,fx28Restored,
      fx29Ready,fx29Opened,fx29Added,fx29Restored,
      fx30Opened,fx30Canceled,fx30Reopened,fx30Added,fx30Closed,fx30Picker,fx30Restored,
-     fx31Opened,fx31Return,fx31Reopened,fx31Esc,fx31Preserved};
+     fx31Opened,fx31Return,fx31Reopened,fx31Esc,fx31Preserved,
+     fx32EmptyBlocked,fx32Ready,fx32Open,fx32Filtered,fx32Added,fx32Restored};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));

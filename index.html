@@ -162,6 +162,13 @@
           <button type="button" class="simple-action simple-fx-add" id="simple-fx-add"
             aria-label="Effekt hozzáadása a BeatScope FX-könyvtárból"
             title="A teljes 120 effektusos könyvtár megnyitása; legfeljebb három aktív effekt">＋ Effekt hozzáadása</button>
+          <div class="simple-fx-quick-search" role="search" aria-label="Effektek gyors keresése">
+            <label for="simple-fx-query">Gyors FX-keresés</label>
+            <input type="search" id="simple-fx-query" placeholder="Pl. Kaleidoscope, Glow, fx-001…" maxlength="80"
+              autocomplete="off" aria-label="Effekt keresése a 120 effekt között" />
+            <button type="button" id="simple-fx-search" class="simple-action"
+              aria-label="FX találatok megnyitása a könyvtárban" disabled>Keresés ↗</button>
+          </div>
           <span id="simple-fx-add-status" class="simple-fx-add-status" role="status" aria-live="polite">Válassz effektet a könyvtárból.</span>
           <label class="simple-fx-picker-field" for="simple-fx-picker">
             Kijelölt effekt

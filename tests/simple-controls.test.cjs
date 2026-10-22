@@ -48,7 +48,8 @@ function fixture() {
     'simple-fx-up','simple-fx-down','simple-fx-position',
     'simple-fx-remove','simple-fx-remove-cancel','simple-fx-remove-note',
     'simple-fx-add','simple-fx-add-status','simple-fx-catalog-back',
-    'fx-close','fx-browser-open','fx-drawer','fx-search'];
+    'fx-close','fx-browser-open','fx-drawer','fx-search',
+    'simple-fx-query','simple-fx-search'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['simple-fx-remove-cancel'].hidden=true;
   nodes['fx-drawer'].hidden=true;
@@ -1859,4 +1860,95 @@ test('Stage 31 cancel affordance is in native catalog, without duplicate escape 
   assert.match(js,/nativeFXClose\.click\(\)/);
   assert.match(css,/\.fx-simple-back\[hidden\]/);
   assert.match(js,/observe\(get\('fx-drawer'\),'hidden'\)/);
+});
+
+
+test('Stage 32 query alone never opens catalog or adds effects; blank search disabled',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  const query=f.nodes['simple-fx-query'],search=f.nodes['simple-fx-search'];
+  assert.equal(search.disabled,true);
+  query.value='   ';query.emit('input');
+  assert.equal(search.disabled,true);
+  search.click();
+  assert.equal(f.nodes['fx-browser-open'].clicks,0);
+  query.value=' Kaleidoscope ';query.emit('input');
+  assert.equal(search.disabled,false);
+  assert.equal(f.nodes['fx-drawer'].hidden,true);
+  assert.equal(f.fxRows.length,0);
+  ctrl.disconnect();
+});
+
+test('Stage 32 click delegates one query to native drawFXCatalog() via input event',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  let nativeInputs=0,focused=0;
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  f.nodes['fx-search'].addEventListener('input',()=>{nativeInputs++;});
+  f.nodes['fx-search'].focus=()=>{focused++;};
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  const q=f.nodes['simple-fx-query'];q.value='  Kaleidoscope  ';q.emit('input');
+  f.nodes['simple-fx-search'].click();
+  assert.equal(f.nodes['fx-browser-open'].clicks,1);
+  assert.equal(f.nodes['fx-drawer'].hidden,false);
+  assert.equal(f.nodes['fx-search'].value,'Kaleidoscope');
+  assert.equal(nativeInputs,1,'Original native input handler receives event exactly once');
+  assert.equal(f.fxRows.length,0,'Search never adds an effect');
+  assert.equal(f.nodes['simple-fx-catalog-back'].hidden,false);
+  assert.equal(focused,1);
+  ctrl.disconnect();
+});
+
+test('Stage 32 Enter reuses the same search and never closes an already-open drawer',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  let inputs=0;
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=!f.nodes['fx-drawer'].hidden;});
+  f.nodes['fx-search'].addEventListener('input',()=>{inputs++;});
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  const q=f.nodes['simple-fx-query'];q.value='Hue Rotate';q.emit('input');
+  let prevented=0;
+  q.emit('keydown'); // no key information, no action
+  q.dispatchEvent({type:'keydown',key:'Enter',preventDefault(){prevented++;}});
+  assert.equal(prevented,1);
+  assert.equal(f.nodes['fx-browser-open'].clicks,1);
+  assert.equal(f.nodes['fx-drawer'].hidden,false);
+  q.value='Edge Glow';q.emit('input');
+  f.nodes['simple-fx-search'].click();
+  assert.equal(f.nodes['fx-browser-open'].clicks,1,'Existing drawer must not toggle closed');
+  assert.equal(f.nodes['fx-search'].value,'Edge Glow');
+  assert.equal(inputs,2);
+  ctrl.disconnect();
+});
+
+test('Stage 32 prevents search in Pro mode, with full stack, or without native input',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  const q=f.nodes['simple-fx-query'];q.value='Glow';
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  q.emit('input');
+  f.body.dataset.studioMode='pro';
+  f.nodes['simple-fx-search'].click();
+  assert.equal(f.nodes['fx-browser-open'].clicks,0);
+  f.body.dataset.studioMode='simple';
+  addFXRow(f,'Glow',30,80);addFXRow(f,'Blur',50,110);addFXRow(f,'Pixel',60,120);
+  f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-search'].disabled,true);
+  f.nodes['simple-fx-search'].click();
+  assert.equal(f.nodes['fx-browser-open'].clicks,0);
+  ctrl.disconnect();
+  const g=fixture();g.body.dataset.studioMode='simple';
+  g.nodes['fx-search'].disabled=true;
+  const c=attachSimpleControls(g.doc,g.Observer);
+  g.nodes['fx-search'].value='';
+  g.nodes['simple-fx-query'].value='Glow';g.nodes['simple-fx-query'].emit('input');
+  assert.equal(g.nodes['simple-fx-search'].disabled,false,'Native input exists and is usable');
+  c.disconnect();
+});
+
+test('Stage 32 Simple FX search markup keeps native FX picker and catalog intact',()=>{
+  const html=read('index.html'),js=read('src/simple-controls.js'),css=read('src/lumina-theme.css');
+  for(const id of ['simple-fx-query','simple-fx-search','fx-search','fx-results','simple-fx-picker'])
+    assert.ok(html.includes('id="'+id+'"'),id);
+  assert.match(html,/role="search" aria-label="Effektek gyors keresése"/);
+  assert.match(js,/nativeFXSearch\.dispatchEvent/);
+  assert.match(js,/simpleFXAdd\.click\(\)/);
+  assert.match(css,/\.simple-fx-quick-search/);
 });

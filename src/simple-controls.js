@@ -334,6 +334,9 @@
     const simpleFXCatalogBack=get('simple-fx-catalog-back');
     const nativeFXClose=get('fx-close');
     const nativeFXBrowser=get('fx-browser-open');
+    const nativeFXSearch=get('fx-search');
+    const simpleFXQuery=get('simple-fx-query');
+    const simpleFXSearch=get('simple-fx-search');
     let pendingSimpleFXAdd=null;
     let fxPickerSignature=null;
     function fxRows(){
@@ -349,7 +352,38 @@
       simpleFXAdd.setAttribute('aria-label',full
         ?'Az effektlánc megtelt, legfeljebb három effekt használható'
         :'Effekt hozzáadása a BeatScope FX-könyvtárból');
+      syncFXQuickSearch();
     }
+    // Stage 32: only the original FX library filters results and adds effects.
+    // This field is a temporary launch query, never a parallel FX catalog.
+    function syncFXQuickSearch(){
+      if(!simpleFXSearch)return;
+      const query=String(simpleFXQuery?.value||'').trim();
+      simpleFXSearch.disabled=!query||!nativeFXSearch||!simpleFXAdd||simpleFXAdd.disabled;
+    }
+    function openSimpleFXSearch(){
+      const query=String(simpleFXQuery?.value||'').trim();
+      if(!query||!simpleFXSearch||simpleFXSearch.disabled
+        ||doc.body?.dataset?.studioMode!=='simple'||!nativeFXSearch
+        ||!simpleFXAdd||simpleFXAdd.disabled)return;
+      // The existing stage 29-31 adapter opens one native catalog session.
+      simpleFXAdd.click();
+      if(get('fx-drawer')?.hidden!==false)return;
+      nativeFXSearch.value=query;
+      const NativeEvent=doc.defaultView?.Event;
+      if(NativeEvent)nativeFXSearch.dispatchEvent(
+        new NativeEvent('input',{bubbles:true})); // original drawFXCatalog()
+      nativeFXSearch.focus?.();
+    }
+    simpleFXQuery?.addEventListener('input',syncFXQuickSearch);
+    simpleFXQuery?.addEventListener('keydown',onFXSearchKey);
+    function onFXSearchKey(event){
+      if(event.key!=='Enter'||event.isComposing||event.ctrlKey||event.altKey
+        ||event.metaKey||event.shiftKey)return;
+      event.preventDefault?.();
+      if(!simpleFXSearch?.disabled)openSimpleFXSearch();
+    }
+    simpleFXSearch?.addEventListener('click',openSimpleFXSearch);
     // Stage 31: keep a Simple catalog session scoped to the native FX drawer.
     // The original window Escape and native close already hide that drawer.
     // Observe its hidden attribute instead of installing a second Escape handler.
@@ -696,6 +730,9 @@
       nativeGrid?.removeEventListener?.('change',syncGrid);
       nativeFXBypass?.removeEventListener?.('click',syncFXBypass);
       nativeFXAuto?.removeEventListener?.('click',syncFXAutopilot);
+      simpleFXQuery?.removeEventListener?.('input',syncFXQuickSearch);
+      simpleFXQuery?.removeEventListener?.('keydown',onFXSearchKey);
+      simpleFXSearch?.removeEventListener?.('click',openSimpleFXSearch);
       for(const [,nativeId] of VISUAL_TUNING)get(nativeId)?.removeEventListener?.('input',syncVisualTuning);
       for(const [,nativeId] of FX_PARAMS)get(nativeId)?.removeEventListener?.('input',syncFXParams);
     } };
