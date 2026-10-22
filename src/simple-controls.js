@@ -337,6 +337,9 @@
     const nativeFXSearch=get('fx-search');
     const simpleFXQuery=get('simple-fx-query');
     const simpleFXSearch=get('simple-fx-search');
+    const simpleFXResultBar=get('simple-fx-result-bar');
+    const simpleFXResultCount=get('simple-fx-result-count');
+    const simpleFXFirst=get('simple-fx-first');
     let pendingSimpleFXAdd=null;
     let fxPickerSignature=null;
     function fxRows(){
@@ -384,12 +387,43 @@
       if(!simpleFXSearch?.disabled)openSimpleFXSearch();
     }
     simpleFXSearch?.addEventListener('click',openSimpleFXSearch);
+    // Stage 33: count the ORIGINAL filtered catalog rows, not a copied catalog.
+    // Explicit click is required to add an effect. Native addFX() stays authoritative.
+    function nativeFXMatches(){
+      return [...(doc.querySelectorAll?.('#fx-results .fx-entry-name')||[])];
+    }
+    function syncFXCatalogResults(){
+      const drawer=get('fx-drawer'),active=Boolean(pendingSimpleFXAdd
+        &&doc.body?.dataset?.studioMode==='simple'&&drawer&&!drawer.hidden);
+      if(simpleFXResultBar)simpleFXResultBar.hidden=!active;
+      if(!active){
+        if(simpleFXFirst)simpleFXFirst.disabled=true;
+        return;
+      }
+      const matches=nativeFXMatches(),count=matches.length;
+      const canAdd=count>0&&fxRows().length<3&&Boolean(matches[0])
+        &&!matches[0].disabled;
+      if(simpleFXFirst)simpleFXFirst.disabled=!canAdd;
+      if(simpleFXResultCount)simpleFXResultCount.textContent=count
+        ?count+' találat · válassz effektet, vagy add hozzá az elsőt'
+        :'Nincs találat · próbálj másik keresést';
+    }
+    function addFirstNativeFXResult(){
+      if(simpleFXFirst?.disabled||!pendingSimpleFXAdd
+        ||doc.body?.dataset?.studioMode!=='simple'||get('fx-drawer')?.hidden
+        ||fxRows().length>=3)return;
+      const native=nativeFXMatches()[0];
+      if(!native||native.disabled)return;
+      native.click(); // BeatScope addFX(), unchanged persistence and selection
+    }
+    simpleFXFirst?.addEventListener('click',addFirstNativeFXResult);
     // Stage 31: keep a Simple catalog session scoped to the native FX drawer.
     // The original window Escape and native close already hide that drawer.
     // Observe its hidden attribute instead of installing a second Escape handler.
     function finishSimpleFXAdd(){
       if(!pendingSimpleFXAdd){
         if(simpleFXCatalogBack)simpleFXCatalogBack.hidden=true;
+        syncFXCatalogResults();
         return;
       }
       const drawer=get('fx-drawer'),rows=fxRows();
@@ -401,10 +435,12 @@
           ?'FX-könyvtár bezárva.':'Effektkeresés megszakítva.';
         // Only the Simple UI owns focus when an active Simple session closed.
         if(inSimple&&drawer?.hidden)simpleFXAdd?.focus?.();
+        syncFXCatalogResults();
         return;
       }
       if(rows.length<=pendingSimpleFXAdd.count){
         if(simpleFXCatalogBack)simpleFXCatalogBack.hidden=false;
+        syncFXCatalogResults();
         return;
       }
       // Native Pro addFX() has already persisted and selected the new FX.
@@ -413,6 +449,7 @@
       pendingSimpleFXAdd=null;
       if(simpleFXCatalogBack)simpleFXCatalogBack.hidden=true;
       drawer.hidden=true;
+      syncFXCatalogResults();
       if(simpleFXAddStatus)
         simpleFXAddStatus.textContent='✓ '+name+' hozzáadva ('+rows.length+'/3)';
       simpleFXPicker?.focus?.(); // existing selected FX and original parameters
@@ -438,6 +475,7 @@
         get('fx-search')?.focus?.();return;
       }
       nativeFXBrowser.click(); // original 120-FX catalog and existing addFX()
+      syncFXCatalogResults();
     });
     function syncFXPicker(){
       if(!simpleFXPicker)return;
@@ -704,6 +742,8 @@
       for(const [,nativeId] of FX_PARAMS)observe(get(nativeId),'disabled');
       const fxStack=get('fx-stack');
       if(fxStack)observer.observe(fxStack,{childList:true,subtree:true});
+      const fxResults=get('fx-results');
+      if(fxResults)observer.observe(fxResults,{childList:true,subtree:true});
       observe(get('fx-drawer'),'hidden');
       observe(doc.body, 'data-studio-mode');
       observe(doc.body, 'class');
@@ -733,6 +773,7 @@
       simpleFXQuery?.removeEventListener?.('input',syncFXQuickSearch);
       simpleFXQuery?.removeEventListener?.('keydown',onFXSearchKey);
       simpleFXSearch?.removeEventListener?.('click',openSimpleFXSearch);
+      simpleFXFirst?.removeEventListener?.('click',addFirstNativeFXResult);
       for(const [,nativeId] of VISUAL_TUNING)get(nativeId)?.removeEventListener?.('input',syncVisualTuning);
       for(const [,nativeId] of FX_PARAMS)get(nativeId)?.removeEventListener?.('input',syncFXParams);
     } };

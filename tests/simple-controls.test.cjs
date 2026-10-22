@@ -49,11 +49,13 @@ function fixture() {
     'simple-fx-remove','simple-fx-remove-cancel','simple-fx-remove-note',
     'simple-fx-add','simple-fx-add-status','simple-fx-catalog-back',
     'fx-close','fx-browser-open','fx-drawer','fx-search',
-    'simple-fx-query','simple-fx-search'];
+    'simple-fx-query','simple-fx-search','fx-results',
+    'simple-fx-result-bar','simple-fx-result-count','simple-fx-first'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['simple-fx-remove-cancel'].hidden=true;
   nodes['fx-drawer'].hidden=true;
   nodes['simple-fx-catalog-back'].hidden=true;
+  nodes['simple-fx-result-bar'].hidden=true;
   nodes['title-status'].textContent = 'Élő mikrofon';
   nodes['track-name'].textContent = 'teszt-zene.wav';
   nodes['mode-label'].textContent = 'ORBIT / RADIAL SPECTRUM';
@@ -88,7 +90,7 @@ function fixture() {
   const sources = VISUALS.map(value => element('source-' + value, { mode: value }));
   const swatches = PALETTES.map(value => element('swatch-' + value, { palette: value }));
   swatches[0].classList.toggle('selected',true);
-  const fxRows=[];
+  const fxRows=[],fxCatalogMatches=[];
   const body = element('body'),docHandlers=new Map();
   const doc = {
     body,
@@ -102,7 +104,8 @@ function fixture() {
     defaultView: { Event: class { constructor(type,opts){this.type=type;this.bubbles=opts?.bubbles;} } },
     querySelectorAll: selector => selector === '[data-mode]' ? sources :
       selector === '[data-palette]' ? swatches :
-      selector === '#fx-stack .fx-stack-entry' ? fxRows : [],
+      selector === '#fx-stack .fx-stack-entry' ? fxRows :
+      selector === '#fx-results .fx-entry-name' ? fxCatalogMatches : [],
     querySelector:selector => selector === '#fx-stack .fx-stack-entry.selected .fx-stack-name'
       ?fxRows.find(row=>row.classList.contains('selected'))?.querySelector('.fx-stack-name')??null
       :null
@@ -121,7 +124,7 @@ function fixture() {
     disconnect() { this.disconnected = true; }
     notify() { this.callback(); }
   }
-  return { nodes, sources, swatches, fxRows, body, doc, Observer, observers, key, docHandlers };
+  return { nodes, sources, swatches, fxRows, fxCatalogMatches, body, doc, Observer, observers, key, docHandlers };
 }
 
 test('Simple shortcuts forward real user clicks to working BeatScope handlers', () => {
@@ -1951,4 +1954,94 @@ test('Stage 32 Simple FX search markup keeps native FX picker and catalog intact
   assert.match(js,/nativeFXSearch\.dispatchEvent/);
   assert.match(js,/simpleFXAdd\.click\(\)/);
   assert.match(css,/\.simple-fx-quick-search/);
+});
+
+
+test('Stage 33 uses the native filtered result count, never a separate FX catalog',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const a=element('native-1'),b=element('native-2');
+  f.fxCatalogMatches.push(a,b);
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  assert.equal(f.nodes['simple-fx-result-bar'].hidden,true);
+  f.nodes['simple-fx-add'].click();f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-result-bar'].hidden,false);
+  assert.match(f.nodes['simple-fx-result-count'].textContent,/2 találat/);
+  assert.equal(f.nodes['simple-fx-first'].disabled,false);
+  f.fxCatalogMatches.splice(0);
+  f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-first'].disabled,true);
+  assert.match(f.nodes['simple-fx-result-count'].textContent,/Nincs találat/);
+  assert.equal(f.fxRows.length,0);
+  ctrl.disconnect();
+});
+
+test('Stage 33 explicit first-result action delegates exactly once to native FX',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const first=element('native-first'),second=element('native-second');
+  first.addEventListener('click',()=>{
+    addFXRow(f,'Hue Rotate',100,100,true).nativeNameButton.click();
+  });
+  f.fxCatalogMatches.push(first,second);
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();f.observers[0].notify();
+  f.nodes['simple-fx-first'].click();f.observers[0].notify();
+  assert.equal(first.clicks,1);
+  assert.equal(second.clicks,0);
+  assert.equal(f.fxRows.length,1);
+  assert.equal(f.nodes['fx-drawer'].hidden,true);
+  assert.equal(f.nodes['simple-fx-result-bar'].hidden,true);
+  assert.equal(f.nodes['simple-fx-first'].disabled,true);
+  assert.match(f.nodes['simple-fx-add-status'].textContent,/Hue Rotate hozzáadva/);
+  ctrl.disconnect();
+});
+
+test('Stage 33 no result and full stack prevent additions',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const first=element('native-first');
+  f.fxCatalogMatches.push(first);
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();f.observers[0].notify();
+  f.fxCatalogMatches.splice(0);f.observers[0].notify();
+  f.nodes['simple-fx-first'].click();
+  assert.equal(first.clicks,0,'No results cannot add');
+  // Simulate a native stack change from another component while catalog is open.
+  for(const n of ['Hue','Blur','Glow'])addFXRow(f,n,50,100);
+  f.observers[0].notify();
+  f.fxCatalogMatches.push(first);f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-first'].disabled,true);
+  f.nodes['simple-fx-first'].click();
+  assert.equal(first.clicks,0,'Three slots are already occupied');
+  ctrl.disconnect();
+});
+
+test('Stage 33 Pro and cancelled Simple catalog never expose first-result action',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  const first=element('native-first');f.fxCatalogMatches.push(first);
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();f.observers[0].notify();
+  f.body.dataset.studioMode='pro';f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-result-bar'].hidden,true);
+  assert.equal(f.nodes['simple-fx-first'].disabled,true);
+  f.nodes['simple-fx-first'].click();
+  assert.equal(first.clicks,0);
+  f.body.dataset.studioMode='simple';f.observers[0].notify();
+  f.nodes['simple-fx-add'].click();f.observers[0].notify();
+  f.nodes['fx-drawer'].hidden=true;f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-result-bar'].hidden,true);
+  assert.equal(f.nodes['simple-fx-first'].disabled,true);
+  ctrl.disconnect();
+});
+
+test('Stage 33 result bar reads the real FX rows, retains native search and accessibility',()=>{
+  const html=read('index.html'),code=read('src/simple-controls.js'),css=read('src/lumina-theme.css');
+  for(const id of ['simple-fx-result-bar','simple-fx-result-count','simple-fx-first'])
+    assert.ok(html.includes('id="'+id+'"'),id);
+  assert.match(html,/id="simple-fx-result-count" role="status" aria-live="polite"/);
+  assert.match(code,/doc\.querySelectorAll\?\.\('#fx-results \.fx-entry-name'\)/);
+  assert.match(code,/native\.click\(\); \/\/ BeatScope addFX/);
+  assert.match(css,/\.fx-simple-result-bar\[hidden\]/);
 });

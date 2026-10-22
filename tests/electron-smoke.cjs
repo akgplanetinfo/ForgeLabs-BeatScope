@@ -1497,6 +1497,46 @@ async function run(){
      &&nativeRows().every((row,i)=>row.querySelector('.fx-stack-name')?.textContent===fx32Original[i])
      &&(fx32OriginalSel<0||nativeRows()[fx32OriginalSel]?.classList.contains('selected'));
    if(!fx32Drawer.hidden)$('fx-close').click();
+   // Stage 33: filtered native results announce count; first-result button
+   // delegates to the existing addFX() and never alters FX during search.
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fx33Before=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx33BeforeSel=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   const fx33Query=$('simple-fx-query'),fx33Search=$('simple-fx-search');
+   const fx33Bar=$('simple-fx-result-bar'),fx33First=$('simple-fx-first');
+   const fx33Drawer=$('fx-drawer');
+   fx33Query.value='fx-001';fx33Query.dispatchEvent(new Event('input',{bubbles:true}));
+   fx33Search.click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx33List=[...document.querySelectorAll('#fx-results .fx-entry-name')];
+   const fx33Count=!fx33Drawer.hidden&&!fx33Bar.hidden&&fx33List.length===1
+     &&!fx33First.disabled&&$('simple-fx-result-count').textContent.includes('1 találat')
+     &&nativeRows().length===fx33Before.length;
+   if(fx33Count)fx33First.click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx33Added=nativeRows().length===fx33Before.length+1
+     &&fx33Drawer.hidden&&fx33Bar.hidden&&fx33First.disabled;
+   if(fx33Added){
+     nativeRows()[nativeRows().length-1]?.querySelectorAll('button')[4]?.click();
+     await new Promise(resolve=>setTimeout(resolve,35));
+   }
+   if(fx33BeforeSel>=0&&fx33BeforeSel<nativeRows().length)
+     nativeRows()[fx33BeforeSel]?.querySelector('.fx-stack-name')?.click();
+   const fx33Restored=nativeRows().length===fx33Before.length
+     &&nativeRows().every((row,i)=>row.querySelector('.fx-stack-name')?.textContent===fx33Before[i])
+     &&(fx33BeforeSel<0||nativeRows()[fx33BeforeSel]?.classList.contains('selected'));
+   fx33Query.value='xyz-no-matching-fx-777777';
+   fx33Query.dispatchEvent(new Event('input',{bubbles:true}));
+   fx33Search.click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx33NoResults=!fx33Drawer.hidden&&!fx33Bar.hidden&&fx33First.disabled
+     &&document.querySelectorAll('#fx-results .fx-entry-name').length===0
+     &&$('simple-fx-result-count').textContent.includes('Nincs találat')
+     &&nativeRows().length===fx33Before.length;
+   if(!fx33Drawer.hidden)$('simple-fx-catalog-back').click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const fx33Canceled=fx33Drawer.hidden&&fx33Bar.hidden&&fx33First.disabled;
    $('studio-pro').click();
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
@@ -1540,7 +1580,8 @@ async function run(){
      fx29Ready,fx29Opened,fx29Added,fx29Restored,
      fx30Opened,fx30Canceled,fx30Reopened,fx30Added,fx30Closed,fx30Picker,fx30Restored,
      fx31Opened,fx31Return,fx31Reopened,fx31Esc,fx31Preserved,
-     fx32EmptyBlocked,fx32Ready,fx32Open,fx32Filtered,fx32Added,fx32Restored};
+     fx32EmptyBlocked,fx32Ready,fx32Open,fx32Filtered,fx32Added,fx32Restored,
+     fx33Count,fx33Added,fx33Restored,fx33NoResults,fx33Canceled};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));

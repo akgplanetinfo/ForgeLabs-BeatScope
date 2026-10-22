@@ -979,3 +979,26 @@ body[data-theme="lumina-pulse"] #simple-fx-query:focus-visible{
 body[data-theme="lumina-pulse"] #simple-fx-search:disabled{
   opacity:.4;cursor:not-allowed;
 }
+
+
+/* Alpha 17 stage 33: native filtered FX result count and explicit first choice. */
+body[data-theme="lumina-pulse"] .fx-simple-result-bar[hidden]{display:none!important}
+body[data-theme="lumina-pulse"] .fx-simple-result-bar{
+  display:flex;gap:10px;align-items:center;justify-content:space-between;
+  padding:8px 12px;background:#102f3c;border-top:1px solid #286178;
+  border-bottom:1px solid #286178;min-width:0;
+}
+body[data-theme="lumina-pulse"] #simple-fx-result-count{
+  font-size:11px;line-height:1.4;color:#a3d8e4;min-width:0;
+}
+body[data-theme="lumina-pulse"] #simple-fx-first{
+  flex:0 0 auto;max-width:45%;background:#09596a;color:#e5fcff;
+  border:1px solid #26b8cf;border-radius:4px;padding:7px 10px;
+  font-size:11px;font-weight:700;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] #simple-fx-first:disabled{
+  opacity:.35;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-fx-first:focus-visible{
+  outline:2px solid #f2ffff;outline-offset:2px;
+}
