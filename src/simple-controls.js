@@ -335,10 +335,12 @@
     const nativeFXClose=get('fx-close');
     const nativeFXBrowser=get('fx-browser-open');
     const nativeFXSearch=get('fx-search');
+    const nativeFXResults=get('fx-results');
     const simpleFXQuery=get('simple-fx-query');
     const simpleFXSearch=get('simple-fx-search');
     const simpleFXResultBar=get('simple-fx-result-bar');
     const simpleFXResultCount=get('simple-fx-result-count');
+    const simpleFXKeyHint=get('simple-fx-key-hint');
     const simpleFXFirst=get('simple-fx-first');
     let pendingSimpleFXAdd=null;
     let fxPickerSignature=null;
@@ -392,15 +394,49 @@
     function nativeFXMatches(){
       return [...(doc.querySelectorAll?.('#fx-results .fx-entry-name')||[])];
     }
+    // Stage 34: keyboard focus follows the ORIGINAL catalog buttons.
+    // No effect is added until the user explicitly activates a native button.
+    function isSimpleFXNavigation(event){
+      return Boolean(pendingSimpleFXAdd&&doc.body?.dataset?.studioMode==='simple'
+        &&get('fx-drawer')?.hidden===false
+        &&!event.isComposing&&!event.ctrlKey&&!event.altKey
+        &&!event.metaKey&&!event.shiftKey);
+    }
+    function onNativeFXSearchKey(event){
+      if(event.key!=='ArrowDown'||!isSimpleFXNavigation(event))return;
+      const first=nativeFXMatches().find(button=>!button.disabled);
+      if(!first)return;
+      event.preventDefault?.();
+      first.focus?.();
+    }
+    function onNativeFXResultKey(event){
+      if(!isSimpleFXNavigation(event))return;
+      if(!['ArrowUp','ArrowDown','Home','End'].includes(event.key))return;
+      const choices=nativeFXMatches().filter(button=>!button.disabled);
+      const index=choices.indexOf(event.target);
+      if(index<0)return; // never intercept star/favorite or other native controls
+      let target=null;
+      if(event.key==='ArrowDown')target=choices[Math.min(index+1,choices.length-1)];
+      else if(event.key==='ArrowUp')target=index===0?nativeFXSearch:choices[index-1];
+      else if(event.key==='Home')target=choices[0];
+      else if(event.key==='End')target=choices[choices.length-1];
+      if(!target)return;
+      event.preventDefault?.();
+      target.focus?.();
+    }
+    nativeFXSearch?.addEventListener('keydown',onNativeFXSearchKey);
+    nativeFXResults?.addEventListener('keydown',onNativeFXResultKey);
     function syncFXCatalogResults(){
       const drawer=get('fx-drawer'),active=Boolean(pendingSimpleFXAdd
         &&doc.body?.dataset?.studioMode==='simple'&&drawer&&!drawer.hidden);
       if(simpleFXResultBar)simpleFXResultBar.hidden=!active;
       if(!active){
         if(simpleFXFirst)simpleFXFirst.disabled=true;
+        if(simpleFXKeyHint)simpleFXKeyHint.hidden=true;
         return;
       }
       const matches=nativeFXMatches(),count=matches.length;
+      if(simpleFXKeyHint)simpleFXKeyHint.hidden=count===0;
       const canAdd=count>0&&fxRows().length<3&&Boolean(matches[0])
         &&!matches[0].disabled;
       if(simpleFXFirst)simpleFXFirst.disabled=!canAdd;
@@ -742,8 +778,7 @@
       for(const [,nativeId] of FX_PARAMS)observe(get(nativeId),'disabled');
       const fxStack=get('fx-stack');
       if(fxStack)observer.observe(fxStack,{childList:true,subtree:true});
-      const fxResults=get('fx-results');
-      if(fxResults)observer.observe(fxResults,{childList:true,subtree:true});
+      if(nativeFXResults)observer.observe(nativeFXResults,{childList:true,subtree:true});
       observe(get('fx-drawer'),'hidden');
       observe(doc.body, 'data-studio-mode');
       observe(doc.body, 'class');
@@ -774,6 +809,8 @@
       simpleFXQuery?.removeEventListener?.('keydown',onFXSearchKey);
       simpleFXSearch?.removeEventListener?.('click',openSimpleFXSearch);
       simpleFXFirst?.removeEventListener?.('click',addFirstNativeFXResult);
+      nativeFXSearch?.removeEventListener?.('keydown',onNativeFXSearchKey);
+      nativeFXResults?.removeEventListener?.('keydown',onNativeFXResultKey);
       for(const [,nativeId] of VISUAL_TUNING)get(nativeId)?.removeEventListener?.('input',syncVisualTuning);
       for(const [,nativeId] of FX_PARAMS)get(nativeId)?.removeEventListener?.('input',syncFXParams);
     } };

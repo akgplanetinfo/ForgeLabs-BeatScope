@@ -50,12 +50,14 @@ function fixture() {
     'simple-fx-add','simple-fx-add-status','simple-fx-catalog-back',
     'fx-close','fx-browser-open','fx-drawer','fx-search',
     'simple-fx-query','simple-fx-search','fx-results',
-    'simple-fx-result-bar','simple-fx-result-count','simple-fx-first'];
+    'simple-fx-result-bar','simple-fx-result-count','simple-fx-first',
+    'simple-fx-key-hint'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['simple-fx-remove-cancel'].hidden=true;
   nodes['fx-drawer'].hidden=true;
   nodes['simple-fx-catalog-back'].hidden=true;
   nodes['simple-fx-result-bar'].hidden=true;
+  nodes['simple-fx-key-hint'].hidden=true;
   nodes['title-status'].textContent = 'Élő mikrofon';
   nodes['track-name'].textContent = 'teszt-zene.wav';
   nodes['mode-label'].textContent = 'ORBIT / RADIAL SPECTRUM';
@@ -2044,4 +2046,105 @@ test('Stage 33 result bar reads the real FX rows, retains native search and acce
   assert.match(code,/doc\.querySelectorAll\?\.\('#fx-results \.fx-entry-name'\)/);
   assert.match(code,/native\.click\(\); \/\/ BeatScope addFX/);
   assert.match(css,/\.fx-simple-result-bar\[hidden\]/);
+});
+
+
+test('Stage 34 search ArrowDown focuses the first original result without adding FX',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const first=element('native-one'),second=element('native-two');
+  let focused=0,prevented=0;
+  first.focus=()=>{focused++;};
+  f.fxCatalogMatches.push(first,second);
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();f.observers[0].notify();
+  f.nodes['fx-search'].dispatchEvent({
+    type:'keydown',key:'ArrowDown',preventDefault(){prevented++;}
+  });
+  assert.equal(focused,1);
+  assert.equal(prevented,1);
+  assert.equal(first.clicks,0);
+  assert.equal(f.fxRows.length,0);
+  assert.equal(f.nodes['simple-fx-key-hint'].hidden,false);
+  ctrl.disconnect();
+});
+
+test('Stage 34 native results ArrowUp/Down/Home/End only move focus',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const items=[element('native-a'),element('native-b'),element('native-c')];
+  const focus=[];let prevented=0;
+  items.forEach((item,i)=>{item.focus=()=>{focus.push(i);};});
+  f.nodes['fx-search'].focus=()=>{focus.push('search');};
+  f.fxCatalogMatches.push(...items);
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();f.observers[0].notify();
+  const key=(target,name)=>f.nodes['fx-results'].dispatchEvent({
+    type:'keydown',target,key:name,preventDefault(){prevented++;}
+  });
+  key(items[0],'ArrowDown');key(items[1],'End');
+  key(items[2],'Home');key(items[0],'ArrowUp');
+  assert.deepEqual(focus,[1,2,0,'search']);
+  assert.equal(prevented,4);
+  assert.deepEqual(items.map(item=>item.clicks),[0,0,0]);
+  assert.equal(f.fxRows.length,0);
+  ctrl.disconnect();
+});
+
+test('Stage 34 zero results, modifier keys, and non-result targets keep native behavior',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();f.observers[0].notify();
+  let prevented=0;
+  f.nodes['fx-search'].dispatchEvent({type:'keydown',key:'ArrowDown',preventDefault(){prevented++;}});
+  assert.equal(prevented,0,'Empty search has no focus target');
+  assert.equal(f.nodes['simple-fx-key-hint'].hidden,true);
+  const a=element('native-result');
+  let focused=0;a.focus=()=>{focused++;};
+  f.fxCatalogMatches.push(a);f.observers[0].notify();
+  const evt=(target,key,extra={})=>f.nodes['fx-results'].dispatchEvent({
+    type:'keydown',target,key,preventDefault(){prevented++;},...extra
+  });
+  evt(a,'ArrowDown',{ctrlKey:true});
+  evt(a,'Enter');
+  evt(element('favorite'),'ArrowDown');
+  f.nodes['fx-search'].dispatchEvent({
+    type:'keydown',key:'ArrowDown',isComposing:true,preventDefault(){prevented++;}
+  });
+  assert.equal(prevented,0);
+  assert.equal(focused,0);
+  assert.equal(a.clicks,0);
+  ctrl.disconnect();
+});
+
+test('Stage 34 keyboard navigation cannot affect Pro mode or a cancelled Simple session',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const a=element('native-one');let focused=0,prevented=0;
+  a.focus=()=>{focused++;};f.fxCatalogMatches.push(a);
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  const down=()=>f.nodes['fx-search'].dispatchEvent({
+    type:'keydown',key:'ArrowDown',preventDefault(){prevented++;}
+  });
+  down();
+  assert.equal(focused,0);
+  f.nodes['simple-fx-add'].click();f.observers[0].notify();
+  f.body.dataset.studioMode='pro';f.observers[0].notify();down();
+  f.body.dataset.studioMode='simple';f.nodes['fx-drawer'].hidden=true;
+  f.observers[0].notify();down();
+  assert.equal(focused,0);
+  assert.equal(prevented,0);
+  assert.equal(f.nodes['simple-fx-key-hint'].hidden,true);
+  ctrl.disconnect();
+});
+
+test('Stage 34 keyboard hint and native listeners are wired without duplicate FX state',()=>{
+  const html=read('index.html'),js=read('src/simple-controls.js'),css=read('src/lumina-theme.css');
+  assert.match(html,/id="simple-fx-key-hint" hidden/);
+  assert.match(html,/Enter: effekt hozzáadása/);
+  assert.match(js,/nativeFXResults\?\.addEventListener\('keydown',onNativeFXResultKey\)/);
+  assert.match(js,/nativeFXSearch\?\.addEventListener\('keydown',onNativeFXSearchKey\)/);
+  assert.match(js,/nativeFXResults\?\.removeEventListener\?\.\('keydown',onNativeFXResultKey\)/);
+  assert.match(css,/#simple-fx-key-hint\[hidden\]/);
 });

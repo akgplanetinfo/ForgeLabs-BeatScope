@@ -1002,3 +1002,16 @@ body[data-theme="lumina-pulse"] #simple-fx-first:disabled{
 body[data-theme="lumina-pulse"] #simple-fx-first:focus-visible{
   outline:2px solid #f2ffff;outline-offset:2px;
 }
+
+
+/* Alpha 17 stage 34: guided, keyboard-accessible native FX results. */
+body[data-theme="lumina-pulse"] .fx-simple-result-bar{flex-wrap:wrap}
+body[data-theme="lumina-pulse"] #simple-fx-key-hint[hidden]{display:none!important}
+body[data-theme="lumina-pulse"] #simple-fx-key-hint{
+  order:3;flex:1 1 100%;font-size:10px;line-height:1.35;
+  color:#96bcca;letter-spacing:.1px;
+}
+body[data-theme="lumina-pulse"] #fx-results .fx-entry-name:focus-visible,
+body[data-theme="lumina-pulse"] #fx-search:focus-visible{
+  outline:2px solid #00d3f2;outline-offset:2px;
+}

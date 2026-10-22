@@ -1537,6 +1537,50 @@ async function run(){
    if(!fx33Drawer.hidden)$('simple-fx-catalog-back').click();
    await new Promise(resolve=>setTimeout(resolve,45));
    const fx33Canceled=fx33Drawer.hidden&&fx33Bar.hidden&&fx33First.disabled;
+   // Stage 34: keyboard focus traverses original FX results without adding any.
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const fx34Before=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx34Search=$('fx-search'),fx34Query=$('simple-fx-query');
+   fx34Query.value='Kaleidoscope';
+   fx34Query.dispatchEvent(new Event('input',{bubbles:true}));
+   $('simple-fx-search').click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx34Rows=[...document.querySelectorAll('#fx-results .fx-entry-name')];
+   const fx34Hint=fx34Rows.length>=2
+     &&!$('simple-fx-key-hint').hidden
+     &&!$('simple-fx-result-bar').hidden;
+   const fx34Down=new KeyboardEvent('keydown',{
+     key:'ArrowDown',bubbles:true,cancelable:true
+   });
+   fx34Search.dispatchEvent(fx34Down);
+   const fx34First=fx34Down.defaultPrevented
+     &&document.activeElement===fx34Rows[0];
+   const fx34Next=new KeyboardEvent('keydown',{
+     key:'ArrowDown',bubbles:true,cancelable:true
+   });
+   fx34Rows[0]?.dispatchEvent(fx34Next);
+   const fx34Second=fx34Next.defaultPrevented
+     &&document.activeElement===fx34Rows[1];
+   const fx34Back=new KeyboardEvent('keydown',{
+     key:'ArrowUp',bubbles:true,cancelable:true
+   });
+   fx34Rows[1]?.dispatchEvent(fx34Back);
+   const fx34Up=fx34Back.defaultPrevented
+     &&document.activeElement===fx34Rows[0];
+   const fx34AtSearch=new KeyboardEvent('keydown',{
+     key:'ArrowUp',bubbles:true,cancelable:true
+   });
+   fx34Rows[0]?.dispatchEvent(fx34AtSearch);
+   const fx34Returns=fx34AtSearch.defaultPrevented
+     &&document.activeElement===fx34Search;
+   const fx34NoAdd=nativeRows().length===fx34Before.length
+     &&nativeRows().every((row,i)=>
+       row.querySelector('.fx-stack-name')?.textContent===fx34Before[i]);
+   if(!$('fx-drawer').hidden)$('simple-fx-catalog-back').click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const fx34Canceled=$('fx-drawer').hidden
+     &&$('simple-fx-key-hint').hidden;
    $('studio-pro').click();
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
@@ -1581,7 +1625,8 @@ async function run(){
      fx30Opened,fx30Canceled,fx30Reopened,fx30Added,fx30Closed,fx30Picker,fx30Restored,
      fx31Opened,fx31Return,fx31Reopened,fx31Esc,fx31Preserved,
      fx32EmptyBlocked,fx32Ready,fx32Open,fx32Filtered,fx32Added,fx32Restored,
-     fx33Count,fx33Added,fx33Restored,fx33NoResults,fx33Canceled};
+     fx33Count,fx33Added,fx33Restored,fx33NoResults,fx33Canceled,
+     fx34Hint,fx34First,fx34Second,fx34Up,fx34Returns,fx34NoAdd,fx34Canceled};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
