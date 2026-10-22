@@ -1,4 +1,14 @@
-# ForgeLabs BeatScope – 0.1.0
+# Lumina Pulse – BeatScope Edition v0.4.0 (stabil Windows-kiadás)
+
+**Kész EXE-k:** [Letöltés – v0.4.0](https://github.com/akgplanetinfo/ForgeLabs-BeatScope/releases/tag/v0.4.0). Windows x64 telepítő az aktuális felhasználóhoz, és külön, telepítés nélküli portable EXE. A mellékelt SHA256SUMS.txt fájl tartalmazza az ellenőrzőösszegeket. A fájlok nincsenek kódaláírva; a Windows vagy szervezeti házirend figyelmeztethet vagy blokkolhat.
+
+**Fő funkciók:** Simple Mode, Pro VJ Studio, 16 generátor, 120 GPU-effekt, 8×8 kliprács, médiaimport, Clip/Layer/Composition FX, BPM-alapú jelenetvezérlés, projektmentés és külön VJ-kimenet. A belső BeatScope azonosító a korábbi felhasználói adatokkal való kompatibilitás miatt megmaradt. Az opcionális WebRTC-kimenet továbbra is béta és GPU/kodekfüggő.
+
+A következő rész a korábbi, archivált fejlesztői buildutasítás. **A kész EXE használatához nem kell Node.js vagy helyi build.**
+
+---
+
+## Korábbi fejlesztői buildutasítások
 
 Valódi **Windowsra telepíthető Electron + Chromium alkalmazás**, nem honlap és nem PWA. Zenefájlból vagy mikrofonból valós idejű frekvenciaelemzést és vizualizációt készít, helyben a gépen. Nem igényel Base44-et, Vercelt, fiókot, felhőt vagy fizetős API-t.
 

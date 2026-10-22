@@ -649,6 +649,1014 @@ async function run(){
  const closed=await win.webContents.executeJavaScript("window.beatAPI.outputState()");
  if(closed.preview||closed.output)fail('Output windows were not released on stop');
  details.push('OUTPUT TEST: displays='+displays.length+', preview and VJ output received live frames and closed');
+ // Alpha 17: test real mode switching, original BeatScope delegation and navigation in Windows Electron.
+ const alpha17UI=await win.webContents.executeJavaScript(`(async()=>{
+   const $=id=>document.getElementById(id);
+   $('studio-simple').click();
+   const simpleMode=document.body.dataset.studioMode==='simple';
+   const simpleBar=getComputedStyle($('simple-control-bar')).display!=='none';
+   const navHidden=getComputedStyle($('pro-navigation')).display==='none';
+   const deckHidden=getComputedStyle($('vj-deck')).display==='none';
+   const widePreview=getComputedStyle(document.querySelector('.sidebar')).display==='none';
+   const sourceAccurate=$('simple-status-source').textContent===$('title-status').textContent;
+   const trackAccurate=$('simple-status-track').textContent===$('track-name').textContent;
+   const visualAccurate=$('simple-status-visual').textContent===$('mode-label').textContent;
+   const initialAI=$('ai-toggle').getAttribute('aria-checked');
+   $('simple-ai').click();
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const aiDelegates=$('ai-toggle').getAttribute('aria-checked')!==initialAI
+     &&$('simple-ai').getAttribute('aria-pressed')===$('ai-toggle').getAttribute('aria-checked');
+   $('simple-ai').click();
+   $('simple-visual').value='wave';
+   $('simple-visual').dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const visualDelegates=document.querySelector('[data-mode="wave"]').classList.contains('active')
+     &&$('simple-status-visual').textContent===$('mode-label').textContent;
+   $('simple-visual').value='bars';
+   $('simple-visual').dispatchEvent(new Event('change',{bubbles:true}));
+   $('studio-pro').click();
+   const proMode=document.body.dataset.studioMode==='pro';
+   const deckShown=getComputedStyle($('vj-deck')).display!=='none';
+   const navShown=getComputedStyle($('pro-navigation')).display!=='none';
+   document.querySelector('[data-vj-target="vj-mix"]').click();
+   const jumpWorks=document.activeElement===$('vj-mix');
+   const activeIndicator=document.querySelector('[data-vj-target="vj-mix"]').getAttribute('aria-current')==='location';
+   document.querySelector('[data-vj-target="vj-tempo"]').click();
+   const backEnabled=!$('pro-nav-back').disabled;
+   $('pro-nav-back').click();
+   const backWorks=document.activeElement===$('vj-mix')
+     &&document.querySelector('[data-vj-target="vj-mix"]').getAttribute('aria-current')==='location';
+   const previewButton=document.querySelector('[data-vj-target="visual-shell"]');
+   const projectButton=document.querySelector('[data-vj-target="project-toolbar"]');
+   previewButton.focus();
+   previewButton.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
+   const keyboardNav=document.activeElement===projectButton;
+   // Stage 5: real Ctrl+K query, navigation delegation, Escape and focus restore.
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const paletteOpened=!$('pro-command-overlay').hidden
+     &&document.activeElement===$('pro-command-input');
+   const query=$('pro-command-input');
+   query.value='layer mixer';
+   query.dispatchEvent(new Event('input',{bubbles:true}));
+   const paletteFiltered=$('pro-command-results').querySelectorAll('[role="option"]').length===1
+     &&$('pro-command-results').textContent.includes('Layer Mixer');
+   query.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+   const paletteNavigated=$('pro-command-overlay').hidden
+     &&document.activeElement===$('vj-mix');
+   $('pro-search-open').focus();
+   $('pro-search-open').click();
+   const paletteReopened=!$('pro-command-overlay').hidden;
+   $('pro-command-input').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   const paletteEscaped=$('pro-command-overlay').hidden
+     &&document.activeElement===$('pro-search-open');
+   $('studio-simple').click();
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const paletteDisabledInSimple=$('pro-command-overlay').hidden;
+   $('studio-pro').click();
+   // Stage 6: real native action execution without opening a system file/permission dialog.
+   const aiBeforeAction=$('ai-toggle').getAttribute('aria-checked');
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const actionsShown=$('pro-command-results').querySelectorAll('[data-command-kind="action"]').length===7;
+   const actionSearch=$('pro-command-input');
+   actionSearch.value='automatikus fx';
+   actionSearch.dispatchEvent(new Event('input',{bubbles:true}));
+   const actionFound=$('pro-command-results').querySelectorAll('[role="option"]').length===1;
+   actionSearch.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const actionDelegated=$('pro-command-overlay').hidden
+     &&$('ai-toggle').getAttribute('aria-checked')!==aiBeforeAction;
+   $('ai-toggle').click(); // Restore the original state.
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const aliasSearch=$('pro-command-input');
+   aliasSearch.value='screenshot';
+   aliasSearch.dispatchEvent(new Event('input',{bubbles:true}));
+   const actionAlias=$('pro-command-results').querySelectorAll('[role="option"]').length===1
+     &&$('pro-command-results').textContent.includes('Kép mentése');
+   aliasSearch.value='előnézeti ablak megnyitása';
+   aliasSearch.dispatchEvent(new Event('input',{bubbles:true}));
+   const previewSource=$('open-preview');
+   const previewDisabledBefore=previewSource.disabled;
+   previewSource.disabled=true;
+   aliasSearch.dispatchEvent(new Event('input',{bubbles:true}));
+   const actionDisabledRow=$('pro-command-results').querySelector('[role="option"]').disabled;
+   aliasSearch.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+   const actionDisabledSafe=!$('pro-command-overlay').hidden;
+   previewSource.disabled=previewDisabledBefore;
+   aliasSearch.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   // Stage 7: completed native actions are offered first without keeping the search text.
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const recentOptions=$('pro-command-results').querySelectorAll('[role="option"]');
+   const recentFirst=recentOptions.length>1&&recentOptions[0].textContent.includes('Automatikus FX');
+   const recentBadge=recentOptions[0]?.dataset.recent==='true';
+   const categoriesDistinct=recentOptions[0]?.dataset.commandKind==='action'
+     &&[...recentOptions].some(option=>option.dataset.commandKind==='navigation');
+   const storedRecents=JSON.parse(localStorage.getItem('lumina-pulse.recent-commands.v1')||'[]');
+   const recentStored=storedRecents[0]==='action:ai-toggle'&&storedRecents.length<=5
+     &&!localStorage.getItem('lumina-pulse.recent-commands.v1').includes('screenshot');
+   $('pro-command-input').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   // Stage 8: pin a frequently used navigation command, confirm it outranks recents,
+   // then unpin it without launching any audio, file or dialog operations.
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const favoriteInput=$('pro-command-input');
+   const favoriteButton=$('pro-command-favorite');
+   favoriteInput.value='Layer Mixer';
+   favoriteInput.dispatchEvent(new Event('input',{bubbles:true}));
+   const pinInitiallyOff=!favoriteButton.disabled&&favoriteButton.getAttribute('aria-pressed')==='false';
+   favoriteButton.click();
+   const favoritePinned=favoriteButton.getAttribute('aria-pressed')==='true'
+     &&JSON.parse(localStorage.getItem('lumina-pulse.favorite-commands.v1')||'[]')
+       .includes('target:vj-mix');
+   favoriteInput.value='';
+   favoriteInput.dispatchEvent(new Event('input',{bubbles:true}));
+   const pinnedOption=$('pro-command-results').querySelector('[role="option"]');
+   const favoriteFirst=pinnedOption?.textContent==='Layer Mixer'
+     &&pinnedOption?.dataset.favorite==='true';
+   favoriteButton.click();
+   const favoriteUnpinned=JSON.parse(localStorage.getItem('lumina-pulse.favorite-commands.v1')||'[]').length===0
+     &&favoriteButton.getAttribute('aria-pressed')==='false';
+   const recentAfterUnpin=$('pro-command-results').querySelector('[role="option"]')?.textContent.includes('Automatikus FX');
+   favoriteInput.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   // Stage 9: verify pinned commands can be used directly from the actual Pro workspace.
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const shortcutsQuery=$('pro-command-input');
+   shortcutsQuery.value='Layer Mixer';
+   shortcutsQuery.dispatchEvent(new Event('input',{bubbles:true}));
+   $('pro-command-favorite').click();
+   const favoritesBar=$('pro-favorites-bar');
+   const favoritesButtons=$('pro-favorites-actions');
+   const favoritesBarShown=!favoritesBar.hidden&&getComputedStyle(favoritesBar).display!=='none';
+   const favoriteButtonLabel=favoritesButtons.querySelector('.pro-favorite-shortcut')?.textContent==='★ Layer Mixer';
+   shortcutsQuery.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   favoritesButtons.querySelector('.pro-favorite-shortcut').click();
+   const favoriteQuickNavigation=document.activeElement===$('vj-mix')
+     &&document.querySelector('[data-vj-target="vj-mix"]').getAttribute('aria-current')==='location';
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   const shortcutSearch=$('pro-command-input');
+   shortcutSearch.value='Automatikus FX';
+   shortcutSearch.dispatchEvent(new Event('input',{bubbles:true}));
+   $('pro-command-favorite').click();
+   shortcutSearch.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   const favoriteQuickActions=favoritesButtons.querySelectorAll('.pro-favorite-shortcut').length===2;
+   const beforeFavoriteAI=$('ai-toggle').getAttribute('aria-checked');
+   favoritesButtons.querySelectorAll('.pro-favorite-shortcut')[1].click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const favoriteQuickDelegated=$('ai-toggle').getAttribute('aria-checked')!==beforeFavoriteAI;
+   $('ai-toggle').click();
+   $('studio-simple').click();
+   const favoritesHiddenInSimple=getComputedStyle(favoritesBar).display==='none';
+   $('studio-pro').click();
+   const favoritesReturnInPro=getComputedStyle(favoritesBar).display!=='none'
+     &&favoritesButtons.querySelectorAll('.pro-favorite-shortcut').length===2;
+   // Stage 10: live keyboard slots with physical Digit codes for Hungarian layouts.
+   const favoriteHotkeyLabels=[...favoritesButtons.querySelectorAll('.pro-favorite-shortcut')]
+     .map(button=>button.dataset.hotkey);
+   const hotkeyLabels=favoriteHotkeyLabels.join(',')==='Ctrl+Shift+1,Ctrl+Shift+2'
+     &&favoritesButtons.querySelector('.pro-favorite-shortcut')
+       ?.getAttribute('aria-keyshortcuts')==='Control+Shift+1';
+   const digitEvent=(code,key,extra={})=>new KeyboardEvent('keydown',{
+     key,code,ctrlKey:true,shiftKey:true,bubbles:true,cancelable:true,...extra
+   });
+   const hotkeyOneConsumed=document.dispatchEvent(digitEvent('Digit1','!'))===false;
+   const hotkeyOneNavigates=document.activeElement===$('vj-mix');
+   const hotkeyTwoBefore=$('ai-toggle').getAttribute('aria-checked');
+   const hotkeyTwoConsumed=document.dispatchEvent(digitEvent('Digit2','@'))===false;
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const hotkeyTwoDelegates=$('ai-toggle').getAttribute('aria-checked')!==hotkeyTwoBefore;
+   $('ai-toggle').click();
+   const repeatedBefore=$('ai-toggle').getAttribute('aria-checked');
+   document.dispatchEvent(digitEvent('Digit2','@',{repeat:true}));
+   const hotkeyRepeatSafe=$('ai-toggle').getAttribute('aria-checked')===repeatedBefore;
+   const textField=$('pro-command-input');
+   textField.dispatchEvent(digitEvent('Digit2','@'));
+   const hotkeyTypingSafe=$('ai-toggle').getAttribute('aria-checked')===repeatedBefore;
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}));
+   document.dispatchEvent(digitEvent('Digit2','@'));
+   const hotkeyDialogSafe=$('ai-toggle').getAttribute('aria-checked')===repeatedBefore;
+   textField.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+   $('studio-simple').click();
+   document.dispatchEvent(digitEvent('Digit2','@'));
+   const hotkeySimpleSafe=$('ai-toggle').getAttribute('aria-checked')===repeatedBefore;
+   $('studio-pro').click();
+   // Stage 11: native favorite reorder widgets update persisted order and hotkey mapping.
+   const orderSelect=$('pro-favorites-select');
+   const leftArrow=$('pro-favorites-left'),rightArrow=$('pro-favorites-right');
+   const orderReady=orderSelect.options.length===2
+     &&orderSelect.value==='target:vj-mix'
+     &&leftArrow.disabled&& !rightArrow.disabled;
+   orderSelect.value='action:ai-toggle';
+   orderSelect.dispatchEvent(new Event('change',{bubbles:true}));
+   const reorderEnabled=!leftArrow.disabled;
+   leftArrow.click();
+   const newOrder=JSON.parse(localStorage.getItem('lumina-pulse.favorite-commands.v1')||'[]');
+   const reordered=newOrder.join(',')==='action:ai-toggle,target:vj-mix'
+     &&favoritesButtons.querySelector('.pro-favorite-shortcut')?.dataset.hotkey==='Ctrl+Shift+1'
+     &&favoritesButtons.querySelector('.pro-favorite-shortcut')?.textContent.includes('Automatikus FX');
+   const aiBeforeReorderedHotkey=$('ai-toggle').getAttribute('aria-checked');
+   document.dispatchEvent(digitEvent('Digit1','!'));
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const reorderedHotkey=$('ai-toggle').getAttribute('aria-checked')!==aiBeforeReorderedHotkey;
+   $('ai-toggle').click();
+   document.dispatchEvent(digitEvent('Digit2','@'));
+   const reorderedNavigation=document.activeElement===$('vj-mix');
+   const leftBoundary=leftArrow.disabled && !rightArrow.disabled;
+   rightArrow.click();
+   const restoredOrder=JSON.parse(localStorage.getItem('lumina-pulse.favorite-commands.v1')||'[]')
+     .join(',')==='target:vj-mix,action:ai-toggle';
+   const restoredHotkeys=[...favoritesButtons.querySelectorAll('.pro-favorite-shortcut')]
+     .map(button=>button.dataset.hotkey).join(',')==='Ctrl+Shift+1,Ctrl+Shift+2';
+   // Stage 12: feed a genuine short WAV through the original BeatScope file-input
+   // handler, then verify Simple delegates real seeking and stop (no mock engine).
+   $('studio-simple').click();
+   const simpleTransportVisible=getComputedStyle($('simple-transport')).display!=='none';
+   const simpleInitialStop=$('simple-stop').disabled;
+   const simpleInitialExtras=['simple-previous','simple-next','simple-repeat']
+     .every(id=>$(id).disabled);
+   const hz=8000,samples=hz,bytes=44+samples*2;
+   const wav=new ArrayBuffer(bytes),dv=new DataView(wav);
+   const word=(at,str)=>{for(let i=0;i<str.length;i++)dv.setUint8(at+i,str.charCodeAt(i));};
+   word(0,'RIFF');dv.setUint32(4,bytes-8,true);word(8,'WAVE');
+   word(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);
+   dv.setUint16(22,1,true);dv.setUint32(24,hz,true);
+   dv.setUint32(28,hz*2,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);
+   word(36,'data');dv.setUint32(40,samples*2,true);
+   for(let i=0;i<samples;i++)dv.setInt16(44+i*2,Math.round(1200*Math.sin(2*Math.PI*200*i/hz)),true);
+   const nativeInput=$('audio-file'),transfer=new DataTransfer();
+   transfer.items.add(new File([wav],'alpha17-stage12.wav',{type:'audio/wav'}));
+   nativeInput.files=transfer.files;
+   const metadata=new Promise(resolve=>{
+     const audio=$('audio');
+     if(Number.isFinite(audio.duration)&&audio.duration>0){resolve(true);return;}
+     audio.addEventListener('loadedmetadata',()=>resolve(true),{once:true});
+     setTimeout(()=>resolve(false),2200);
+   });
+   nativeInput.dispatchEvent(new Event('change',{bubbles:true}));
+   const metadataLoaded=await metadata;
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const transportReady=metadataLoaded&&!$('simple-seek').disabled
+     &&!$('simple-stop').disabled&&$('simple-duration').textContent===$('duration').textContent
+     &&$('simple-play-pause').textContent!=='♫ Zene megnyitása';
+   // Lock playback while testing a precise seek position; otherwise the
+   // one-second WAV may advance before Windows CI reads currentTime.
+   $('audio').pause();
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const targetSeek=$('simple-seek');
+   targetSeek.value='650';
+   targetSeek.dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,90));
+   const transportSeek=$('audio').paused
+     &&Math.abs($('audio').currentTime-$('audio').duration*.65)<.12
+     &&$('seek').value==='650';
+   const transportSynced=$('simple-current-time').textContent===$('current-time').textContent;
+   $('simple-stop').click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const transportStop=$('audio').paused&&$('audio').currentTime<.12;
+   // Stage 13: Simple volume/mute must operate the original persistent BeatScope player.
+   const simpleVolume=$('simple-volume');
+   const simpleMute=$('simple-mute');
+   const volumeInitiallySynced=simpleVolume.value===String(Math.round($('audio').volume*100))
+     &&$('simple-volume-value').textContent===simpleVolume.value+'%';
+   simpleVolume.value='36';
+   simpleVolume.dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const volumeDelegated=$('volume').value==='36'
+     &&Math.abs($('audio').volume-.36)<.005
+     &&$('simple-volume-value').textContent==='36%';
+   const initiallyMuted=$('audio').muted;
+   simpleMute.click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const muteDelegated=$('audio').muted!==initiallyMuted
+     &&simpleMute.getAttribute('aria-pressed')===String($('audio').muted);
+   $('mute').click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const muteSyncedFromPro=simpleMute.getAttribute('aria-pressed')===String($('audio').muted)
+     &&$('audio').muted===initiallyMuted;
+   $('volume').value='62';
+   $('volume').dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const volumeSyncedFromPro=simpleVolume.value==='62'
+     &&$('simple-volume-value').textContent==='62%'
+     &&Math.abs($('audio').volume-.62)<.005;
+   $('volume').value='85';
+   $('volume').dispatchEvent(new Event('input',{bubbles:true}));
+   // Stage 14: use real native transport handlers and repeat state from the Pro player.
+   const simpleExtraReady=['simple-previous','simple-next','simple-repeat']
+     .every(id=>!$(id).disabled);
+   $('simple-next').click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const simpleJumpEnd=$('audio').duration>0
+     &&Math.abs($('audio').currentTime-Math.max(0,$('audio').duration-.1))<.15;
+   $('simple-previous').click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const simpleJumpStart=$('audio').currentTime<.12;
+   const loopBefore=$('audio').loop;
+   $('simple-repeat').click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const simpleRepeatDelegated=$('audio').loop!==loopBefore
+     &&$('simple-repeat').getAttribute('aria-pressed')===String($('audio').loop);
+   $('repeat').click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const simpleRepeatMirrorsPro=$('audio').loop===loopBefore
+     &&$('simple-repeat').getAttribute('aria-pressed')===String(loopBefore);
+   // Stage 15: simulate user keys in the actual Simple renderer, no duplicate
+   // Space handler and no shortcuts while typing or in Pro Mode.
+   const simpleKeyboardHint=getComputedStyle($('simple-keyboard-hint')).display!=='none'
+     &&$('simple-keyboard-hint').textContent.includes('Space')
+     &&$('simple-keyboard-hint').textContent.includes('Némítás');
+   const simpleKey=(key,opts={})=>new KeyboardEvent('keydown',{
+     key,bubbles:true,cancelable:true,...opts
+   });
+   const muteBeforeKey=$('audio').muted;
+   const simpleKeyMConsumed=document.dispatchEvent(simpleKey('m'))===false;
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const simpleKeyM=$('audio').muted!==muteBeforeKey
+     &&$('simple-mute').getAttribute('aria-pressed')===String($('audio').muted);
+   $('mute').click();
+   const repeatBeforeKey=$('audio').loop;
+   const simpleKeyRConsumed=document.dispatchEvent(simpleKey('r'))===false;
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const simpleKeyR=$('audio').loop!==repeatBeforeKey
+     &&$('simple-repeat').getAttribute('aria-pressed')===String($('audio').loop);
+   $('repeat').click();
+   $('simple-seek').value='550';
+   $('simple-seek').dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const beforeKeyStop=$('audio').currentTime;
+   const simpleKeySConsumed=document.dispatchEvent(simpleKey('s'))===false;
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const simpleKeyS=beforeKeyStop>.15&&$('audio').paused&&$('audio').currentTime<.12;
+   const afterKeyStopMuted=$('audio').muted;
+   $('simple-volume').dispatchEvent(simpleKey('m'));
+   const simpleKeyTypingSafe=$('audio').muted===afterKeyStopMuted;
+   document.dispatchEvent(simpleKey('m',{ctrlKey:true}));
+   document.dispatchEvent(simpleKey('m',{repeat:true}));
+   const simpleKeyModifierSafe=$('audio').muted===afterKeyStopMuted;
+   $('studio-pro').click();
+   document.dispatchEvent(simpleKey('m'));
+   const simpleKeyProSafe=$('audio').muted===afterKeyStopMuted;
+   const transportHiddenPro=getComputedStyle($('simple-control-bar')).display==='none';
+   // Stage 16: live visual intensity and smoothing must use the original engine.
+   const intensityBefore=$('intensity').value,smoothBefore=$('smooth').value;
+   $('studio-simple').click();
+   const tuningVisible=getComputedStyle(document.querySelector('.simple-visual-tuning')).display!=='none';
+   const tuningInitialSync=$('simple-intensity').value===$('intensity').value
+     &&$('simple-smooth').value===$('smooth').value;
+   $('simple-intensity').value='165';
+   $('simple-intensity').dispatchEvent(new Event('input',{bubbles:true}));
+   $('simple-smooth').value='48';
+   $('simple-smooth').dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const tuningDelegates=$('intensity').value==='165'
+     &&$('smooth').value==='48'
+     &&$('intensity-val').textContent==='165%'
+     &&$('smooth-val').textContent==='48%'
+     &&$('simple-intensity-value').textContent==='165%'
+     &&$('simple-smooth-value').textContent==='48%';
+   $('studio-pro').click();
+   $('intensity').value='90';
+   $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
+   $('smooth').value='82';
+   $('smooth').dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const tuningProSync=$('simple-intensity').value==='90'
+     &&$('simple-smooth').value==='82'
+     &&$('simple-intensity-value').textContent==='90%'
+     &&$('simple-smooth-value').textContent==='82%';
+   // Stage 17: select an existing palette in Simple and validate live Pro/AI sync.
+   const originalPalette=document.querySelector('[data-palette].selected')?.dataset.palette||'azure';
+   $('studio-simple').click();
+   const simplePalette=$('simple-palette');
+   const paletteInitialSync=simplePalette.value===originalPalette;
+   simplePalette.value='mint';
+   simplePalette.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const paletteDelegated=Boolean(document.querySelector('[data-palette="mint"].selected'))
+     &&simplePalette.value==='mint';
+   $('studio-pro').click();
+   document.querySelector('[data-palette="violet"]').click();
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const paletteProSync=simplePalette.value==='violet'
+     &&Boolean(document.querySelector('[data-palette="violet"].selected'));
+   document.querySelector('[data-palette="'+originalPalette+'"]').click();
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const paletteRestored=simplePalette.value===originalPalette;
+   // Stage 18: native AI palette preference is shared across the two studios.
+   const nativeAutoPalette=$('ai-palette');
+   const originalAutoPalette=nativeAutoPalette.checked;
+   $('studio-simple').click();
+   const simpleAutoPalette=$('simple-ai-palette');
+   const autoPaletteInitialSync=simpleAutoPalette.checked===nativeAutoPalette.checked
+     && !simpleAutoPalette.disabled;
+   simpleAutoPalette.checked=!nativeAutoPalette.checked;
+   simpleAutoPalette.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const autoPaletteDelegated=nativeAutoPalette.checked===!originalAutoPalette
+     &&simpleAutoPalette.checked===nativeAutoPalette.checked;
+   $('studio-pro').click();
+   nativeAutoPalette.checked=originalAutoPalette;
+   nativeAutoPalette.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const autoPaletteProSync=simpleAutoPalette.checked===originalAutoPalette
+     &&nativeAutoPalette.checked===originalAutoPalette;
+   // Stage 19: use the actual AI director change handler for three speed profiles.
+   const nativeSpeed=$('ai-speed'),simpleSpeed=$('simple-ai-speed');
+   const originalSpeed=nativeSpeed.value;
+   $('studio-simple').click();
+   const aiSpeedInitialSync=simpleSpeed.value===originalSpeed;
+   simpleSpeed.value='calm';
+   simpleSpeed.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const aiSpeedDelegated=nativeSpeed.value==='calm'&&simpleSpeed.value==='calm';
+   simpleSpeed.value='party';
+   simpleSpeed.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const aiSpeedParty=nativeSpeed.value==='party'&&simpleSpeed.value==='party';
+   $('studio-pro').click();
+   nativeSpeed.value='balanced';
+   nativeSpeed.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const aiSpeedProSync=simpleSpeed.value==='balanced';
+   nativeSpeed.value=originalSpeed;
+   nativeSpeed.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const aiSpeedRestored=nativeSpeed.value===originalSpeed
+     &&simpleSpeed.value===originalSpeed;
+   // Stage 20: verify real background grid setting is shared between both modes.
+   const nativeGrid=$('show-grid'),simpleGrid=$('simple-show-grid');
+   const originalGrid=nativeGrid.checked;
+   $('studio-simple').click();
+   const gridInitialSync=simpleGrid.checked===originalGrid&&!simpleGrid.disabled;
+   simpleGrid.checked=!originalGrid;
+   simpleGrid.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const gridDelegated=nativeGrid.checked!==originalGrid
+     &&simpleGrid.checked===nativeGrid.checked;
+   $('studio-pro').click();
+   nativeGrid.checked=originalGrid;
+   nativeGrid.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const gridProSync=simpleGrid.checked===originalGrid
+     &&nativeGrid.checked===originalGrid;
+   // Stage 21: native Spectrum Bars count must be the same in Simple/Pro.
+   const nativeBars=$('bars-count'),simpleBars=$('simple-bars-count');
+   const originalBars=nativeBars.value;
+   $('studio-simple').click();
+   const barsInitialSync=simpleBars.value===originalBars
+     &&$('simple-bars-value').textContent===$('bars-val').textContent;
+   simpleBars.value='88';
+   simpleBars.dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const barsDelegated=nativeBars.value==='88'
+     &&$('bars-val').textContent==='88'
+     &&$('simple-bars-value').textContent==='88';
+   $('studio-pro').click();
+   nativeBars.value='112';
+   nativeBars.dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const barsProSync=simpleBars.value==='112'
+     &&$('simple-bars-value').textContent==='112';
+   nativeBars.value=originalBars;
+   nativeBars.dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const barsRestored=simpleBars.value===originalBars
+     &&nativeBars.value===originalBars;
+   // Stage 22: test the REAL native FX bypass, preserving the Pro FX stack.
+   const nativeBypass=$('fx-bypass'),simpleBypass=$('simple-fx-bypass');
+   const originalBypass=nativeBypass.getAttribute('aria-pressed');
+   const originalFXCount=$('fx-stack-count').textContent;
+   const originalFXItems=$('fx-stack').children.length;
+   $('studio-simple').click();
+   const fxBypassShown=getComputedStyle(simpleBypass).display!=='none'
+     &&simpleBypass.getAttribute('aria-pressed')===originalBypass;
+   simpleBypass.click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const bypassed=nativeBypass.getAttribute('aria-pressed')!==originalBypass;
+   const fxBypassDelegated=bypassed
+     &&simpleBypass.getAttribute('aria-pressed')===nativeBypass.getAttribute('aria-pressed')
+     &&simpleBypass.getAttribute('aria-label')===(nativeBypass.getAttribute('aria-pressed')==='true'
+       ?'Effektek visszakapcsolása':'Effektek kikapcsolása');
+   const fxStackPreserved=$('fx-stack-count').textContent===originalFXCount
+     &&$('fx-stack').children.length===originalFXItems;
+   $('studio-pro').click();
+   nativeBypass.click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fxBypassProSync=nativeBypass.getAttribute('aria-pressed')===originalBypass
+     &&simpleBypass.getAttribute('aria-pressed')===originalBypass;
+   const fxBypassRestored=$('fx-stack-count').textContent===originalFXCount
+     &&$('fx-stack').children.length===originalFXItems;
+   // Stage 23: real FX Autopilot, separate from AI Visual Director and FX bypass.
+   const nativeFXAuto=$('fx-auto'),simpleFXAuto=$('simple-fx-auto');
+   const originalFXAuto=nativeFXAuto.getAttribute('aria-checked');
+   const originalDirector=$('ai-toggle').getAttribute('aria-checked');
+   const originalFXBypass=nativeBypass.getAttribute('aria-pressed');
+   $('studio-simple').click();
+   const fxAutopilotShown=getComputedStyle(simpleFXAuto).display!=='none'
+     &&simpleFXAuto.getAttribute('aria-checked')===originalFXAuto
+     &&!simpleFXAuto.disabled;
+   simpleFXAuto.click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fxAutopilotDelegated=nativeFXAuto.getAttribute('aria-checked')!==originalFXAuto
+     &&simpleFXAuto.getAttribute('aria-checked')===nativeFXAuto.getAttribute('aria-checked')
+     &&simpleFXAuto.textContent.includes(nativeFXAuto.getAttribute('aria-checked')==='true'?'BE':'KI');
+   const fxAutopilotDistinct=$('ai-toggle').getAttribute('aria-checked')===originalDirector
+     &&nativeBypass.getAttribute('aria-pressed')===originalFXBypass;
+   $('studio-pro').click();
+   nativeFXAuto.click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fxAutopilotProSync=nativeFXAuto.getAttribute('aria-checked')===originalFXAuto
+     &&simpleFXAuto.getAttribute('aria-checked')===originalFXAuto;
+   // Stage 24: real selected Pro FX Wet/Dry and Strength in Simple Mode.
+   const nativeWet=$('fx-wet'),nativeStrength=$('fx-strength');
+   const originalWet=nativeWet.value,originalStrength=nativeStrength.value;
+   const originalFXStack=$('fx-stack-count').textContent;
+   const originalSelectedFXCount=$('fx-stack').children.length;
+   $('studio-simple').click();
+   const fxParamsReady=!nativeWet.disabled&&!nativeStrength.disabled
+     &&!$('simple-fx-wet').disabled&&!$('simple-fx-strength').disabled
+     &&$('simple-fx-wet').value===originalWet
+     &&$('simple-fx-strength').value===originalStrength;
+   $('simple-fx-wet').value='42';
+   $('simple-fx-wet').dispatchEvent(new Event('input',{bubbles:true}));
+   $('simple-fx-strength').value='155';
+   $('simple-fx-strength').dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fxParamsDelegated=nativeWet.value==='42'&&nativeStrength.value==='155'
+     &&$('fx-wet-value').textContent==='42%'
+     &&$('fx-strength-value').textContent==='155%'
+     &&$('simple-fx-wet-value').textContent==='42%'
+     &&$('simple-fx-strength-value').textContent==='155%';
+   $('studio-pro').click();
+   nativeWet.value='66';nativeWet.dispatchEvent(new Event('input',{bubbles:true}));
+   nativeStrength.value='83';nativeStrength.dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fxParamsProSync=$('simple-fx-wet').value==='66'
+     &&$('simple-fx-strength').value==='83'
+     &&$('simple-fx-wet-value').textContent==='66%'
+     &&$('simple-fx-strength-value').textContent==='83%';
+   nativeWet.value=originalWet;nativeWet.dispatchEvent(new Event('input',{bubbles:true}));
+   nativeStrength.value=originalStrength;
+   nativeStrength.dispatchEvent(new Event('input',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fxParamsRestored=nativeWet.value===originalWet
+     &&nativeStrength.value===originalStrength
+     &&$('simple-fx-wet').value===originalWet
+     &&$('simple-fx-strength').value===originalStrength
+     &&$('fx-stack-count').textContent===originalFXStack
+     &&$('fx-stack').children.length===originalSelectedFXCount;
+   // Stage 25: choose among REAL native Pro FX entries from Simple Mode.
+   const nativeRows=()=>[...document.querySelectorAll('#fx-stack .fx-stack-entry')];
+   const fxOriginalCount=nativeRows().length;
+   const fxOriginalSelection=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   let fxPickerAdded=false;
+   if(fxOriginalCount<2){
+     document.querySelector('.fx-entry-name')?.click();
+     fxPickerAdded=nativeRows().length===fxOriginalCount+1;
+   }
+   $('studio-simple').click();
+   // FX stack and mode changes are synchronized by MutationObserver microtasks.
+   await new Promise(resolve=>setTimeout(resolve,60));
+   const chooser=$('simple-fx-picker'),rowsBeforeChoice=nativeRows();
+   const chooserReady=rowsBeforeChoice.length>=2&&!chooser.disabled
+     &&chooser.options.length===rowsBeforeChoice.length
+     &&chooser.options[0].textContent.includes(
+       rowsBeforeChoice[0].querySelector('.fx-stack-name').textContent);
+   const firstChoice=chooser.value;
+   const otherChoice=firstChoice==='0'?'1':'0';
+   chooser.value=otherChoice;
+   chooser.dispatchEvent(new Event('change',{bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const nativeAfterChoose=nativeRows();
+   const chooserDelegated=chooser.value===otherChoice
+     &&nativeAfterChoose[Number(otherChoice)]?.classList.contains('selected')
+     &&$('simple-fx-selection').textContent.trim()===
+       nativeAfterChoose[Number(otherChoice)]?.querySelector('.fx-stack-name').textContent.trim()
+     &&$('simple-fx-wet').value===nativeWet.value
+     &&$('simple-fx-strength').value===nativeStrength.value;
+   $('studio-pro').click();
+   nativeRows()[0]?.querySelector('.fx-stack-name')?.click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const chooserProSync=chooser.value==='0'&&nativeRows()[0]?.classList.contains('selected')
+     &&$('simple-fx-wet').value===nativeWet.value
+     &&$('simple-fx-strength').value===nativeStrength.value;
+   if(fxPickerAdded){
+     nativeRows()[nativeRows().length-1]?.querySelectorAll('button')[4]?.click();
+     await new Promise(resolve=>setTimeout(resolve,40));
+   }
+   if(fxOriginalSelection>=0&&fxOriginalSelection<nativeRows().length)
+     nativeRows()[fxOriginalSelection]?.querySelector('.fx-stack-name')?.click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const chooserRestored=nativeRows().length===fxOriginalCount
+     &&chooser.disabled===(fxOriginalCount===0)
+     &&(fxOriginalSelection<0||chooser.value===String(fxOriginalSelection));
+   // Stage 26: toggle only the selected Pro FX from Simple and restore it from Pro.
+   const fx26BeforeRows=nativeRows();
+   if(fx26BeforeRows.length&&!fx26BeforeRows.some(row=>row.classList.contains('selected')))
+     fx26BeforeRows[0].querySelector('.fx-stack-name')?.click();
+   const fx26BeforeIndex=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   const fx26BeforeRow=nativeRows()[fx26BeforeIndex];
+   const fx26OriginalInactive=Boolean(fx26BeforeRow?.querySelector('.fx-stack-name')
+     ?.classList.contains('inactive'));
+   const fx26Name=fx26BeforeRow?.querySelector('.fx-stack-name')?.textContent;
+   const fx26Wet=nativeWet.value,fx26Strength=nativeStrength.value;
+   const fx26Count=nativeRows().length;
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const fx26Quick=$('simple-fx-enabled');
+   const fx26Ready=fx26BeforeIndex>=0&&!fx26Quick.disabled
+     &&fx26Quick.getAttribute('aria-checked')===String(!fx26OriginalInactive);
+   fx26Quick.click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx26ChangedRow=nativeRows()[fx26BeforeIndex];
+   const fx26Delegated=fx26ChangedRow?.querySelector('.fx-stack-name')
+     ?.classList.contains('inactive')===!fx26OriginalInactive
+     &&fx26Quick.getAttribute('aria-checked')===String(fx26OriginalInactive)
+     &&fx26ChangedRow?.classList.contains('selected');
+   const fx26Preserved=nativeRows().length===fx26Count
+     &&fx26ChangedRow?.querySelector('.fx-stack-name')?.textContent===fx26Name
+     &&nativeWet.value===fx26Wet&&nativeStrength.value===fx26Strength;
+   $('studio-pro').click();
+   nativeRows()[fx26BeforeIndex]?.querySelectorAll('button')[1]?.click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx26RestoredRow=nativeRows()[fx26BeforeIndex];
+   const fx26ProSync=fx26RestoredRow?.querySelector('.fx-stack-name')
+     ?.classList.contains('inactive')===fx26OriginalInactive
+     &&fx26Quick.getAttribute('aria-checked')===String(!fx26OriginalInactive)
+     &&nativeRows().length===fx26Count;
+   // Stage 27: order the selected native Pro FX in Simple, then restore order.
+   const fx27BeforeCount=nativeRows().length;
+   const fx27BeforeSelection=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   let fx27Added=false;
+   if(nativeRows().length<2){
+     document.querySelector('.fx-entry-name')?.click();
+     fx27Added=nativeRows().length===fx27BeforeCount+1;
+   }
+   const fx27StartOrder=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   nativeRows()[0]?.querySelector('.fx-stack-name')?.click();
+   const fx27Name=nativeRows()[0]?.querySelector('.fx-stack-name')?.textContent;
+   const fx27Wet=nativeWet.value,fx27Strength=nativeStrength.value;
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx27Up=$('simple-fx-up'),fx27Down=$('simple-fx-down');
+   const fx27Ready=nativeRows().length>=2&&fx27Up.disabled&&!fx27Down.disabled
+     &&$('simple-fx-position').textContent==='1 / '+nativeRows().length;
+   fx27Down.click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx27SimpleDown=nativeRows()[1]?.classList.contains('selected')
+     &&nativeRows()[1]?.querySelector('.fx-stack-name')?.textContent===fx27Name
+     &&$('simple-fx-position').textContent==='2 / '+nativeRows().length
+     &&chooser.value==='1'&&nativeWet.value===fx27Wet
+     &&nativeStrength.value===fx27Strength;
+   fx27Up.click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx27SimpleUp=nativeRows()[0]?.classList.contains('selected')
+     &&$('simple-fx-position').textContent==='1 / '+nativeRows().length
+     &&nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent)
+       .every((name,i)=>name===fx27StartOrder[i]);
+   $('studio-pro').click();
+   nativeRows()[0]?.querySelectorAll('button')[3]?.click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx27ProSync=nativeRows()[1]?.classList.contains('selected')
+     &&$('simple-fx-position').textContent==='2 / '+nativeRows().length
+     &&chooser.value==='1';
+   nativeRows()[1]?.querySelectorAll('button')[2]?.click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx27ProRestore=$('simple-fx-position').textContent==='1 / '+nativeRows().length
+     &&nativeRows()[0]?.classList.contains('selected');
+   if(fx27Added){
+     nativeRows()[nativeRows().length-1]?.querySelectorAll('button')[4]?.click();
+     await new Promise(resolve=>setTimeout(resolve,40));
+   }
+   if(fx27BeforeSelection>=0&&fx27BeforeSelection<nativeRows().length)
+     nativeRows()[fx27BeforeSelection]?.querySelector('.fx-stack-name')?.click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const fx27Restored=nativeRows().length===fx27BeforeCount
+     &&(fx27BeforeSelection<0||
+       chooser.value===String(fx27BeforeSelection))
+     &&nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent)
+       .every((name,i)=>name===fx27StartOrder[i]);
+   // Stage 28: add one temporary native Pro FX and remove ONLY that effect
+   // after double confirmation, retaining the original chain and selection.
+   const fx28StartRows=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx28StartSelection=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   let fx28Added=false;
+   if(nativeRows().length<3){
+     document.querySelector('.fx-entry-name')?.click();
+     fx28Added=nativeRows().length===fx28StartRows.length+1;
+   }
+   if(!fx28Added)throw new Error('Stage 28: cannot create an isolated temporary FX');
+   nativeRows()[nativeRows().length-1]?.querySelector('.fx-stack-name')?.click();
+   const fx28CountBefore=nativeRows().length;
+   const fx28Name=nativeRows()[fx28CountBefore-1]?.querySelector('.fx-stack-name')?.textContent;
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx28Button=$('simple-fx-remove'),fx28Cancel=$('simple-fx-remove-cancel');
+   const fx28Ready=fx28Added&&!fx28Button.disabled&&fx28Cancel.hidden
+     &&$('simple-fx-selection').textContent.trim()===fx28Name;
+   fx28Button.click();
+   await new Promise(resolve=>setTimeout(resolve,20));
+   const fx28FirstSafe=nativeRows().length===fx28CountBefore
+     &&!fx28Cancel.hidden&&fx28Button.textContent.includes(fx28Name);
+   fx28Cancel.click();
+   await new Promise(resolve=>setTimeout(resolve,20));
+   const fx28CancelSafe=nativeRows().length===fx28CountBefore
+     &&fx28Cancel.hidden&&fx28Button.textContent==='✕ Effekt eltávolítása';
+   fx28Button.click();
+   await new Promise(resolve=>setTimeout(resolve,20));
+   const fx28Rearmed=nativeRows().length===fx28CountBefore&&!fx28Cancel.hidden;
+   fx28Button.click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx28Confirmed=fx28Added&&nativeRows().length===fx28CountBefore-1
+     &&fx28Cancel.hidden
+     &&nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent)
+       .every((name,i)=>name===fx28StartRows[i]);
+   $('studio-pro').click();
+   if(fx28StartSelection>=0&&fx28StartSelection<nativeRows().length)
+     nativeRows()[fx28StartSelection]?.querySelector('.fx-stack-name')?.click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const fx28Restored=nativeRows().length===fx28StartRows.length
+     &&(fx28StartSelection<0||
+       nativeRows()[fx28StartSelection]?.classList.contains('selected'));
+   // Stage 29: Simple delegates effect addition to the original native
+   // 120-FX library; add an isolated effect, then remove only that effect.
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const fx29OriginalRows=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx29OriginalSelection=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   const fx29Add=$('simple-fx-add'),fx29Drawer=$('fx-drawer');
+   if(!fx29Drawer.hidden)$('fx-close').click();
+   const fx29Ready=!fx29Add.disabled&&fx29Drawer.hidden&&nativeRows().length<3;
+   fx29Add.click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const fx29Opened=!fx29Drawer.hidden;
+   if(fx29Opened)document.querySelector('.fx-entry-name')?.click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const fx29Added=nativeRows().length===fx29OriginalRows.length+1
+     &&nativeRows()[nativeRows().length-1]?.classList.contains('selected');
+   if(fx29Added){
+     nativeRows()[nativeRows().length-1]?.querySelectorAll('button')[4]?.click();
+     await new Promise(resolve=>setTimeout(resolve,35));
+   }
+   if(fx29OriginalSelection>=0&&fx29OriginalSelection<nativeRows().length)
+     nativeRows()[fx29OriginalSelection]?.querySelector('.fx-stack-name')?.click();
+   const fx29Restored=nativeRows().length===fx29OriginalRows.length
+     &&nativeRows().every((row,i)=>row.querySelector('.fx-stack-name')?.textContent===fx29OriginalRows[i])
+     &&(fx29OriginalSelection<0||
+       nativeRows()[fx29OriginalSelection]?.classList.contains('selected'));
+   $('studio-pro').click();
+   if(!fx29Drawer.hidden)$('fx-close').click();
+   // Stage 30: cancel a Simple catalog visit, then add one native FX and
+   // verify the drawer closes, status announces success and picker has focus.
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fx30Original=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx30OriginalSel=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   const fx30Button=$('simple-fx-add'),fx30Drawer=$('fx-drawer');
+   if(!fx30Drawer.hidden)$('fx-close').click();
+   fx30Button.click();
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const fx30Opened=!fx30Drawer.hidden;
+   $('fx-close').click();
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const fx30Canceled=fx30Drawer.hidden
+     &&nativeRows().length===fx30Original.length;
+   fx30Button.click();
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const fx30Reopened=!fx30Drawer.hidden;
+   if(fx30Reopened)document.querySelector('.fx-entry-name')?.click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx30Added=nativeRows().length===fx30Original.length+1;
+   const fx30Closed=fx30Added&&fx30Drawer.hidden;
+   const fx30Picker=fx30Added&&$('simple-fx-picker').value===String(nativeRows().length-1)
+     &&document.activeElement===$('simple-fx-picker')
+     &&$('simple-fx-add-status').textContent.includes('hozzáadva');
+   if(fx30Added){
+     nativeRows()[nativeRows().length-1]?.querySelectorAll('button')[4]?.click();
+     await new Promise(resolve=>setTimeout(resolve,35));
+   }
+   if(fx30OriginalSel>=0&&fx30OriginalSel<nativeRows().length)
+     nativeRows()[fx30OriginalSel]?.querySelector('.fx-stack-name')?.click();
+   const fx30Restored=nativeRows().length===fx30Original.length
+     &&nativeRows().every((row,i)=>row.querySelector('.fx-stack-name')?.textContent===fx30Original[i])
+     &&(fx30OriginalSel<0||nativeRows()[fx30OriginalSel]?.classList.contains('selected'));
+   $('studio-pro').click();
+   if(!fx30Drawer.hidden)$('fx-close').click();
+   // Stage 31: test both explicit Simple return and the original Escape handler.
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fx31Before=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx31BeforeSel=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   const fx31Button=$('simple-fx-add'),fx31Back=$('simple-fx-catalog-back');
+   const fx31Drawer=$('fx-drawer');
+   fx31Button.click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fx31Opened=!fx31Drawer.hidden&&!fx31Back.hidden;
+   fx31Back.click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx31Return=fx31Drawer.hidden&&fx31Back.hidden
+     &&document.activeElement===fx31Button
+     &&$('simple-fx-add-status').textContent==='FX-könyvtár bezárva.';
+   fx31Button.click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fx31Reopened=!fx31Drawer.hidden&&!fx31Back.hidden;
+   $('fx-search').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx31Esc=fx31Drawer.hidden&&fx31Back.hidden
+     &&document.activeElement===fx31Button;
+   const fx31Preserved=nativeRows().length===fx31Before.length
+     &&nativeRows().every((row,i)=>row.querySelector('.fx-stack-name')?.textContent===fx31Before[i])
+     &&(fx31BeforeSel<0||nativeRows()[fx31BeforeSel]?.classList.contains('selected'));
+   // Stage 32: simple query forwards to the original 120-FX catalog search.
+   // Verify filtering and add a temporary native FX, then restore the stack.
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const fx32Original=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx32OriginalSel=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   const fx32Query=$('simple-fx-query'),fx32Search=$('simple-fx-search');
+   const fx32Drawer=$('fx-drawer');
+   const fx32EmptyBlocked=fx32Search.disabled;
+   fx32Query.value='Kaleidoscope';
+   fx32Query.dispatchEvent(new Event('input',{bubbles:true}));
+   const fx32Ready=!fx32Search.disabled&&!fx32Drawer.hidden===false;
+   fx32Search.click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const fx32Open=!fx32Drawer.hidden&&$('fx-search').value==='Kaleidoscope';
+   const fx32Matches=[...document.querySelectorAll('#fx-results .fx-entry-name')];
+   const fx32Filtered=fx32Open&&fx32Matches.length>0
+     &&fx32Matches.every(el=>el.textContent.includes('Kaleidoscope'))
+     &&nativeRows().length===fx32Original.length;
+   if(fx32Filtered)fx32Matches[0].click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx32Added=nativeRows().length===fx32Original.length+1&&fx32Drawer.hidden
+     &&$('simple-fx-picker').value===String(nativeRows().length-1);
+   if(fx32Added){
+     nativeRows()[nativeRows().length-1]?.querySelectorAll('button')[4]?.click();
+     await new Promise(resolve=>setTimeout(resolve,35));
+   }
+   if(fx32OriginalSel>=0&&fx32OriginalSel<nativeRows().length)
+     nativeRows()[fx32OriginalSel]?.querySelector('.fx-stack-name')?.click();
+   const fx32Restored=nativeRows().length===fx32Original.length
+     &&nativeRows().every((row,i)=>row.querySelector('.fx-stack-name')?.textContent===fx32Original[i])
+     &&(fx32OriginalSel<0||nativeRows()[fx32OriginalSel]?.classList.contains('selected'));
+   if(!fx32Drawer.hidden)$('fx-close').click();
+   // Stage 33: filtered native results announce count; first-result button
+   // delegates to the existing addFX() and never alters FX during search.
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,35));
+   const fx33Before=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx33BeforeSel=nativeRows().findIndex(row=>row.classList.contains('selected'));
+   const fx33Query=$('simple-fx-query'),fx33Search=$('simple-fx-search');
+   const fx33Bar=$('simple-fx-result-bar'),fx33First=$('simple-fx-first');
+   const fx33Drawer=$('fx-drawer');
+   fx33Query.value='fx-001';fx33Query.dispatchEvent(new Event('input',{bubbles:true}));
+   fx33Search.click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx33List=[...document.querySelectorAll('#fx-results .fx-entry-name')];
+   const fx33Count=!fx33Drawer.hidden&&!fx33Bar.hidden&&fx33List.length===1
+     &&!fx33First.disabled&&$('simple-fx-result-count').textContent.includes('1 találat')
+     &&nativeRows().length===fx33Before.length;
+   if(fx33Count)fx33First.click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx33Added=nativeRows().length===fx33Before.length+1
+     &&fx33Drawer.hidden&&fx33Bar.hidden&&fx33First.disabled;
+   if(fx33Added){
+     nativeRows()[nativeRows().length-1]?.querySelectorAll('button')[4]?.click();
+     await new Promise(resolve=>setTimeout(resolve,35));
+   }
+   if(fx33BeforeSel>=0&&fx33BeforeSel<nativeRows().length)
+     nativeRows()[fx33BeforeSel]?.querySelector('.fx-stack-name')?.click();
+   const fx33Restored=nativeRows().length===fx33Before.length
+     &&nativeRows().every((row,i)=>row.querySelector('.fx-stack-name')?.textContent===fx33Before[i])
+     &&(fx33BeforeSel<0||nativeRows()[fx33BeforeSel]?.classList.contains('selected'));
+   fx33Query.value='xyz-no-matching-fx-777777';
+   fx33Query.dispatchEvent(new Event('input',{bubbles:true}));
+   fx33Search.click();
+   await new Promise(resolve=>setTimeout(resolve,55));
+   const fx33NoResults=!fx33Drawer.hidden&&!fx33Bar.hidden&&fx33First.disabled
+     &&document.querySelectorAll('#fx-results .fx-entry-name').length===0
+     &&$('simple-fx-result-count').textContent.includes('Nincs találat')
+     &&nativeRows().length===fx33Before.length;
+   if(!fx33Drawer.hidden)$('simple-fx-catalog-back').click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const fx33Canceled=fx33Drawer.hidden&&fx33Bar.hidden&&fx33First.disabled;
+   // Stage 34: keyboard focus traverses original FX results without adding any.
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const fx34Before=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx34Search=$('fx-search'),fx34Query=$('simple-fx-query');
+   fx34Query.value='Kaleidoscope';
+   fx34Query.dispatchEvent(new Event('input',{bubbles:true}));
+   $('simple-fx-search').click();
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const fx34Rows=[...document.querySelectorAll('#fx-results .fx-entry-name')];
+   const fx34Hint=fx34Rows.length>=2
+     &&!$('simple-fx-key-hint').hidden
+     &&!$('simple-fx-result-bar').hidden;
+   const fx34Down=new KeyboardEvent('keydown',{
+     key:'ArrowDown',bubbles:true,cancelable:true
+   });
+   fx34Search.dispatchEvent(fx34Down);
+   const fx34First=fx34Down.defaultPrevented
+     &&document.activeElement===fx34Rows[0];
+   const fx34Next=new KeyboardEvent('keydown',{
+     key:'ArrowDown',bubbles:true,cancelable:true
+   });
+   fx34Rows[0]?.dispatchEvent(fx34Next);
+   const fx34Second=fx34Next.defaultPrevented
+     &&document.activeElement===fx34Rows[1];
+   const fx34Back=new KeyboardEvent('keydown',{
+     key:'ArrowUp',bubbles:true,cancelable:true
+   });
+   fx34Rows[1]?.dispatchEvent(fx34Back);
+   const fx34Up=fx34Back.defaultPrevented
+     &&document.activeElement===fx34Rows[0];
+   const fx34AtSearch=new KeyboardEvent('keydown',{
+     key:'ArrowUp',bubbles:true,cancelable:true
+   });
+   fx34Rows[0]?.dispatchEvent(fx34AtSearch);
+   const fx34Returns=fx34AtSearch.defaultPrevented
+     &&document.activeElement===fx34Search;
+   const fx34NoAdd=nativeRows().length===fx34Before.length
+     &&nativeRows().every((row,i)=>
+       row.querySelector('.fx-stack-name')?.textContent===fx34Before[i]);
+   if(!$('fx-drawer').hidden)$('simple-fx-catalog-back').click();
+   await new Promise(resolve=>setTimeout(resolve,40));
+   const fx34Canceled=$('fx-drawer').hidden
+     &&$('simple-fx-key-hint').hidden;
+   // Stage 35: use the original catalog query to clear an unmatched filter.
+   // The native engine must redraw matches and retain the FX chain untouched.
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const fx35Before=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx35Query=$('simple-fx-query'),fx35Search=$('simple-fx-search');
+   const fx35Clear=$('simple-fx-clear'),fx35Drawer=$('fx-drawer');
+   fx35Query.value='xyz-no-such-fx-999999';
+   fx35Query.dispatchEvent(new Event('input',{bubbles:true}));
+   fx35Search.click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const fx35Unmatched=!fx35Drawer.hidden
+     &&document.querySelectorAll('#fx-results .fx-entry-name').length===0
+     &&!fx35Clear.disabled;
+   fx35Clear.click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const fx35Cleared=$('fx-search').value===''&&fx35Query.value===''
+     &&fx35Clear.disabled&&fx35Search.disabled
+     &&document.querySelectorAll('#fx-results .fx-entry-name').length===120
+     &&document.activeElement===$('fx-search')&&!fx35Drawer.hidden;
+   const fx35Untouched=nativeRows().length===fx35Before.length
+     &&nativeRows().every((row,i)=>
+       row.querySelector('.fx-stack-name')?.textContent===fx35Before[i]);
+   if(!fx35Drawer.hidden)$('simple-fx-catalog-back').click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const fx35Closed=fx35Drawer.hidden&&fx35Clear.disabled;
+   $('studio-pro').click();
+   $('intensity').value=intensityBefore;
+   $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
+   $('smooth').value=smoothBefore;
+   $('smooth').dispatchEvent(new Event('input',{bubbles:true}));
+   return {simpleMode,simpleBar,navHidden,deckHidden,widePreview,
+     sourceAccurate,trackAccurate,visualAccurate,aiDelegates,visualDelegates,
+     proMode,deckShown,navShown,jumpWorks,activeIndicator,backEnabled,backWorks,
+     keyboardNav,paletteOpened,paletteFiltered,paletteNavigated,paletteReopened,
+     paletteEscaped,paletteDisabledInSimple,actionsShown,actionFound,actionDelegated,
+     actionAlias,actionDisabledRow,actionDisabledSafe,recentFirst,recentBadge,
+     categoriesDistinct,recentStored,pinInitiallyOff,favoritePinned,favoriteFirst,
+     favoriteUnpinned,recentAfterUnpin,favoritesBarShown,favoriteButtonLabel,
+     favoriteQuickNavigation,favoriteQuickActions,favoriteQuickDelegated,
+     favoritesHiddenInSimple,favoritesReturnInPro,hotkeyLabels,hotkeyOneConsumed,
+     hotkeyOneNavigates,hotkeyTwoConsumed,hotkeyTwoDelegates,hotkeyRepeatSafe,
+     hotkeyTypingSafe,hotkeyDialogSafe,hotkeySimpleSafe,orderReady,reorderEnabled,
+     reordered,reorderedHotkey,reorderedNavigation,leftBoundary,restoredOrder,restoredHotkeys,
+     simpleTransportVisible,simpleInitialStop,transportReady,transportSeek,
+     transportSynced,transportStop,transportHiddenPro,volumeInitiallySynced,
+     volumeDelegated,muteDelegated,muteSyncedFromPro,volumeSyncedFromPro,
+     simpleInitialExtras,simpleExtraReady,simpleJumpEnd,simpleJumpStart,
+     simpleRepeatDelegated,simpleRepeatMirrorsPro,simpleKeyboardHint,
+     simpleKeyMConsumed,simpleKeyM,simpleKeyRConsumed,simpleKeyR,
+     simpleKeySConsumed,simpleKeyS,simpleKeyTypingSafe,
+     simpleKeyModifierSafe,simpleKeyProSafe,tuningVisible,
+     tuningInitialSync,tuningDelegates,tuningProSync,paletteInitialSync,
+     paletteDelegated,paletteProSync,paletteRestored,autoPaletteInitialSync,
+     autoPaletteDelegated,autoPaletteProSync,aiSpeedInitialSync,
+     aiSpeedDelegated,aiSpeedParty,aiSpeedProSync,aiSpeedRestored,
+     gridInitialSync,gridDelegated,gridProSync,barsInitialSync,
+     barsDelegated,barsProSync,barsRestored,fxBypassShown,
+     fxBypassDelegated,fxStackPreserved,fxBypassProSync,fxBypassRestored,
+     fxAutopilotShown,fxAutopilotDelegated,fxAutopilotDistinct,fxAutopilotProSync,
+     fxParamsReady,fxParamsDelegated,fxParamsProSync,fxParamsRestored,
+     chooserReady,chooserDelegated,chooserProSync,chooserRestored,
+     fx26Ready,fx26Delegated,fx26Preserved,fx26ProSync,
+     fx27Ready,fx27SimpleDown,fx27SimpleUp,fx27ProSync,
+     fx27ProRestore,fx27Restored,fx28Ready,fx28FirstSafe,fx28CancelSafe,
+     fx28Rearmed,fx28Confirmed,fx28Restored,
+     fx29Ready,fx29Opened,fx29Added,fx29Restored,
+     fx30Opened,fx30Canceled,fx30Reopened,fx30Added,fx30Closed,fx30Picker,fx30Restored,
+     fx31Opened,fx31Return,fx31Reopened,fx31Esc,fx31Preserved,
+     fx32EmptyBlocked,fx32Ready,fx32Open,fx32Filtered,fx32Added,fx32Restored,
+     fx33Count,fx33Added,fx33Restored,fx33NoResults,fx33Canceled,
+     fx34Hint,fx34First,fx34Second,fx34Up,fx34Returns,fx34NoAdd,fx34Canceled,
+     fx35Unmatched,fx35Cleared,fx35Untouched,fx35Closed};
+ })()`);
+ for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
+ details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));
  await win.close();
 }
 const timeout=setTimeout(()=>{fail('Electron renderer smoke test timed out');process.stderr.write(details.join('\n')+'\n');app.exit(1);},105000);

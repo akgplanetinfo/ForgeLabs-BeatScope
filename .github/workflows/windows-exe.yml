@@ -2,7 +2,7 @@ name: ForgeLabs BeatScope Windows EXE
 
 on:
   push:
-    branches: [main, 'feature/project-bundles-alpha15']
+    branches: [main, 'feature/project-bundles-alpha15', 'feature/lumina-alpha17-stage1']
     paths-ignore:
       - '**/*.md'
   workflow_dispatch:
@@ -52,6 +52,21 @@ jobs:
             Get-FileHash -Algorithm SHA256 -LiteralPath $file.FullName | Format-List
           }
 
+      - name: Generate SHA256 checksums for verified binaries
+        shell: pwsh
+        run: |
+          $files = @(Get-ChildItem -Path dist -Filter 'ForgeLabs-BeatScope-*-x64.exe' -File | Sort-Object Name)
+          if ($files.Count -ne 2) { throw 'A stabil kiadashoz ket EXE kell.' }
+          $lines = foreach ($file in $files) {
+            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $file.FullName).Hash.ToLowerInvariant()
+            "$hash  $($file.Name)"
+          }
+          [System.IO.File]::WriteAllLines(
+            (Join-Path (Resolve-Path dist) 'SHA256SUMS.txt'),
+            [string[]]$lines,
+            [System.Text.UTF8Encoding]::new($false)
+          )
+
       - name: Save EXE build as workflow artifact
         uses: actions/upload-artifact@v4
         with:
@@ -59,6 +74,7 @@ jobs:
           path: |
             dist/ForgeLabs-BeatScope-Setup-*-x64.exe
             dist/ForgeLabs-BeatScope-Portable-*-x64.exe
+            dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
 
@@ -71,7 +87,11 @@ jobs:
           set -euo pipefail
           VERSION=$(node -p "require('./package.json').version")
           TAG="v${VERSION}"
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --title "ForgeLabs BeatScope ${TAG}" --notes "Windows x64 telepito (csak sajat felhasznalo, adminjog nelkul) es hordozhato EXE. A binarisok nem kodalairtak; Windows SmartScreen figyelmeztethet." --target "$GITHUB_SHA"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "Stable release version required" >&2
+            exit 1
           fi
-          gh release upload "$TAG" dist/ForgeLabs-BeatScope-Setup-*-x64.exe dist/ForgeLabs-BeatScope-Portable-*-x64.exe --clobber
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "Lumina Pulse | BeatScope Edition $TAG" --notes-file RELEASE_NOTES.md --target "$GITHUB_SHA" --latest
+          fi
+          gh release upload "$TAG" dist/ForgeLabs-BeatScope-Setup-*-x64.exe dist/ForgeLabs-BeatScope-Portable-*-x64.exe dist/SHA256SUMS.txt --clobber

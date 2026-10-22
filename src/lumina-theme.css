@@ -1,4 +1,4 @@
-/* Lumina Pulse 2.0 · Stage 1 — working BeatScope UI theme.
+/* Lumina Pulse 2.0 · Alpha 17 stage 1 — working BeatScope UI theme and workspace navigation.
    Design reference: https://lumina-pulse-forgelabs.vercel.app/
    No app logic, IDs or preferences are changed by this stylesheet. */
 :root {
@@ -135,3 +135,899 @@ body[data-theme="lumina-pulse"] .titlebar:before{
   body[data-theme="lumina-pulse"] .brand-group{min-width:210px}
   body[data-theme="lumina-pulse"] .brand-name strong{font-size:16px}
 }
+
+/* Alpha 17: accessible Simple / Pro VJ workspace switcher. */
+body[data-theme="lumina-pulse"] .studio-mode-bar{
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+  padding:9px 12px;margin:0 0 14px;background:#08161c;
+  border:1px solid #20515d;border-radius:3px;
+}
+body[data-theme="lumina-pulse"] .studio-mode-label{
+  color:#8ab9c2;font-size:10px;font-weight:800;letter-spacing:1.5px;margin-right:4px;
+}
+body[data-theme="lumina-pulse"] .studio-mode-button{
+  appearance:none;cursor:pointer;background:#0c222b;color:#a5cbd4;
+  border:1px solid #28525c;border-radius:3px;font-family:inherit;font-size:11px;font-weight:700;line-height:1.25;
+  letter-spacing:.6px;padding:9px 13px;
+}
+body[data-theme="lumina-pulse"] .studio-mode-button:hover{
+  color:#efffff;background:#103842;border-color:#00d3f2;
+}
+body[data-theme="lumina-pulse"] .studio-mode-button.active{
+  color:#00171d;background:#00d3f2;border-color:#00d3f2;
+  box-shadow:0 0 13px #00d3f225;
+}
+body[data-theme="lumina-pulse"] .studio-mode-button:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:3px;
+}
+body[data-theme="lumina-pulse"] .studio-mode-hint{
+  color:#9dbdc4;font-size:11px;line-height:1.35;margin-left:auto;
+}
+/* Keep all engine nodes, listeners, audio and scene state intact; change layout only. */
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .workspace > :is(
+  #output-router,#vj-tempo,#vj-auto,#vj-deck,#vj-controls,
+  #vj-video-controls,#vj-mix,#vj-layer-effects,#vj-clip-effects,#vj-clip-menu
+){display:none !important}
+@media(max-width:1100px){
+  body[data-theme="lumina-pulse"] .studio-mode-hint{
+    flex-basis:100%;margin-left:0;
+  }
+}
+
+/* Alpha 17 step 2: Simple Mode keeps the actual renderer and audio controls active. */
+body[data-theme="lumina-pulse"] .simple-control-bar{display:none}
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .simple-control-bar{
+  display:flex;align-items:end;gap:10px;flex-wrap:wrap;
+  padding:14px;margin-bottom:16px;border:1px solid #1b5260;
+  border-radius:3px;background:linear-gradient(110deg,#081e26,#071318);
+}
+body[data-theme="lumina-pulse"] .simple-control-heading{
+  display:flex;flex-direction:column;gap:4px;min-width:160px;margin-right:auto;
+}
+body[data-theme="lumina-pulse"] .simple-control-heading strong{
+  color:#00d3f2;font-size:11px;letter-spacing:1.15px;
+}
+body[data-theme="lumina-pulse"] .simple-control-heading small{
+  color:#8dafb9;font-size:10px;line-height:1.4;
+}
+body[data-theme="lumina-pulse"] .simple-visual-field{
+  display:flex;flex-direction:column;gap:5px;color:#abd1da;font-size:10px;white-space:nowrap;
+}
+body[data-theme="lumina-pulse"] #simple-visual{
+  background:#091e26;color:#edfcff;border:1px solid #287080;
+  border-radius:3px;padding:8px;min-height:36px;min-width:142px;
+}
+body[data-theme="lumina-pulse"] .simple-action{
+  appearance:none;background:#0b2933;border:1px solid #256170;
+  color:#e1faff;border-radius:3px;padding:8px 10px;min-height:36px;
+  font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] .simple-action:hover:not(:disabled){
+  background:#124554;border-color:#00d3f2;
+}
+body[data-theme="lumina-pulse"] .simple-action[aria-pressed="true"]{
+  background:#06414c;border-color:#00d3f2;color:#84f5ff;
+}
+body[data-theme="lumina-pulse"] .simple-action:focus-visible,
+body[data-theme="lumina-pulse"] #simple-visual:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:2px;
+}
+@media(max-width:980px){
+  body[data-theme="lumina-pulse"] .simple-control-heading{flex-basis:100%}
+  body[data-theme="lumina-pulse"] .simple-action{flex:1 1 125px}
+  body[data-theme="lumina-pulse"] .simple-visual-field{flex:1 1 180px}
+}
+
+/* Alpha 17 stage 3: compact, keyboard-accessible Pro VJ navigation. */
+body[data-theme="lumina-pulse"] .pro-navigation{
+  position:sticky;top:0;z-index:8;display:flex;align-items:center;gap:6px;
+  overflow-x:auto;overflow-y:hidden;flex-shrink:0;min-height:49px;
+  padding:7px 9px;margin-bottom:10px;scrollbar-width:thin;
+  background:#071a22f5;border:1px solid #22505d;border-radius:3px;
+}
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .pro-navigation{display:none}
+body[data-theme="lumina-pulse"] .pro-navigation-title{
+  color:#00d3f2;letter-spacing:1px;font-size:10px;font-weight:850;
+  flex:0 0 auto;margin-right:5px;
+}
+body[data-theme="lumina-pulse"] .pro-navigation button{
+  appearance:none;white-space:nowrap;flex:0 0 auto;cursor:pointer;
+  background:#0b2933;border:1px solid #2b5460;color:#d5f7fc;
+  font-family:inherit;font-size:10px;font-weight:720;line-height:1.3;
+  padding:8px 10px;border-radius:3px;
+}
+body[data-theme="lumina-pulse"] .pro-navigation button:hover{
+  background:#105263;border-color:#00d3f2;
+}
+body[data-theme="lumina-pulse"] .pro-navigation button:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:2px;
+}
+body[data-theme="lumina-pulse"] :is(
+  #visual-shell,#project-toolbar,#vj-tempo,#vj-auto,#vj-deck,#vj-controls,
+  #vj-mix,#vj-layer-effects,#vj-clip-effects,#output-router
+){scroll-margin-top:64px}
+body[data-theme="lumina-pulse"] .pro-navigation-status{
+  position:absolute;width:1px;height:1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;
+}
+
+/* Alpha 17 stage 3: spacious Simple Mode with the existing live audio inspector. */
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .app-layout{
+  grid-template-columns:minmax(0,1fr) 255px;
+}
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .sidebar{display:none}
+body[data-theme="lumina-pulse"] .simple-live-summary{
+  display:flex;align-items:center;gap:9px 18px;flex-wrap:wrap;
+  width:100%;padding:9px 11px;background:#06141b;
+  border:1px solid #214954;border-radius:3px;
+}
+body[data-theme="lumina-pulse"] .simple-live-summary > span{
+  display:flex;gap:6px;align-items:center;min-width:0;
+  color:#7cb4c1;font-size:9px;font-weight:800;letter-spacing:.65px;
+}
+body[data-theme="lumina-pulse"] .simple-live-summary strong{
+  min-width:0;max-width:320px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;color:#d9fbff;font-size:10px;font-weight:600;
+  letter-spacing:0;
+}
+@media(max-width:1120px){
+  body[data-theme="lumina-pulse"][data-studio-mode="simple"] .app-layout{
+    grid-template-columns:minmax(0,1fr) 208px;
+  }
+}
+@media(max-width:980px){
+  body[data-theme="lumina-pulse"][data-studio-mode="simple"] .app-layout{
+    grid-template-columns:minmax(0,1fr);
+  }
+}
+
+/* Alpha 17 stage 4: show chosen Pro section and accessible back state. */
+body[data-theme="lumina-pulse"] .pro-navigation button[aria-current="location"]{
+  background:#075060;
+  border-color:#00d3f2;
+  box-shadow:inset 0 -2px 0 #00d3f2;
+  color:#f3feff;
+}
+body[data-theme="lumina-pulse"] .pro-navigation button:disabled{
+  opacity:.48;
+  cursor:not-allowed;
+  background:#101f26;
+  border-color:#243e47;
+  color:#83a2ab;
+}
+body[data-theme="lumina-pulse"] .pro-navigation .pro-nav-back{
+  background:#0b313b;
+  border-color:#307381;
+  font-weight:800;
+}
+@media(prefers-reduced-motion:reduce){
+  body[data-theme="lumina-pulse"] .pro-navigation button{
+    transition:none;
+  }
+}
+
+/* Alpha 17 stage 5: local command search. No external API or audio engine changes. */
+body[data-theme="lumina-pulse"] .pro-navigation .pro-search-launch{
+  color:#91f8ff;background:#103943;border-color:#2b8898;
+}
+body[data-theme="lumina-pulse"] .pro-search-launch span{
+  display:inline-block;margin-left:5px;opacity:.75;
+  font-size:9px;font-weight:600;
+}
+body[data-theme="lumina-pulse"] .pro-command-overlay[hidden]{display:none!important}
+body[data-theme="lumina-pulse"] .pro-command-overlay{
+  position:fixed;inset:0;z-index:2000;
+  display:flex;align-items:flex-start;justify-content:center;
+  padding:clamp(32px,11vh,130px) 12px 30px;
+  background:#020a0ecf;
+}
+body[data-theme="lumina-pulse"] .pro-command-panel{
+  width:min(560px,100%);max-height:85vh;overflow:auto;
+  border:1px solid #287488;border-radius:6px;
+  box-shadow:0 20px 75px #000b;
+  background:linear-gradient(120deg,#102832,#07151b);
+  padding:15px 18px 17px;display:flex;flex-direction:column;gap:10px;
+}
+body[data-theme="lumina-pulse"] .pro-command-header{
+  display:flex;align-items:center;justify-content:space-between;gap:15px;
+}
+body[data-theme="lumina-pulse"] .pro-command-header strong{
+  color:#00d3f2;font-size:12px;letter-spacing:1.1px;
+}
+body[data-theme="lumina-pulse"] #pro-command-close{
+  background:#102d38;color:#f5ffff;border:1px solid #285c68;
+  border-radius:3px;cursor:pointer;padding:6px 10px;
+}
+body[data-theme="lumina-pulse"] .pro-command-panel label{
+  color:#b0cbd4;font-size:11px;
+}
+body[data-theme="lumina-pulse"] #pro-command-input{
+  background:#050f14;color:#e7fdff;border:1px solid #3b8b9d;
+  border-radius:3px;padding:12px;outline-offset:3px;
+  font:500 14px/1.4 inherit;
+}
+body[data-theme="lumina-pulse"] .pro-command-results{
+  display:flex;flex-direction:column;gap:4px;min-height:25px;
+  max-height:43vh;overflow:auto;
+}
+body[data-theme="lumina-pulse"] .pro-command-result{
+  padding:10px 12px;text-align:left;cursor:pointer;
+  background:#102a34;color:#d5edf2;border:1px solid #204750;
+  border-radius:3px;font-family:inherit;font-size:12px;
+}
+body[data-theme="lumina-pulse"] .pro-command-result:hover,
+body[data-theme="lumina-pulse"] .pro-command-result[aria-selected="true"]{
+  color:#e7ffff;background:#105464;border-color:#00d3f2;
+}
+body[data-theme="lumina-pulse"] :is(#pro-command-input,#pro-command-close,.pro-command-result):focus-visible{
+  outline:2px solid #b8f7ff;outline-offset:2px;
+}
+body[data-theme="lumina-pulse"] .pro-command-empty{
+  color:#98bbc2;font-size:12px;padding:10px;
+}
+body[data-theme="lumina-pulse"] .pro-command-footer{
+  color:#779daa;font-size:10px;padding-top:4px;
+}
+
+/* Alpha 17 stage 6: distinguish real actions from navigation commands. */
+body[data-theme="lumina-pulse"] .pro-command-result[data-command-kind="action"]{
+  border-left:3px solid #18b5c5;
+  padding-left:10px;
+}
+body[data-theme="lumina-pulse"] .pro-command-result:disabled{
+  cursor:not-allowed;opacity:.48;
+  color:#78949d;border-color:#24414a;background:#0b1a21;
+}
+body[data-theme="lumina-pulse"] #pro-command-input{
+  font-family:inherit;font-size:14px;font-weight:500;line-height:1.4;
+}
+
+/* Alpha 17 stage 7: separate destinations from actions and label recent commands. */
+body[data-theme="lumina-pulse"] .pro-command-result{
+  display:flex;align-items:center;gap:9px;min-width:0;
+}
+body[data-theme="lumina-pulse"] .pro-command-result[data-command-kind="navigation"]{
+  border-left:3px solid #396aa0;padding-left:10px;
+}
+body[data-theme="lumina-pulse"] .pro-command-result::before{
+  content:"MENÜ";flex:0 0 auto;
+  color:#a1bfdb;font-size:9px;font-weight:800;letter-spacing:.6px;
+}
+body[data-theme="lumina-pulse"] .pro-command-result[data-command-kind="action"]::before{
+  content:"MŰVELET";color:#76dfe9;
+}
+body[data-theme="lumina-pulse"] .pro-command-result[data-recent="true"]::after{
+  content:"Nemrég";flex:0 0 auto;margin-left:auto;
+  border:1px solid #35707c;border-radius:2px;
+  color:#7fe4ed;font-size:9px;padding:2px 5px;
+}
+@media(max-width:560px){
+  body[data-theme="lumina-pulse"] .pro-command-result{
+    gap:6px;font-size:11px;
+  }
+  body[data-theme="lumina-pulse"] .pro-command-result::before{
+    font-size:8px;
+  }
+}
+
+/* Alpha 17 stage 8: user-selected favorite commands, never mixed with file names. */
+body[data-theme="lumina-pulse"] .pro-command-search-row{
+  display:flex;gap:8px;align-items:stretch;min-width:0;
+}
+body[data-theme="lumina-pulse"] .pro-command-search-row #pro-command-input{
+  flex:1 1 auto;min-width:0;
+}
+body[data-theme="lumina-pulse"] #pro-command-favorite{
+  background:#103640;color:#9bdce6;border:1px solid #337481;
+  border-radius:3px;font-family:inherit;font-size:11px;font-weight:750;
+  cursor:pointer;padding:8px 11px;white-space:nowrap;
+}
+body[data-theme="lumina-pulse"] #pro-command-favorite:hover:not(:disabled){
+  background:#135263;border-color:#00d3f2;color:#f8feff;
+}
+body[data-theme="lumina-pulse"] #pro-command-favorite[aria-pressed="true"]{
+  background:#1a4449;color:#ffdb8d;border-color:#d1aa63;
+}
+body[data-theme="lumina-pulse"] #pro-command-favorite:disabled{
+  opacity:.45;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #pro-command-favorite:focus-visible{
+  outline:2px solid #b8f7ff;outline-offset:2px;
+}
+body[data-theme="lumina-pulse"] .pro-command-note{
+  margin:0;color:#9abfc7;font-size:10px;min-height:12px;
+}
+body[data-theme="lumina-pulse"] .pro-command-result[data-favorite="true"]{
+  border-left:3px solid #e6ba62;
+}
+body[data-theme="lumina-pulse"] .pro-command-result[data-favorite="true"]::after{
+  content:"★ Kedvenc";flex:0 0 auto;margin-left:auto;
+  border:1px solid #98783d;border-radius:2px;
+  color:#f2d99a;font-size:9px;padding:2px 5px;
+}
+@media(max-width:560px){
+  body[data-theme="lumina-pulse"] .pro-command-search-row{
+    flex-wrap:wrap;
+  }
+  body[data-theme="lumina-pulse"] #pro-command-favorite{
+    flex:1 1 100%;white-space:normal;
+  }
+}
+
+/* Alpha 17 stage 9: one-click pinned commands in the Pro VJ workspace. */
+body[data-theme="lumina-pulse"] .pro-favorites-bar[hidden],
+body[data-theme="lumina-pulse"][data-studio-mode="simple"] .pro-favorites-bar{
+  display:none!important;
+}
+body[data-theme="lumina-pulse"] .pro-favorites-bar{
+  flex:0 0 auto;display:flex;align-items:center;gap:9px;min-width:0;
+  padding:7px 9px;min-height:38px;margin-top:-5px;
+  border:1px solid #65532f;border-radius:3px;background:#181d20;
+}
+body[data-theme="lumina-pulse"] .pro-favorites-heading{
+  flex:0 0 auto;color:#f3d48e;font-size:10px;letter-spacing:1px;
+}
+body[data-theme="lumina-pulse"] .pro-favorites-actions{
+  display:flex;align-items:center;gap:5px;min-width:0;
+  overflow-x:auto;scrollbar-width:thin;
+}
+body[data-theme="lumina-pulse"] .pro-favorite-shortcut{
+  appearance:none;flex:0 0 auto;cursor:pointer;
+  background:#1c393e;border:1px solid #48747a;border-radius:3px;
+  color:#d7edf0;font-family:inherit;font-size:10px;font-weight:700;
+  white-space:nowrap;padding:7px 9px;
+}
+body[data-theme="lumina-pulse"] .pro-favorite-shortcut:hover:not(:disabled){
+  background:#2a4e50;color:#fff;border-color:#edca77;
+}
+body[data-theme="lumina-pulse"] .pro-favorite-shortcut:focus-visible{
+  outline:2px solid #f8df9d;outline-offset:2px;
+}
+body[data-theme="lumina-pulse"] .pro-favorite-shortcut:disabled{
+  cursor:not-allowed;opacity:.43;
+}
+body[data-theme="lumina-pulse"] .pro-favorite-shortcut[data-command-kind="action"]{
+  border-color:#42818b;
+}
+@media(max-width:580px){
+  body[data-theme="lumina-pulse"] .pro-favorites-bar{
+    align-items:flex-start;flex-direction:column;gap:6px;
+  }
+  body[data-theme="lumina-pulse"] .pro-favorites-actions{width:100%}
+}
+
+/* Alpha 17 stage 10: reveal the keyboard slot for each pinned Pro VJ shortcut. */
+body[data-theme="lumina-pulse"] .pro-favorite-shortcut[data-hotkey]::after{
+  content:attr(data-hotkey);
+  display:inline-block;vertical-align:baseline;margin-left:9px;
+  padding:2px 5px;border:1px solid #5d8490;border-radius:2px;
+  color:#b3d9e2;background:#10252e;
+  font-family:inherit;font-size:9px;font-weight:650;letter-spacing:.15px;
+}
+body[data-theme="lumina-pulse"] .pro-favorite-shortcut:disabled::after{
+  color:#9ca7aa;
+}
+
+/* Alpha 17 stage 11: explicit accessible ordering controls, no drag-only interactions. */
+body[data-theme="lumina-pulse"] .pro-favorites-order{
+  display:flex;align-items:center;gap:4px;flex:0 0 auto;min-width:0;
+  margin-left:auto;padding-left:8px;border-left:1px solid #544929;
+}
+body[data-theme="lumina-pulse"] .pro-favorites-order label{
+  color:#c8b480;font-weight:700;font-size:9px;letter-spacing:.5px;
+}
+body[data-theme="lumina-pulse"] #pro-favorites-select{
+  appearance:auto;max-width:140px;min-width:90px;
+  padding:5px 6px;background:#102832;color:#e2f6f8;
+  border:1px solid #55717b;border-radius:3px;
+  font-family:inherit;font-size:10px;
+}
+body[data-theme="lumina-pulse"] .pro-favorites-order button{
+  appearance:none;cursor:pointer;padding:5px 8px;
+  color:#f8df9d;background:#273b3c;border:1px solid #8f7950;
+  border-radius:3px;font-family:inherit;font-weight:850;
+}
+body[data-theme="lumina-pulse"] .pro-favorites-order button:hover:not(:disabled){
+  background:#455d58;border-color:#f8df9d;
+}
+body[data-theme="lumina-pulse"] .pro-favorites-order button:disabled{
+  cursor:not-allowed;opacity:.4;
+}
+body[data-theme="lumina-pulse"] .pro-favorites-order :is(button,select):focus-visible{
+  outline:2px solid #f8df9d;outline-offset:2px;
+}
+@media(max-width:1000px){
+  body[data-theme="lumina-pulse"] .pro-favorites-bar{flex-wrap:wrap;}
+  body[data-theme="lumina-pulse"] .pro-favorites-actions{flex:1 1 100%;order:3;}
+  body[data-theme="lumina-pulse"] .pro-favorites-order{margin-left:auto;}
+}
+@media(max-width:580px){
+  body[data-theme="lumina-pulse"] .pro-favorites-order{
+    margin-left:0;border-left:0;padding-left:0;width:100%;
+  }
+  body[data-theme="lumina-pulse"] #pro-favorites-select{flex:1 1 auto;max-width:none;}
+}
+
+/* Alpha 17 stage 12: real Simple Mode transport (same native BeatScope player). */
+body[data-theme="lumina-pulse"] .simple-transport{
+  display:flex;align-items:center;gap:9px 11px;flex-wrap:wrap;width:100%;
+  padding:10px 12px;background:#09202a;border:1px solid #266472;border-radius:3px;
+}
+body[data-theme="lumina-pulse"] #simple-play-pause{
+  min-width:128px;background:#075064;border-color:#00c9e6;color:#ddfcff;
+}
+body[data-theme="lumina-pulse"] #simple-stop{
+  min-width:68px;
+}
+body[data-theme="lumina-pulse"] .simple-transport .simple-action:disabled{
+  opacity:.42;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] .simple-time{
+  font-size:12px;font-weight:720;color:#c7e9ee;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+body[data-theme="lumina-pulse"] #simple-seek{
+  flex:1 1 180px;min-width:100px;accent-color:#00d3f2;
+  height:22px;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] #simple-seek:disabled{
+  opacity:.43;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-seek:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:3px;
+}
+@media(max-width:600px){
+  body[data-theme="lumina-pulse"] .simple-transport{gap:8px;}
+  body[data-theme="lumina-pulse"] #simple-play-pause{flex:1 1 160px;}
+  body[data-theme="lumina-pulse"] #simple-seek{flex:1 1 100%;}
+}
+
+/* Alpha 17 stage 13: Simple Mode volume is delegated to the native BeatScope player. */
+body[data-theme="lumina-pulse"] .simple-volume{
+  display:flex;align-items:center;gap:9px;
+  flex:1 1 250px;min-width:210px;padding:4px 0 4px 10px;
+  border-left:1px solid #2a5260;
+}
+body[data-theme="lumina-pulse"] #simple-mute{
+  min-width:92px;white-space:nowrap;
+}
+body[data-theme="lumina-pulse"] #simple-mute[aria-pressed="true"]{
+  border-color:#d5b575;color:#f7d895;background:#3a3030;
+}
+body[data-theme="lumina-pulse"] .simple-volume label{
+  color:#abd1da;font-size:10px;font-weight:700;white-space:nowrap;
+}
+body[data-theme="lumina-pulse"] #simple-volume{
+  flex:1 1 80px;min-width:70px;accent-color:#00d3f2;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] #simple-volume:disabled{
+  cursor:not-allowed;opacity:.4;
+}
+body[data-theme="lumina-pulse"] #simple-volume:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:3px;
+}
+body[data-theme="lumina-pulse"] #simple-volume-value{
+  color:#d9fbff;font-size:11px;font-weight:700;
+  font-variant-numeric:tabular-nums;min-width:34px;text-align:right;
+}
+@media(max-width:750px){
+  body[data-theme="lumina-pulse"] .simple-volume{
+    flex:1 1 100%;border-left:0;
+    border-top:1px solid #2a5260;padding:10px 0 0;
+  }
+}
+
+/* Alpha 17 stage 14: Simple transport extras always invoke existing player controls. */
+body[data-theme="lumina-pulse"] .simple-transport-extra{
+  display:flex;align-items:center;gap:6px;flex:0 1 auto;flex-wrap:wrap;
+}
+body[data-theme="lumina-pulse"] .simple-transport-extra .simple-action{
+  padding:8px 9px;white-space:nowrap;font-size:10px;
+}
+body[data-theme="lumina-pulse"] #simple-repeat[aria-pressed="true"]{
+  border-color:#00d3f2;color:#adf9ff;background:#0c4c58;
+}
+body[data-theme="lumina-pulse"] .simple-transport-extra .simple-action:disabled{
+  opacity:.42;cursor:not-allowed;
+}
+@media(max-width:780px){
+  body[data-theme="lumina-pulse"] .simple-transport-extra{
+    flex:1 1 100%;
+  }
+  body[data-theme="lumina-pulse"] .simple-transport-extra .simple-action{
+    flex:1 1 80px;
+  }
+}
+
+/* Alpha 17 stage 15: unobtrusive keyboard help for the Simple workspace. */
+body[data-theme="lumina-pulse"] .simple-keyboard-hint{
+  display:flex;align-items:center;flex-wrap:wrap;gap:7px 10px;
+  width:100%;padding:7px 10px;border:1px solid #224450;border-radius:3px;
+  color:#a9cad4;background:#07161e;font-size:10px;line-height:1.7;
+}
+body[data-theme="lumina-pulse"] .simple-keyboard-hint>span{
+  margin-right:4px;color:#74d5e3;font-weight:850;letter-spacing:.8px;
+}
+body[data-theme="lumina-pulse"] .simple-keyboard-hint kbd{
+  font:750 10px/1.3 inherit;color:#e3faff;white-space:nowrap;
+  border:1px solid #3c7a88;border-radius:3px;background:#122e37;
+  padding:3px 6px;box-shadow:0 1px 0 #0b3e4a;
+}
+
+/* Alpha 17 stage 16: audio-reactive visual tuning with the original engine. */
+body[data-theme="lumina-pulse"] .simple-visual-tuning{
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;
+  width:100%;padding:11px 13px;background:#081e24;
+  border:1px solid #205465;border-radius:3px;
+}
+body[data-theme="lumina-pulse"] .simple-tuning-field{
+  display:flex;align-items:center;gap:10px;flex:1 1 250px;min-width:205px;
+}
+body[data-theme="lumina-pulse"] .simple-tuning-field label{
+  color:#add1d9;flex:0 0 116px;font-size:11px;font-weight:750;
+}
+body[data-theme="lumina-pulse"] .simple-tuning-field input{
+  flex:1 1 100px;min-width:70px;accent-color:#00d3f2;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] .simple-tuning-field input:disabled{
+  opacity:.4;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] .simple-tuning-field input:focus-visible{
+  outline:2px solid #e5fbff;outline-offset:3px;
+}
+body[data-theme="lumina-pulse"] .simple-tuning-field output{
+  color:#adf3fa;min-width:43px;text-align:right;
+  font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;
+}
+@media(max-width:650px){
+  body[data-theme="lumina-pulse"] .simple-tuning-field{
+    flex:1 1 100%;flex-wrap:wrap;
+  }
+  body[data-theme="lumina-pulse"] .simple-tuning-field label{flex:0 0 110px}
+}
+
+/* Alpha 17 stage 17: Simple color palette shares the native BeatScope swatches. */
+body[data-theme="lumina-pulse"] #simple-palette{
+  background:#091e26;color:#edfcff;border:1px solid #287080;
+  border-radius:3px;padding:8px;min-height:36px;min-width:158px;
+  font-family:inherit;font-size:11px;
+}
+body[data-theme="lumina-pulse"] #simple-palette:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:2px;
+}
+@media(max-width:980px){
+  body[data-theme="lumina-pulse"] .simple-palette-field{flex:1 1 180px}
+}
+
+/* Alpha 17 stage 18: Simple AI palette switch shares the native BeatScope preference. */
+body[data-theme="lumina-pulse"] .simple-auto-palette{
+  display:flex;align-items:center;gap:7px 9px;flex-wrap:wrap;
+  flex:0 1 auto;min-height:36px;padding:7px 10px;
+  background:#0d252b;border:1px solid #2d6170;border-radius:3px;
+  color:#d2f1f4;font-size:11px;font-weight:740;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] .simple-auto-palette input{
+  margin:0;width:16px;height:16px;accent-color:#00d3f2;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] .simple-auto-palette small{
+  flex:1 1 100%;color:#8cbdc8;font-size:10px;font-weight:400;
+}
+body[data-theme="lumina-pulse"] .simple-auto-palette:has(input:checked){
+  border-color:#21b7cf;background:#12323e;
+}
+body[data-theme="lumina-pulse"] .simple-auto-palette:has(input:disabled){
+  opacity:.44;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] .simple-auto-palette input:focus-visible{
+  outline:2px solid #ebfdff;outline-offset:3px;
+}
+@media(max-width:680px){
+  body[data-theme="lumina-pulse"] .simple-auto-palette{flex:1 1 100%;}
+}
+
+/* Alpha 17 stage 19: Simple Mode shares the native AI speed profiles. */
+body[data-theme="lumina-pulse"] .simple-ai-speed-field{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:0 1 230px;
+  color:#b5dbe1;font-size:11px;font-weight:750;
+}
+body[data-theme="lumina-pulse"] #simple-ai-speed{
+  flex:1 1 150px;min-width:150px;min-height:36px;
+  padding:8px;background:#091e26;color:#edfcff;
+  border:1px solid #287080;border-radius:3px;font-family:inherit;font-size:11px;
+}
+body[data-theme="lumina-pulse"] #simple-ai-speed:disabled{
+  opacity:.4;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-ai-speed:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:2px;
+}
+@media(max-width:680px){
+  body[data-theme="lumina-pulse"] .simple-ai-speed-field{flex:1 1 100%;}
+}
+
+/* Alpha 17 stage 20: one-click native background grid preference in Simple. */
+body[data-theme="lumina-pulse"] .simple-grid-toggle{
+  display:flex;align-items:center;gap:7px 10px;flex-wrap:wrap;
+  width:100%;min-height:37px;padding:8px 12px;
+  background:#0d252b;border:1px solid #2b5b67;border-radius:3px;
+  color:#d4f2f5;font-size:11px;font-weight:750;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] .simple-grid-toggle input{
+  width:16px;height:16px;margin:0;accent-color:#00d3f2;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] .simple-grid-toggle small{
+  color:#91c0ca;font-size:10px;font-weight:400;
+}
+body[data-theme="lumina-pulse"] .simple-grid-toggle:has(input:checked){
+  background:#12303a;border-color:#28798b;
+}
+body[data-theme="lumina-pulse"] .simple-grid-toggle:has(input:disabled){
+  opacity:.45;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] .simple-grid-toggle input:focus-visible{
+  outline:2px solid #edfdff;outline-offset:3px;
+}
+
+/* Alpha 17 stage 21: native Spectrum Bars density control, Simple Mode. */
+body[data-theme="lumina-pulse"] .simple-bars-tuning{
+  flex:1 1 250px;padding:5px 0;
+}
+body[data-theme="lumina-pulse"] .simple-bars-tuning label{
+  display:flex;flex-direction:column;gap:2px;
+}
+body[data-theme="lumina-pulse"] .simple-bars-tuning label small{
+  color:#80abb5;font-size:9px;font-weight:450;
+}
+body[data-theme="lumina-pulse"] #simple-bars-count{
+  accent-color:#00d3f2;
+}
+
+/* Alpha 17 stage 22: one-click FX bypass in Simple preserves the Pro effect stack. */
+body[data-theme="lumina-pulse"] #simple-fx-bypass{
+  min-width:126px;border-color:#337a8a;
+}
+body[data-theme="lumina-pulse"] #simple-fx-bypass[aria-pressed="true"]{
+  border-color:#f3ba74;color:#ffe1ae;background:#473329;
+}
+body[data-theme="lumina-pulse"] #simple-fx-bypass:disabled{
+  opacity:.42;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-fx-bypass:focus-visible{
+  outline:2px solid #e5fbff;outline-offset:2px;
+}
+
+/* Alpha 17 stage 23: separate, real 120-effect FX Autopilot switch. */
+body[data-theme="lumina-pulse"] #simple-fx-auto{
+  min-width:164px;border-color:#356c81;white-space:nowrap;
+}
+body[data-theme="lumina-pulse"] #simple-fx-auto[aria-checked="true"]{
+  color:#bafcff;border-color:#00cbe8;background:#0b475a;
+  box-shadow:inset 0 0 0 1px #006f82;
+}
+body[data-theme="lumina-pulse"] #simple-fx-auto:disabled{
+  opacity:.42;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-fx-auto:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:2px;
+}
+
+/* Alpha 17 stage 24: selected FX parameters, shared with Pro. */
+body[data-theme="lumina-pulse"] .simple-fx-parameters{
+  display:flex;align-items:center;flex-wrap:wrap;gap:12px 20px;
+  width:100%;padding:12px 13px;background:#0b1c28;
+  border:1px solid #266176;border-radius:3px;
+}
+body[data-theme="lumina-pulse"] .simple-fx-parameters-head{
+  display:flex;align-items:baseline;flex-wrap:wrap;gap:8px 14px;width:100%;
+}
+body[data-theme="lumina-pulse"] .simple-fx-parameters-head strong{
+  font-size:11px;letter-spacing:.7px;color:#67ddf1;
+}
+body[data-theme="lumina-pulse"] #simple-fx-selection{
+  font-size:10px;color:#a6c7d2;
+}
+body[data-theme="lumina-pulse"] .simple-fx-parameters .simple-tuning-field{
+  flex:1 1 260px;
+}
+body[data-theme="lumina-pulse"] .simple-fx-parameters .simple-tuning-field label{
+  flex:0 0 130px;
+}
+body[data-theme="lumina-pulse"] .simple-fx-parameters input:disabled{
+  opacity:.38;cursor:not-allowed;
+}
+@media(max-width:650px){
+  body[data-theme="lumina-pulse"] .simple-fx-parameters .simple-tuning-field{flex:1 1 100%;}
+}
+
+/* Alpha 17 stage 25: picker for already-added native Pro FX (no second stack). */
+body[data-theme="lumina-pulse"] .simple-fx-picker-field{
+  width:100%;display:flex;align-items:center;flex-wrap:wrap;gap:9px 13px;
+  font-size:11px;font-weight:740;color:#c2e7ed;
+}
+body[data-theme="lumina-pulse"] #simple-fx-picker{
+  flex:1 1 230px;min-height:36px;min-width:190px;
+  background:#0a2731;color:#e7fbff;padding:7px 10px;
+  border:1px solid #337b89;border-radius:3px;font-family:inherit;
+  font-size:11px;
+}
+body[data-theme="lumina-pulse"] #simple-fx-picker:disabled{
+  opacity:.46;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-fx-picker:focus-visible{
+  outline:2px solid #eaffff;outline-offset:2px;
+}
+
+/* Alpha 17 stage 26: safely enable or disable just the selected Pro FX. */
+body[data-theme="lumina-pulse"] #simple-fx-enabled{
+  flex:0 1 auto;min-width:160px;margin-left:auto;
+  color:#ffd2a8;border-color:#96704d;background:#32251e;
+  white-space:nowrap;
+}
+body[data-theme="lumina-pulse"] #simple-fx-enabled[aria-checked="true"]{
+  color:#b9faff;border-color:#00acc3;background:#12414c;
+}
+body[data-theme="lumina-pulse"] #simple-fx-enabled:disabled{
+  opacity:.42;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-fx-enabled:focus-visible{
+  outline:2px solid #efffff;outline-offset:2px;
+}
+@media(max-width:680px){
+  body[data-theme="lumina-pulse"] #simple-fx-enabled{
+    flex:1 1 100%;margin-left:0;
+  }
+}
+
+/* Alpha 17 stage 27: reorder selected native Pro FX without leaving Simple. */
+body[data-theme="lumina-pulse"] .simple-fx-order{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:8px;width:100%;padding:4px 0;
+}
+body[data-theme="lumina-pulse"] .simple-fx-order .simple-action{
+  flex:1 1 100px;max-width:210px;padding:8px 10px;
+}
+body[data-theme="lumina-pulse"] #simple-fx-position{
+  flex:0 0 auto;min-width:82px;color:#b5dce3;
+  font-size:11px;text-align:center;font-variant-numeric:tabular-nums;
+}
+body[data-theme="lumina-pulse"] .simple-fx-order button:disabled{
+  opacity:.4;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] .simple-fx-order button:focus-visible{
+  outline:2px solid #e5fbff;outline-offset:2px;
+}
+@media(max-width:640px){
+  body[data-theme="lumina-pulse"] .simple-fx-order .simple-action{flex:1 1 85px;}
+  body[data-theme="lumina-pulse"] #simple-fx-position{min-width:60px;}
+}
+
+/* Alpha 17 stage 28: confirmed native FX deletion in Simple. */
+body[data-theme="lumina-pulse"] .simple-fx-remove{
+  display:flex;align-items:center;flex-wrap:wrap;gap:7px 12px;width:100%;
+}
+body[data-theme="lumina-pulse"] #simple-fx-remove{
+  flex:0 1 auto;min-width:150px;border-color:#885454;
+  color:#ffcdcc;background:#342327;
+}
+body[data-theme="lumina-pulse"] #simple-fx-remove[aria-label^="Megerősítés"]{
+  border-color:#ff9c81;background:#652f30;color:#fff5e9;
+}
+body[data-theme="lumina-pulse"] #simple-fx-remove-cancel{
+  border-color:#638993;color:#d6f1f6;background:#18313b;
+}
+body[data-theme="lumina-pulse"] .simple-fx-remove button[hidden]{
+  display:none;
+}
+body[data-theme="lumina-pulse"] .simple-fx-remove button:disabled{
+  opacity:.4;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] .simple-fx-remove button:focus-visible{
+  outline:2px solid #e5fbff;outline-offset:2px;
+}
+body[data-theme="lumina-pulse"] #simple-fx-remove-note{
+  flex:1 1 220px;font-size:10px;color:#a6c7d2;
+}
+
+
+/* Alpha 17 stage 30: Simple FX catalog result and focus announcement. */
+body[data-theme="lumina-pulse"] .simple-fx-add-status{
+  display:block;flex:1 1 100%;min-height:15px;
+  font-size:11px;line-height:1.45;color:#8ec4ce;
+}
+body[data-theme="lumina-pulse"] #simple-fx-picker:focus-visible{
+  outline:2px solid #00d3f2;outline-offset:3px;
+}
+
+
+/* Alpha 17 stage 31: accessible return from native FX library to Simple Mode. */
+body[data-theme="lumina-pulse"] .fx-header-actions{
+  display:flex;align-items:center;gap:7px;min-width:0;
+}
+body[data-theme="lumina-pulse"] .fx-simple-back[hidden]{display:none!important}
+body[data-theme="lumina-pulse"] .fx-simple-back{
+  background:#0a3944;border:1px solid #25869b;border-radius:3px;
+  color:#d5faff;font:700 11px/1.3 inherit;padding:8px 10px;
+  cursor:pointer;white-space:nowrap;
+}
+body[data-theme="lumina-pulse"] .fx-simple-back:hover{
+  background:#105868;border-color:#00d3f2;
+}
+body[data-theme="lumina-pulse"] .fx-simple-back:focus-visible{
+  outline:2px solid #f6fdff;outline-offset:2px;
+}
+
+
+/* Alpha 17 stage 32: Simple Mode entrypoint for the real BeatScope FX search. */
+body[data-theme="lumina-pulse"] .simple-fx-quick-search{
+  width:100%;display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+  padding:8px 0;
+}
+body[data-theme="lumina-pulse"] .simple-fx-quick-search label{
+  font-size:11px;font-weight:700;color:#bfeaf0;
+}
+body[data-theme="lumina-pulse"] #simple-fx-query{
+  flex:1 1 230px;min-width:150px;min-height:36px;
+  padding:8px 11px;background:#09242c;color:#e8fdff;
+  border:1px solid #387987;border-radius:3px;font:500 11px/1.3 inherit;
+}
+body[data-theme="lumina-pulse"] #simple-fx-search{
+  min-height:36px;white-space:nowrap;
+}
+body[data-theme="lumina-pulse"] #simple-fx-query:focus-visible{
+  outline:2px solid #00d3f2;outline-offset:2px;
+}
+body[data-theme="lumina-pulse"] #simple-fx-search:disabled{
+  opacity:.4;cursor:not-allowed;
+}
+
+
+/* Alpha 17 stage 33: native filtered FX result count and explicit first choice. */
+body[data-theme="lumina-pulse"] .fx-simple-result-bar[hidden]{display:none!important}
+body[data-theme="lumina-pulse"] .fx-simple-result-bar{
+  display:flex;gap:10px;align-items:center;justify-content:space-between;
+  padding:8px 12px;background:#102f3c;border-top:1px solid #286178;
+  border-bottom:1px solid #286178;min-width:0;
+}
+body[data-theme="lumina-pulse"] #simple-fx-result-count{
+  font-size:11px;line-height:1.4;color:#a3d8e4;min-width:0;
+}
+body[data-theme="lumina-pulse"] #simple-fx-first{
+  flex:0 0 auto;max-width:45%;background:#09596a;color:#e5fcff;
+  border:1px solid #26b8cf;border-radius:4px;padding:7px 10px;
+  font-size:11px;font-weight:700;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] #simple-fx-first:disabled{
+  opacity:.35;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-fx-first:focus-visible{
+  outline:2px solid #f2ffff;outline-offset:2px;
+}
+
+
+/* Alpha 17 stage 34: guided, keyboard-accessible native FX results. */
+body[data-theme="lumina-pulse"] .fx-simple-result-bar{flex-wrap:wrap}
+body[data-theme="lumina-pulse"] #simple-fx-key-hint[hidden]{display:none!important}
+body[data-theme="lumina-pulse"] #simple-fx-key-hint{
+  order:3;flex:1 1 100%;font-size:10px;line-height:1.35;
+  color:#96bcca;letter-spacing:.1px;
+}
+body[data-theme="lumina-pulse"] #fx-results .fx-entry-name:focus-visible,
+body[data-theme="lumina-pulse"] #fx-search:focus-visible{
+  outline:2px solid #00d3f2;outline-offset:2px;
+}
+
+
+/* Alpha 17 stage 35: clear only the active native FX search text. */
+body[data-theme="lumina-pulse"] #simple-fx-clear{
+  order:1;flex:0 0 auto;background:#183645;color:#c6e9ee;
+  border:1px solid #376d7d;border-radius:4px;
+  padding:7px 9px;font-size:11px;font-weight:650;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] #simple-fx-clear:disabled{
+  opacity:.35;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-fx-clear:focus-visible{
+  outline:2px solid #f2ffff;outline-offset:2px;
+}
+body[data-theme="lumina-pulse"] #simple-fx-result-count{flex:1 1 140px}
+body[data-theme="lumina-pulse"] #simple-fx-first{order:2}

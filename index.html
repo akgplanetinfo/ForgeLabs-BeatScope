@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="src/style.css" />
   <link rel="stylesheet" href="src/lumina-theme.css" />
 </head>
-<body data-theme="lumina-pulse">
+<body data-theme="lumina-pulse" data-studio-mode="pro">
   <header class="titlebar" id="titlebar">
     <div class="brand-group">
       <div class="appmark"><svg viewBox="0 0 32 32" fill="none"><path d="M4 18h5l3-10 6 17 4-9h6" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
@@ -64,9 +64,180 @@
       <div class="control-line"><label for="bars-count">Oszlopok</label><output id="bars-val">56</output></div>
       <input type="range" id="bars-count" min="16" max="128" value="56" step="8" />
       <label class="check-row"><input id="show-grid" type="checkbox" checked /><span>Finom háttérrács</span></label>
-      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 α13</span></div>
+      <div class="sidebar-foot"><div class="small-signal"><span></span> LOCAL FIRST</div><span>v0.4.0 · STABLE</span></div>
     </aside>
     <main class="workspace">
+      <div class="studio-mode-bar" role="group" aria-label="Lumina Pulse munkatér módja">
+        <span class="studio-mode-label">MUNKATÉR</span>
+        <button type="button" class="studio-mode-button" id="studio-simple" data-studio-mode-target="simple" aria-pressed="false">SIMPLE MODE</button>
+        <button type="button" class="studio-mode-button active" id="studio-pro" data-studio-mode-target="pro" aria-pressed="true">PRO VJ STUDIO</button>
+        <span class="studio-mode-hint" id="studio-mode-hint" aria-live="polite">Teljes VJ munkatér · rétegek, BPM, effektek és kimenetek.</span>
+      </div>
+      <nav class="pro-navigation" id="pro-navigation" aria-label="Pro VJ Studio gyorsnavigáció">
+        <span class="pro-navigation-title">PRO VJ</span>
+        <button type="button" id="pro-search-open" class="pro-search-launch" title="Pro VJ parancskereső (Ctrl+K)" aria-keyshortcuts="Control+K">⌕ Keresés <span>Ctrl+K</span></button>
+        <button type="button" id="pro-nav-back" class="pro-nav-back" disabled aria-label="Vissza az előző Pro VJ szakaszhoz" title="Előző szakasz">← Vissza</button>
+        <button type="button" data-vj-target="visual-shell">Előnézet</button>
+        <button type="button" data-vj-target="project-toolbar">Projekt</button>
+        <button type="button" data-vj-target="vj-tempo">BPM</button>
+        <button type="button" data-vj-target="vj-auto">Auto Scene</button>
+        <button type="button" data-vj-target="vj-deck">Kliprács</button>
+        <button type="button" data-vj-target="vj-controls">Klip beállítások</button>
+        <button type="button" data-vj-target="vj-mix">Layer Mixer</button>
+        <button type="button" data-vj-target="vj-layer-effects">Layer FX</button>
+        <button type="button" data-vj-target="vj-clip-effects">Clip FX</button>
+        <button type="button" data-vj-target="output-router">VJ Output</button>
+        <button type="button" data-vj-action="fx-library">FX Library ↗</button>
+        <span id="pro-navigation-status" class="pro-navigation-status" role="status" aria-live="polite"></span>
+      </nav>
+      <section class="pro-favorites-bar" id="pro-favorites-bar" aria-label="Pro VJ gyors kedvencek" hidden>
+        <strong class="pro-favorites-heading">★ KEDVENCEK</strong>
+        <div id="pro-favorites-actions" class="pro-favorites-actions" role="group" aria-label="Rögzített Pro VJ parancsok"></div>
+        <div class="pro-favorites-order" role="group" aria-label="Kedvencek sorrendjének módosítása">
+          <label for="pro-favorites-select">Sorrend</label>
+          <select id="pro-favorites-select" aria-label="Áthelyezendő kedvenc"></select>
+          <button type="button" id="pro-favorites-left" aria-label="Kedvenc balra mozgatása" title="Mozgatás balra" disabled>←</button>
+          <button type="button" id="pro-favorites-right" aria-label="Kedvenc jobbra mozgatása" title="Mozgatás jobbra" disabled>→</button>
+        </div>
+      </section>
+      <section class="simple-control-bar" id="simple-control-bar" aria-label="Simple Mode gyorsvezérlés">
+        <div class="simple-control-heading"><strong>QUICK CONTROLS</strong><small>Az eredeti BeatScope-motor valódi vezérlése</small></div>
+        <label class="simple-visual-field" for="simple-visual">Vizualizáció
+          <select id="simple-visual" aria-label="Simple Mode vizualizáció kiválasztása">
+            <option value="bars">Spectrum Bars</option>
+            <option value="wave">Waveform</option>
+            <option value="orbit">Orbit Pulse</option>
+            <option value="particles">Particles</option>
+          </select>
+        </label>
+        <label class="simple-visual-field simple-palette-field" for="simple-palette">Színpaletta
+          <select id="simple-palette" aria-label="Simple Mode vizualizáció színpalettája">
+            <option value="azure">Elektromos kék</option>
+            <option value="mint">Technológiai zöld</option>
+            <option value="violet">Lila</option>
+            <option value="sunset">Narancs</option>
+            <option value="rainbow">Szivárvány</option>
+          </select>
+        </label>
+        <label class="simple-ai-speed-field" for="simple-ai-speed">AI váltás sebessége
+          <select id="simple-ai-speed" aria-label="Automata FX váltási sebessége">
+            <option value="calm">Nyugodt · kb. 12 mp</option>
+            <option value="balanced" selected>Normál · kb. 7 mp</option>
+            <option value="party">Pörgős · kb. 4 mp</option>
+          </select>
+        </label>
+        <label class="simple-auto-palette" for="simple-ai-palette">
+          <input id="simple-ai-palette" type="checkbox" />
+          <span>✦ AI színváltás</span>
+          <small>Automata FX közben váltja a palettát</small>
+        </label>
+        <button type="button" class="simple-action" id="simple-open-file">♫ Zene betöltése</button>
+        <button type="button" class="simple-action" id="simple-microphone" aria-pressed="false">♩ Mikrofon</button>
+        <button type="button" class="simple-action" id="simple-ai" aria-pressed="false" title="AI Visual Director: a vizualizáció automatikus váltása">✦ Automata FX</button>
+        <button type="button" class="simple-action simple-fx-autopilot" id="simple-fx-auto" role="switch" aria-checked="false" aria-label="120 FX Autopilot bekapcsolása" title="Külön kapcsolható: a natív BeatScope FX Autopilot a 120 látványeffekt között vált">✦ 120 FX Autopilot: KI</button>
+        <button type="button" class="simple-action simple-fx-bypass" id="simple-fx-bypass" aria-pressed="false" aria-label="Effektek kikapcsolása" title="FX-ek ideiglenes ki- és bekapcsolása, az effektlánc megtartásával">◉ FX aktív</button>
+        <button type="button" class="simple-action" id="simple-fullscreen" aria-pressed="false">⛶ Teljes képernyő</button>
+        <div class="simple-visual-tuning" role="group" aria-label="Simple Mode vizualizáció finomhangolása">
+          <div class="simple-tuning-field">
+            <label for="simple-intensity">Vizuál erőssége</label>
+            <input type="range" id="simple-intensity" min="20" max="300" value="115" step="5" aria-label="Vizualizáció erőssége" />
+            <output id="simple-intensity-value" for="simple-intensity">115%</output>
+          </div>
+          <div class="simple-tuning-field">
+            <label for="simple-smooth">Mozgás simítása</label>
+            <input type="range" id="simple-smooth" min="0" max="94" value="75" step="1" aria-label="Vizualizáció simítása" />
+            <output id="simple-smooth-value" for="simple-smooth">75%</output>
+          </div>
+          <div class="simple-tuning-field simple-bars-tuning">
+            <label for="simple-bars-count">Spectrum oszlopok <small>csak Bars módban</small></label>
+            <input type="range" id="simple-bars-count" min="16" max="128" value="56" step="8" aria-label="Spectrum Bars oszlopok száma" />
+            <output id="simple-bars-value" for="simple-bars-count">56</output>
+          </div>
+        </div>
+        <div class="simple-fx-parameters" role="group" aria-label="Kiválasztott Pro effekt finomhangolása">
+          <div class="simple-fx-parameters-head">
+            <strong>✦ FX finomhangolás</strong>
+            <span id="simple-fx-selection" aria-live="polite">Válassz egy effektet Pro módban</span>
+          </div>
+          <button type="button" class="simple-action simple-fx-add" id="simple-fx-add"
+            aria-label="Effekt hozzáadása a BeatScope FX-könyvtárból"
+            title="A teljes 120 effektusos könyvtár megnyitása; legfeljebb három aktív effekt">＋ Effekt hozzáadása</button>
+          <div class="simple-fx-quick-search" role="search" aria-label="Effektek gyors keresése">
+            <label for="simple-fx-query">Gyors FX-keresés</label>
+            <input type="search" id="simple-fx-query" placeholder="Pl. Kaleidoscope, Glow, fx-001…" maxlength="80"
+              autocomplete="off" aria-label="Effekt keresése a 120 effekt között" />
+            <button type="button" id="simple-fx-search" class="simple-action"
+              aria-label="FX találatok megnyitása a könyvtárban" disabled>Keresés ↗</button>
+          </div>
+          <span id="simple-fx-add-status" class="simple-fx-add-status" role="status" aria-live="polite">Válassz effektet a könyvtárból.</span>
+          <label class="simple-fx-picker-field" for="simple-fx-picker">
+            Kijelölt effekt
+            <select id="simple-fx-picker" aria-label="Aktív Pro effekt kiválasztása" disabled>
+              <option value="">Nincs hozzáadott effekt – adj hozzá Pro módban</option>
+            </select>
+          </label>
+          <div class="simple-fx-order" role="group" aria-label="Kijelölt effekt sorrendjének módosítása">
+            <button type="button" id="simple-fx-up" class="simple-action" aria-label="Kijelölt effekt feljebb mozgatása" title="Kijelölt effekt egy hellyel feljebb" disabled>↑ Feljebb</button>
+            <span id="simple-fx-position" aria-live="polite">Nincs effekt</span>
+            <button type="button" id="simple-fx-down" class="simple-action" aria-label="Kijelölt effekt lejjebb mozgatása" title="Kijelölt effekt egy hellyel lejjebb" disabled>↓ Lejjebb</button>
+          </div>
+          <button type="button" id="simple-fx-enabled" class="simple-action simple-fx-enabled"
+            role="switch" aria-checked="false" aria-label="Kijelölt effekt bekapcsolása" disabled
+            title="Csak a kijelölt effektet kapcsolja; a Pro FX-lánc és paraméterei megmaradnak">○ Kijelölt FX: KI</button>
+          <div class="simple-fx-remove" role="group" aria-label="Kijelölt effekt biztonságos eltávolítása">
+            <button type="button" class="simple-action" id="simple-fx-remove" disabled
+              aria-label="Kijelölt effekt eltávolítása, megerősítés szükséges"
+              title="Eltávolítás két kattintással, a Pro FX-lánc natív törlésével">✕ Effekt eltávolítása</button>
+            <button type="button" class="simple-action" id="simple-fx-remove-cancel" hidden>Mégse</button>
+            <span id="simple-fx-remove-note" aria-live="polite">Az eltávolításhoz megerősítés kell.</span>
+          </div>
+          <div class="simple-tuning-field">
+            <label for="simple-fx-wet">FX keverés (Dry/Wet)</label>
+            <input id="simple-fx-wet" type="range" min="0" max="100" value="100" step="1" disabled aria-label="Kiválasztott effekt Dry/Wet keverése" />
+            <output for="simple-fx-wet" id="simple-fx-wet-value">—</output>
+          </div>
+          <div class="simple-tuning-field">
+            <label for="simple-fx-strength">FX erősség</label>
+            <input id="simple-fx-strength" type="range" min="0" max="200" value="100" step="1" disabled aria-label="Kiválasztott effekt erőssége" />
+            <output for="simple-fx-strength" id="simple-fx-strength-value">—</output>
+          </div>
+        </div>
+        <label class="simple-grid-toggle" for="simple-show-grid">
+          <input id="simple-show-grid" type="checkbox" checked />
+          <span>▦ Finom háttérrács</span>
+          <small>A vizualizáció háttérrácsának megjelenítése</small>
+        </label>
+        <div class="simple-transport" id="simple-transport" role="group" aria-label="Simple Mode zenelejátszás">
+          <button type="button" id="simple-play-pause" class="simple-action" aria-label="Zene megnyitása">♫ Zene megnyitása</button>
+          <button type="button" id="simple-stop" class="simple-action" aria-label="Leállítás" disabled>■ Stop</button>
+          <div class="simple-transport-extra" role="group" aria-label="Ugrás és ismétlés">
+            <button type="button" id="simple-previous" class="simple-action" aria-label="Ugrás a zene elejére" title="Vissza a zene elejére" disabled>◀◀ Elejére</button>
+            <button type="button" id="simple-next" class="simple-action" aria-label="Ugrás a zene végére" title="Ugrás a zene végére" disabled>Végére ▶▶</button>
+            <button type="button" id="simple-repeat" class="simple-action" aria-label="Ismétlés bekapcsolása" aria-pressed="false" disabled>↻ Ismétlés</button>
+          </div>
+          <span id="simple-current-time" class="simple-time" aria-label="Eltelt idő">0:00</span>
+          <input type="range" id="simple-seek" min="0" max="1000" step="1" value="0" disabled aria-label="Simple Mode lejátszási pozíció" />
+          <span id="simple-duration" class="simple-time" aria-label="Teljes idő">0:00</span>
+          <div class="simple-volume" role="group" aria-label="Zenefájl hangerő">
+            <button type="button" id="simple-mute" class="simple-action" aria-label="Némítás" aria-pressed="false">◖)) Hang</button>
+            <label for="simple-volume">Hangerő</label>
+            <input type="range" id="simple-volume" min="0" max="100" value="85" step="1" aria-label="Zenefájl hangereje" />
+            <output for="simple-volume" id="simple-volume-value">85%</output>
+          </div>
+        </div>
+        <div class="simple-keyboard-hint" id="simple-keyboard-hint" aria-label="Simple Mode gyorsbillentyűk">
+          <span>⌨ BILLENTYŰK</span>
+          <kbd>Space</kbd> Lejátszás / szünet
+          <kbd>M</kbd> Némítás
+          <kbd>R</kbd> Ismétlés
+          <kbd>S</kbd> Stop
+        </div>
+        <div class="simple-live-summary" role="group" aria-label="Simple Mode élő állapota">
+          <span>FORRÁS <strong id="simple-status-source">Nincs hangforrás</strong></span>
+          <span>ZENEFÁJL <strong id="simple-status-track">Nincs kiválasztott zene</strong></span>
+          <span>VIZUÁL <strong id="simple-status-visual">SPECTRUM / REAL TIME</strong></span>
+        </div>
+      </section>
       <div class="workspace-top">
         <div><div class="eyebrow">AUDIO REACTIVE EXPERIENCE <span>—</span> STUDIO</div><h1>Hangból <em>élmény.</em></h1><p id="subtext">Tölts be egy zenét, vagy használd a mikrofont.</p></div>
         <div class="workspace-actions"><button class="outline-btn fx-launch" id="fx-browser-open" title="120 effekt böngészése">✦ <span>FX könyvtár · 120</span></button><button class="outline-btn" id="save-image" title="Aktuális vizualizáció mentése PNG-ként">⇩ <span>Kép mentése</span></button><button class="outline-btn" id="fullscreen" title="Teljes képernyő (F11)">⛶ <span>Fullscreen</span></button></div>
@@ -109,7 +280,7 @@
         </div>
         <small>WebRTC: helyi, közvetlenebb videóátvitel JPEG-képkockák helyett; kapcsolódási hiba esetén JPEG-re vált vissza. A 60 FPS célérték, nem garancia. Esc: kimenet bezárása.</small>
       </section>
-      <section class="project-toolbar" aria-label="BeatScope projektek kezelése">
+      <section class="project-toolbar" id="project-toolbar" tabindex="-1" aria-label="BeatScope projektek kezelése">
         <div class="project-toolbar-label"><strong>PROJEKT</strong><small id="project-status" aria-live="polite">Helyi munkamenet · automatikus beállításmentés</small></div>
         <div class="project-toolbar-actions">
           <button type="button" id="project-new" title="Új projekt megerősítéssel">+ Új</button>
@@ -305,8 +476,16 @@
         </div>
       </section>
       <section class="fx-drawer" id="fx-drawer" hidden aria-label="Effektkönyvtár">
-        <div class="fx-header"><div><strong>✦ FX LIBRARY</strong><small>120 látvány · 20 shadercsalád</small></div><button type="button" class="fx-close" id="fx-close" aria-label="Effektkönyvtár bezárása">✕</button></div>
+        <div class="fx-header"><div><strong>✦ FX LIBRARY</strong><small>120 látvány · 20 shadercsalád</small></div><div class="fx-header-actions"><button type="button" class="fx-simple-back" id="simple-fx-catalog-back" hidden aria-label="Keresés megszakítása és vissza a Simple módba">← Vissza</button><button type="button" class="fx-close" id="fx-close" aria-label="Effektkönyvtár bezárása">✕</button></div></div>
         <div class="fx-search-row"><input id="fx-search" type="search" placeholder="Effekt keresése…" aria-label="Effektek keresése"/><select id="fx-category" aria-label="Effektkategória"><option value="">Minden kategória</option></select></div>
+        <div class="fx-simple-result-bar" id="simple-fx-result-bar" hidden aria-label="Simple Mode keresési találatok">
+          <span id="simple-fx-result-count" role="status" aria-live="polite">Effektkeresés</span>
+          <button type="button" id="simple-fx-clear" class="fx-simple-clear" disabled
+            aria-label="Keresőszöveg törlése az FX-könyvtárban" title="A szöveges szűrés törlése; az effektek változatlanok maradnak">⌫ Törlés</button>
+          <small id="simple-fx-key-hint" hidden>↓ / ↑: találatok · Home / End: lista eleje / vége · Enter: effekt hozzáadása</small>
+          <button type="button" id="simple-fx-first" disabled
+            aria-label="Első találat hozzáadása a natív effektlánchoz">＋ Első találat</button>
+        </div>
         <div class="fx-toolbar"><button id="fx-favorites" type="button">☆ Kedvencek</button><button id="fx-bypass" type="button" aria-pressed="false">◉ Effektek aktívak</button></div>
         <div id="fx-results" class="fx-results" role="list"></div>
         <div class="fx-stack-heading"><strong>AKTÍV EFFEKTEK</strong><span id="fx-stack-count">0/3</span></div>
@@ -334,6 +513,19 @@
       <div class="inspector-bottom"><span>🔒</span><p>A hangfeldolgozás <b>helyben történik.</b> Nincs feltöltés, nincs fiók.</p></div>
     </aside>
   </div>
+  <section id="pro-command-overlay" class="pro-command-overlay" role="dialog" aria-modal="true" aria-label="Pro VJ parancskereső" hidden>
+    <div class="pro-command-panel">
+      <div class="pro-command-header"><strong>PRO VJ · GYORSKERESŐ</strong><button type="button" id="pro-command-close" aria-label="Parancskereső bezárása">✕</button></div>
+      <label for="pro-command-input">Keress munkaterületet vagy funkciót</label>
+      <div class="pro-command-search-row">
+        <input type="search" id="pro-command-input" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="pro-command-results" autocomplete="off" spellcheck="false" placeholder="BPM, Layer Mixer, zene betöltése, projekt mentése..." />
+        <button type="button" id="pro-command-favorite" aria-pressed="false" title="Kijelölt parancs kedvencekhez adása vagy eltávolítása" disabled>☆ Kedvencekhez</button>
+      </div>
+      <p class="pro-command-note" id="pro-command-note" role="status" aria-live="polite"></p>
+      <div id="pro-command-results" class="pro-command-results" role="listbox" aria-label="Elérhető Pro VJ funkciók"></div>
+      <div class="pro-command-footer">Kedvencek, majd legutóbbi parancsok · ☆ jelölés · ↑ ↓ választás · Enter megnyitás · Esc bezárás</div>
+    </div>
+  </section>
   <input type="file" id="audio-file" accept="audio/*,.mp3,.wav,.ogg,.flac,.m4a,.aac" hidden/>
   <audio id="audio" preload="metadata"></audio>
   <div class="toast-stack" id="toasts" role="status" aria-live="polite"></div>
@@ -347,6 +539,10 @@
   <script src="src/generators-extra.js"></script>
   <script src="src/fx-engine.js"></script>
   <script src="src/live-output.js"></script>
+  <script src="src/studio-mode.js"></script>
   <script src="src/ui.js"></script>
+  <script src="src/simple-controls.js"></script>
+  <script src="src/pro-navigation.js"></script>
+  <script src="src/vj-command-search.js"></script>
 </body>
 </html>
