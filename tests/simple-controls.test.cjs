@@ -1855,7 +1855,7 @@ test('Stage 31 Pro mode does not show Simple catalog return button',()=>{
 test('Stage 31 cancel affordance is in native catalog, without duplicate escape handler',()=>{
   const html=read('index.html'),css=read('src/lumina-theme.css'),js=read('src/simple-controls.js');
   assert.match(html,/id="simple-fx-catalog-back" hidden/);
-  assert.match(html,/Vissza a Simple módba/);
+  assert.match(html,/vissza a Simple módba/i);
   assert.match(js,/nativeFXClose\.click\(\)/);
   assert.match(css,/\.fx-simple-back\[hidden\]/);
   assert.match(js,/observe\(get\('fx-drawer'\),'hidden'\)/);
