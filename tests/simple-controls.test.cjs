@@ -51,7 +51,7 @@ function fixture() {
     'fx-close','fx-browser-open','fx-drawer','fx-search',
     'simple-fx-query','simple-fx-search','fx-results',
     'simple-fx-result-bar','simple-fx-result-count','simple-fx-first',
-    'simple-fx-key-hint'];
+    'simple-fx-key-hint','simple-fx-clear'];
   const nodes = Object.fromEntries(ids.map(id => [id, element(id)]));
   nodes['simple-fx-remove-cancel'].hidden=true;
   nodes['fx-drawer'].hidden=true;
@@ -2147,4 +2147,97 @@ test('Stage 34 keyboard hint and native listeners are wired without duplicate FX
   assert.match(js,/nativeFXSearch\?\.addEventListener\('keydown',onNativeFXSearchKey\)/);
   assert.match(js,/nativeFXResults\?\.removeEventListener\?\.\('keydown',onNativeFXResultKey\)/);
   assert.match(css,/#simple-fx-key-hint\[hidden\]/);
+});
+
+
+test('Stage 35 clear is disabled if no native text filter exists',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-clear'].disabled,true);
+  f.nodes['simple-fx-clear'].click();
+  assert.equal(f.nodes['fx-search'].value,'');
+  assert.equal(f.nodes['fx-drawer'].hidden,false);
+  assert.equal(f.fxRows.length,0);
+  ctrl.disconnect();
+});
+
+test('Stage 35 clear resets native and Simple query, redraws once and returns focus',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  let inputs=0,focus=0;
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  f.nodes['fx-search'].focus=()=>{focus++;};
+  const one=element('native-first');
+  f.nodes['fx-search'].addEventListener('input',()=>{
+    inputs++;
+    f.fxCatalogMatches.splice(0);
+    if(!f.nodes['fx-search'].value)f.fxCatalogMatches.push(one);
+  });
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-query'].value='not-found';
+  f.nodes['simple-fx-query'].emit('input');
+  f.nodes['simple-fx-search'].click();f.observers[0].notify();
+  assert.equal(inputs,1);
+  assert.equal(f.nodes['simple-fx-first'].disabled,true);
+  assert.equal(f.nodes['simple-fx-clear'].disabled,false);
+  const before=inputs;
+  f.nodes['simple-fx-clear'].click();f.observers[0].notify();
+  assert.equal(inputs,before+1,'One native redraw per clear');
+  assert.equal(f.nodes['fx-search'].value,'');
+  assert.equal(f.nodes['simple-fx-query'].value,'');
+  assert.equal(f.nodes['simple-fx-search'].disabled,true);
+  assert.equal(f.nodes['simple-fx-clear'].disabled,true);
+  assert.match(f.nodes['simple-fx-result-count'].textContent,/1 találat/);
+  assert.equal(f.nodes['fx-drawer'].hidden,false);
+  assert.equal(focus,3,'Opening, query search and cleared search focus native search');
+  assert.equal(f.fxRows.length,0);
+  ctrl.disconnect();
+});
+
+test('Stage 35 clearing search preserves existing native FX and its parameters',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  const nativeRow=addFXRow(f,'Glow',34,122,true);nativeRow.nativeNameButton.click();
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();f.observers[0].notify();
+  f.nodes['fx-search'].value='Glow';f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-clear'].disabled,false);
+  f.nodes['simple-fx-clear'].click();f.observers[0].notify();
+  assert.deepEqual(f.fxRows,[nativeRow]);
+  assert.deepEqual(nativeRow.fxSettings,{wet:34,strength:122});
+  assert.equal(f.nodes['simple-fx-picker'].value,'0');
+  assert.equal(f.nodes['fx-drawer'].hidden,false);
+  ctrl.disconnect();
+});
+
+test('Stage 35 clear cannot execute after cancellation or during Pro Mode',()=>{
+  const f=fixture();f.body.dataset.studioMode='simple';
+  let inputs=0;
+  f.nodes['fx-browser-open'].addEventListener('click',()=>{f.nodes['fx-drawer'].hidden=false;});
+  f.nodes['fx-search'].addEventListener('input',()=>{inputs++;});
+  const ctrl=attachSimpleControls(f.doc,f.Observer);
+  f.nodes['simple-fx-add'].click();f.observers[0].notify();
+  f.nodes['fx-search'].value='Hue';f.observers[0].notify();
+  f.body.dataset.studioMode='pro';f.observers[0].notify();
+  assert.equal(f.nodes['simple-fx-clear'].disabled,true);
+  f.nodes['simple-fx-clear'].click();
+  assert.equal(f.nodes['fx-search'].value,'Hue');
+  assert.equal(inputs,0);
+  f.body.dataset.studioMode='simple';f.observers[0].notify();
+  f.nodes['simple-fx-add'].click();f.observers[0].notify();
+  f.nodes['fx-drawer'].hidden=true;f.observers[0].notify();
+  f.nodes['simple-fx-clear'].click();
+  assert.equal(f.nodes['fx-search'].value,'Hue');
+  assert.equal(inputs,0);
+  ctrl.disconnect();
+});
+
+test('Stage 35 button is accessible and delegates only to the original native catalog',()=>{
+  const html=read('index.html'),js=read('src/simple-controls.js'),css=read('src/lumina-theme.css');
+  assert.match(html,/id="simple-fx-clear"/);
+  assert.match(html,/aria-label="Keresőszöveg törlése az FX-könyvtárban"/);
+  assert.match(js,/nativeFXSearch\.dispatchEvent/);
+  assert.match(js,/simpleFXClear\?\.addEventListener\('click',clearSimpleFXSearch\)/);
+  assert.match(css,/#simple-fx-clear:disabled/);
 });

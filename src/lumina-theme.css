@@ -1015,3 +1015,19 @@ body[data-theme="lumina-pulse"] #fx-results .fx-entry-name:focus-visible,
 body[data-theme="lumina-pulse"] #fx-search:focus-visible{
   outline:2px solid #00d3f2;outline-offset:2px;
 }
+
+
+/* Alpha 17 stage 35: clear only the active native FX search text. */
+body[data-theme="lumina-pulse"] #simple-fx-clear{
+  order:1;flex:0 0 auto;background:#183645;color:#c6e9ee;
+  border:1px solid #376d7d;border-radius:4px;
+  padding:7px 9px;font-size:11px;font-weight:650;cursor:pointer;
+}
+body[data-theme="lumina-pulse"] #simple-fx-clear:disabled{
+  opacity:.35;cursor:not-allowed;
+}
+body[data-theme="lumina-pulse"] #simple-fx-clear:focus-visible{
+  outline:2px solid #f2ffff;outline-offset:2px;
+}
+body[data-theme="lumina-pulse"] #simple-fx-result-count{flex:1 1 140px}
+body[data-theme="lumina-pulse"] #simple-fx-first{order:2}

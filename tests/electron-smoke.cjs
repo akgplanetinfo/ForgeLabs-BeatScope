@@ -1581,6 +1581,32 @@ async function run(){
    await new Promise(resolve=>setTimeout(resolve,40));
    const fx34Canceled=$('fx-drawer').hidden
      &&$('simple-fx-key-hint').hidden;
+   // Stage 35: use the original catalog query to clear an unmatched filter.
+   // The native engine must redraw matches and retain the FX chain untouched.
+   $('studio-simple').click();
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const fx35Before=nativeRows().map(row=>row.querySelector('.fx-stack-name')?.textContent);
+   const fx35Query=$('simple-fx-query'),fx35Search=$('simple-fx-search');
+   const fx35Clear=$('simple-fx-clear'),fx35Drawer=$('fx-drawer');
+   fx35Query.value='xyz-no-such-fx-999999';
+   fx35Query.dispatchEvent(new Event('input',{bubbles:true}));
+   fx35Search.click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const fx35Unmatched=!fx35Drawer.hidden
+     &&document.querySelectorAll('#fx-results .fx-entry-name').length===0
+     &&!fx35Clear.disabled;
+   fx35Clear.click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const fx35Cleared=$('fx-search').value===''&&fx35Query.value===''
+     &&fx35Clear.disabled&&fx35Search.disabled
+     &&document.querySelectorAll('#fx-results .fx-entry-name').length===120
+     &&document.activeElement===$('fx-search')&&!fx35Drawer.hidden;
+   const fx35Untouched=nativeRows().length===fx35Before.length
+     &&nativeRows().every((row,i)=>
+       row.querySelector('.fx-stack-name')?.textContent===fx35Before[i]);
+   if(!fx35Drawer.hidden)$('simple-fx-catalog-back').click();
+   await new Promise(resolve=>setTimeout(resolve,45));
+   const fx35Closed=fx35Drawer.hidden&&fx35Clear.disabled;
    $('studio-pro').click();
    $('intensity').value=intensityBefore;
    $('intensity').dispatchEvent(new Event('input',{bubbles:true}));
@@ -1626,7 +1652,8 @@ async function run(){
      fx31Opened,fx31Return,fx31Reopened,fx31Esc,fx31Preserved,
      fx32EmptyBlocked,fx32Ready,fx32Open,fx32Filtered,fx32Added,fx32Restored,
      fx33Count,fx33Added,fx33Restored,fx33NoResults,fx33Canceled,
-     fx34Hint,fx34First,fx34Second,fx34Up,fx34Returns,fx34NoAdd,fx34Canceled};
+     fx34Hint,fx34First,fx34Second,fx34Up,fx34Returns,fx34NoAdd,fx34Canceled,
+     fx35Unmatched,fx35Cleared,fx35Untouched,fx35Closed};
  })()`);
  for(const [name,passed] of Object.entries(alpha17UI))if(!passed)fail('Alpha 17 workspace '+name+' failed');
  details.push('ALPHA 17 UI: '+JSON.stringify(alpha17UI));

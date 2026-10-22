@@ -342,6 +342,7 @@
     const simpleFXResultCount=get('simple-fx-result-count');
     const simpleFXKeyHint=get('simple-fx-key-hint');
     const simpleFXFirst=get('simple-fx-first');
+    const simpleFXClear=get('simple-fx-clear');
     let pendingSimpleFXAdd=null;
     let fxPickerSignature=null;
     function fxRows(){
@@ -432,9 +433,11 @@
       if(simpleFXResultBar)simpleFXResultBar.hidden=!active;
       if(!active){
         if(simpleFXFirst)simpleFXFirst.disabled=true;
+        if(simpleFXClear)simpleFXClear.disabled=true;
         if(simpleFXKeyHint)simpleFXKeyHint.hidden=true;
         return;
       }
+      if(simpleFXClear)simpleFXClear.disabled=!String(nativeFXSearch?.value||'').trim();
       const matches=nativeFXMatches(),count=matches.length;
       if(simpleFXKeyHint)simpleFXKeyHint.hidden=count===0;
       const canAdd=count>0&&fxRows().length<3&&Boolean(matches[0])
@@ -453,6 +456,22 @@
       native.click(); // BeatScope addFX(), unchanged persistence and selection
     }
     simpleFXFirst?.addEventListener('click',addFirstNativeFXResult);
+    // Stage 35: clear only the text filter through the original FX search
+    // input listener. Categories, favorites, FX chain and Pro state are untouched.
+    function clearSimpleFXSearch(){
+      if(simpleFXClear?.disabled||!pendingSimpleFXAdd
+        ||doc.body?.dataset?.studioMode!=='simple'
+        ||get('fx-drawer')?.hidden!==false||!nativeFXSearch)return;
+      nativeFXSearch.value='';
+      if(simpleFXQuery)simpleFXQuery.value='';
+      const NativeEvent=doc.defaultView?.Event;
+      if(NativeEvent)nativeFXSearch.dispatchEvent(
+        new NativeEvent('input',{bubbles:true})); // original drawFXCatalog()
+      syncFXQuickSearch();
+      syncFXCatalogResults();
+      nativeFXSearch.focus?.();
+    }
+    simpleFXClear?.addEventListener('click',clearSimpleFXSearch);
     // Stage 31: keep a Simple catalog session scoped to the native FX drawer.
     // The original window Escape and native close already hide that drawer.
     // Observe its hidden attribute instead of installing a second Escape handler.
@@ -809,6 +828,7 @@
       simpleFXQuery?.removeEventListener?.('keydown',onFXSearchKey);
       simpleFXSearch?.removeEventListener?.('click',openSimpleFXSearch);
       simpleFXFirst?.removeEventListener?.('click',addFirstNativeFXResult);
+      simpleFXClear?.removeEventListener?.('click',clearSimpleFXSearch);
       nativeFXSearch?.removeEventListener?.('keydown',onNativeFXSearchKey);
       nativeFXResults?.removeEventListener?.('keydown',onNativeFXResultKey);
       for(const [,nativeId] of VISUAL_TUNING)get(nativeId)?.removeEventListener?.('input',syncVisualTuning);
