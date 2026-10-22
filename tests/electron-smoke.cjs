@@ -601,6 +601,32 @@ async function run(){
   if(displays.length===1&&output.isFullScreen())fail('Output hijacked primary monitor in full-screen mode');
  }
 
+ // Output health travels only from its own renderer; preview cannot spoof program.
+ const firstHealth=await win.webContents.executeJavaScript("window.beatAPI.outputState()");
+ const healthRender=await output.webContents.executeJavaScript("({health:window.__beatOutputStats().signalHealth.status,hidden:document.getElementById('signal-loss-screen').hidden,monitor:typeof BeatOutputHealth.createMonitor})");
+ if(firstHealth.health?.output!=='live'||firstHealth.health?.preview!=='live'
+   ||healthRender.health!=='live'||!healthRender.hidden||healthRender.monitor!=='function')
+   fail('Actual output signal health was not live: '+JSON.stringify({firstHealth,healthRender}));
+ await preview.webContents.executeJavaScript("window.outputBridge.sendHealth('output','lost')");
+ await new Promise(resolve=>setTimeout(resolve,120));
+ if((await win.webContents.executeJavaScript("window.beatAPI.outputState()")).health.output!=='live')
+   fail('Preview window spoofed the program output health state');
+ await output.webContents.executeJavaScript("window.outputBridge.sendHealth('output','lost')");
+ await new Promise(resolve=>setTimeout(resolve,160));
+ const signalLost=await win.webContents.executeJavaScript(
+   "(async()=>({health:await window.beatAPI.outputState(),message:document.getElementById('output-status').textContent}))()");
+ if(signalLost.health.health.output!=='lost'
+   ||!signalLost.message.includes('VJ JEL MEGSZAKADT'))
+   fail('Controller did not show interrupted output signal: '+JSON.stringify(signalLost));
+ await output.webContents.executeJavaScript("window.outputBridge.sendHealth('output','live')");
+ await new Promise(resolve=>setTimeout(resolve,160));
+ const signalRestored=await win.webContents.executeJavaScript(
+   "(async()=>({health:await window.beatAPI.outputState(),message:document.getElementById('output-status').textContent}))()");
+ if(signalRestored.health.health.output!=='live'
+   ||signalRestored.message.includes('VJ JEL MEGSZAKADT'))
+   fail('Controller did not restore live signal status: '+JSON.stringify(signalRestored));
+ details.push('OUTPUT SIGNAL MONITOR: actual frames live, spoof rejected, disconnect/recover status reported');
+
  // v0.4.1: only the public VJ output is blacked out in JPEG mode.
  const startBlack=await win.webContents.executeJavaScript("window.beatAPI.outputState()");
  if(startBlack.blackout!==false)fail('VJ BLACKOUT was armed on startup');

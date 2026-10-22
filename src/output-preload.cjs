@@ -2,6 +2,7 @@
 const {contextBridge,ipcRenderer}=require('electron');
 contextBridge.exposeInMainWorld('outputBridge',Object.freeze({
  sendStreamSignal(kind,payload){ipcRenderer.send('beatscope:stream-signal',kind,payload);},
+ sendHealth(kind,status){ipcRenderer.send('beatscope:output-health',kind,status);},
  onStreamSignal(callback){
    if(typeof callback!=='function')return ()=>{};
    const listener=(_event,message)=>callback(message);

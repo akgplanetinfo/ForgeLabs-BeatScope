@@ -18,6 +18,7 @@ let previewWindow=null,outputWindow=null;
 let selectedDisplayId=null,lastFrame=null,lastFrameSent=0,streamOwner=null;
 // Panic blackout is session-only; never save it to project preferences.
 let outputBlackout=false;
+const outputHealth={preview:'off',output:'off'};
 const signalDiagnostics={seen:0,invalid:0,missingView:0,controllerForwarded:0,viewForwarded:0,rejected:0};
 const preferencesPath = () => path.join(app.getPath('userData'), 'beatscope-preferences.json');
 function validatePrefs(value) {
@@ -84,6 +85,7 @@ function status(){
  return {preview:!!previewWindow&&!previewWindow.isDestroyed(),
          output:!!outputWindow&&!outputWindow.isDestroyed(),
          blackout:outputBlackout,
+         health:{...outputHealth},
          displayId:selectedDisplayId,
          displays:listDisplays(),signalDiagnostics:{...signalDiagnostics}};
 }
@@ -116,6 +118,7 @@ function createView(kind,displayId){
      contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:true,backgroundThrottling:false}
  });
  if(kind==='preview')previewWindow=view;else{outputWindow=view;selectedDisplayId=chosen.id;}
+ outputHealth[kind]='waiting';
  view.webContents.on('page-title-updated',event=>event.preventDefault());
  view.webContents.setWindowOpenHandler(()=>({action:'deny'}));
  view.webContents.on('will-navigate',e=>e.preventDefault());
@@ -125,6 +128,7 @@ function createView(kind,displayId){
  view.on('closed',()=>{
    if(kind==='preview')previewWindow=null;
    else{outputWindow=null;selectedDisplayId=null;}
+   outputHealth[kind]='off';
    if(!previewWindow&&!outputWindow)streamOwner=null;
    announceOutputStatus();
  });
@@ -223,6 +227,17 @@ app.whenReady().then(()=>{
     if(!trustedController(event)||!['preview','output'].includes(kind))
       throw new Error('Érvénytelen kimeneti művelet.');
     closeView(kind);return status();
+  });
+  // Receiver health reports can only come from their own sandboxed output view.
+  // They never change BLACKOUT or preferences and cannot control other windows.
+  ipcMain.on('beatscope:output-health',(event,kind,health)=>{
+    if(!['preview','output'].includes(kind)
+      ||!['waiting','live','lost'].includes(health))return;
+    const view=kind==='preview'?previewWindow:outputWindow;
+    if(!view||view.isDestroyed()||event.sender!==view.webContents)return;
+    if(outputHealth[kind]===health)return;
+    outputHealth[kind]=health;
+    announceOutputStatus();
   });
   // Relay SDP/ICE messages only between this app's controller and its own isolated output views.
   // Never expose arbitrary IPC destinations or accept network URLs from untrusted renderers.

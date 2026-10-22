@@ -14,6 +14,18 @@
  window.outputBridge?.onBlackout(enabled=>applyBlackout(enabled));
  const canvas=document.getElementById('screen'),ctx=canvas.getContext('2d',{alpha:false});
  const video=document.getElementById('live-video');
+ const lossOverlay=document.getElementById('signal-loss-screen');
+ const health=window.BeatOutputHealth.createMonitor(performance.now());
+ let lastReportedHealth=null;
+ function reportHealth(status){
+  if(lossOverlay)lossOverlay.hidden=status!=='lost';
+  if(lastReportedHealth===status)return;
+  lastReportedHealth=status;
+  window.outputBridge?.sendHealth(kind,status);
+ }
+ function frameReceived(transport){
+  reportHealth(health.frame(performance.now(),transport).status);
+ }
  let accepted=0,painted=0,busy=false,nextFrame=null,sourceWidth=0,sourceHeight=0,decodeMs=0,lastPaintedAt=0;
  let mode='jpeg',pc=null,pendingCandidates=[],frameWatch=0,videoTimeout=null,offers=0,answers=0,lastError='';
  const signal=payload=>window.outputBridge?.sendStreamSignal(kind,payload);
@@ -28,6 +40,7 @@
   const w=image.width*scale,h=image.height*scale;
   ctx.drawImage(image,(canvas.width-w)/2,(canvas.height-h)/2,w,h);
   painted++;lastPaintedAt=performance.now();
+  frameReceived('jpeg');
   document.body.classList.add('streaming');
  }
  async function consume(){
@@ -45,6 +58,7 @@
  }
  function stopLive(){
   mode='jpeg';frameWatch++;
+  health.stopRtc();
   if(videoTimeout!==null){clearTimeout(videoTimeout);videoTimeout=null;}
   if(pc){pc.ontrack=null;pc.onicecandidate=null;pc.onconnectionstatechange=null;pc.close();pc=null;}
   video.pause();video.srcObject=null;video.hidden=true;canvas.hidden=false;
@@ -57,11 +71,12 @@
    accepted++;painted++;
    if(videoTimeout!==null){clearTimeout(videoTimeout);videoTimeout=null;}
    sourceWidth=metadata.width||video.videoWidth;sourceHeight=metadata.height||video.videoHeight;
-   lastPaintedAt=performance.now();document.body.classList.add('streaming');
+   lastPaintedAt=performance.now();frameReceived('webrtc');
+   document.body.classList.add('streaming');
    if(typeof video.requestVideoFrameCallback==='function')video.requestVideoFrameCallback(next);
   };
   if(typeof video.requestVideoFrameCallback==='function')video.requestVideoFrameCallback(next);
-  else video.addEventListener('timeupdate',()=>{if(token===frameWatch&&mode==='webrtc'){accepted++;painted++;sourceWidth=video.videoWidth;sourceHeight=video.videoHeight;lastPaintedAt=performance.now();}},{once:false});
+  else video.addEventListener('timeupdate',()=>{if(token===frameWatch&&mode==='webrtc'){accepted++;painted++;sourceWidth=video.videoWidth;sourceHeight=video.videoHeight;lastPaintedAt=performance.now();frameReceived('webrtc');}},{once:false});
  }
  async function acceptOffer(message){
   offers++;
@@ -111,10 +126,22 @@
   if(mode==='webrtc')return;
   accepted++;nextFrame=data;consume();
  });
+ function checkSignal(){
+  const result=health.poll(performance.now(),mode);
+  reportHealth(result.status);
+  // After live WebRTC stops producing decoded pictures, request the already
+  // supported JPEG fallback, once per stall. Preserve the BLACKOUT overlay.
+  if(result.fallback&&mode==='webrtc'){
+   lastError='WebRTC jelkimaradás: JPEG tartalékra váltás';
+   stopLive();signal({type:'failed'});
+  }
+ }
+ const watchdog=setInterval(checkSignal,1000);
  window.addEventListener('resize',fit);
- window.addEventListener('beforeunload',stopLive);
+ window.addEventListener('beforeunload',()=>{clearInterval(watchdog);stopLive();});
  fit();
- window.__beatOutputStats=()=>({accepted,painted,width:canvas.width,height:canvas.height,sourceWidth,sourceHeight,decodeMs,lastPaintedAt,mode,blackout,offers,answers,lastError,rtcState:pc?.connectionState||null,iceState:pc?.iceConnectionState||null});
+ reportHealth('waiting');
+ window.__beatOutputStats=()=>({accepted,painted,width:canvas.width,height:canvas.height,sourceWidth,sourceHeight,decodeMs,lastPaintedAt,mode,blackout,signalHealth:health.snapshot(),offers,answers,lastError,rtcState:pc?.connectionState||null,iceState:pc?.iceConnectionState||null});
  // The controller must not send an offer before this isolated renderer is listening.
  if(['preview','output'].includes(kind))signal({type:'ready'});
 })();

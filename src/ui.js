@@ -87,7 +87,9 @@
     $('open-output').disabled=!!outputState.output||!select.options.length;
     $('output-status').textContent=(outputState.preview?'Előnézet aktív':'Előnézet kikapcsolva')+
       ' · '+(outputState.output?'VJ-kimenet aktív':'VJ-kimenet kikapcsolva')+
-      (armed?' · BLACKOUT '+(outputState.output?'AKTÍV':'ELŐKÉSZÍTVE'):'');
+      (armed?' · BLACKOUT '+(outputState.output?'AKTÍV':'ELŐKÉSZÍTVE'):'')+
+      (outputState.health?.output==='lost'?' · VJ JEL MEGSZAKADT':
+       outputState.health?.preview==='lost'?' · ELŐNÉZET JEL MEGSZAKADT':'');
     liveOutput.sync(outputState,settings.outputTransport==='webrtc');
   }
   async function refreshOutputs(){
