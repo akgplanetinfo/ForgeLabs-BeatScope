@@ -1,0 +1,44 @@
+{
+  "name": "lumina-pulse-design-preview",
+  "productName": "Lumina Pulse",
+  "version": "2.0.0-preview.1",
+  "private": true,
+  "description": "Lumina Pulse 2.0 Design Preview (no functional AI, audio, or Core integration)",
+  "author": "ForgeLabs",
+  "license": "UNLICENSED",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "check": "node --check src/main.cjs && node --check src/preload.cjs && node --check src/app.js && node --check src/modules.js && npm test",
+    "dist:win": "electron-builder --win portable --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "team.forgelabs.lumina.designpreview",
+    "productName": "Lumina Pulse 2.0 – Design Preview",
+    "asar": true,
+    "files": [
+      "index.html",
+      "src/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Lumina-Pulse-2.0-Design-Preview-${arch}.${ext}"
+    }
+  }
+}

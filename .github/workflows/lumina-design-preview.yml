@@ -1,0 +1,70 @@
+name: Lumina Pulse 2.0 - Design Preview Windows EXE
+
+on:
+  push:
+    branches:
+      - feature/lumina-2-design-preview
+    paths:
+      - 'design-preview/**'
+      - '.github/workflows/lumina-design-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  design-preview-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: design-preview
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - name: Checkout design-preview branch
+        uses: actions/checkout@v4
+
+      - name: Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install desktop tooling
+        run: npm install --no-audit --no-fund
+
+      - name: Check SRS and JavaScript syntax
+        run: npm run check
+
+      - name: Electron native Windows navigation test
+        shell: pwsh
+        run: |
+          $electronExe = node -p "require('electron')"
+          & $electronExe "tests/electron-smoke.cjs"
+          if ($LASTEXITCODE -ne 0) { throw "Electron navigation / preview smoke test failed." }
+
+      - name: Build independent portable Windows EXE
+        run: npm run dist:win
+
+      - name: Verify exact EXE and checksum
+        shell: pwsh
+        run: |
+          $file = "dist/Lumina-Pulse-2.0-Design-Preview-x64.exe"
+          if (-not (Test-Path $file)) { throw "Required EXE not found: $file" }
+          $exe = Get-Item $file
+          if ($exe.Length -lt 10000000) { throw "EXE too small; likely not a real Electron application" }
+          Get-FileHash -Algorithm SHA256 -Path $file | Format-List
+          Write-Host "WINDOWS DESIGN PREVIEW VERIFIED: $($exe.Length) bytes"
+
+      - name: Save Windows EXE and test evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lumina-Pulse-2.0-Design-Preview-x64
+          path: |
+            design-preview/dist/Lumina-Pulse-2.0-Design-Preview-x64.exe
+            design-preview/test-results.json
+            design-preview/preview-screenshot.png
+            design-preview/README.md
+            design-preview/TEST_REPORT.md
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; img-src 'self' data:; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'none'; object-src 'none';">
+<title>Lumina Pulse 2.0 · Design Preview</title>
+<link rel="stylesheet" href="src/app.css">
+</head>
+<body>
+<div class="ambient" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<div id="app" class="app">
+  <header class="topbar">
+    <div class="brand"><span class="brand-glyph">⌁</span><div class="brand-name"><strong>LUMINA <em>PULSE</em></strong><small>FORGELABS / BEATSCOPE EDITION</small></div></div>
+    <span class="top-label">THE FUTURE OF VISUALS <span class="live-dot"></span></span>
+    <div class="top-actions">
+      <span class="version">2.0 · DESIGN PREVIEW</span>
+      <div class="mode-switch" role="group" aria-label="Üzemmód">
+        <button id="simple-mode" type="button">SIMPLE</button><button id="pro-mode" class="active" type="button">PRO VJ</button>
+      </div>
+      <button id="fullscreen" class="icon-button" title="Teljes képernyő" aria-label="Teljes képernyő">⛶</button>
+    </div>
+  </header>
+  <div class="main-shell">
+    <aside class="nav-rail" aria-label="Fő navigáció">
+      <div class="nav-kicker">WORKSPACE / 01</div>
+      <nav id="main-nav" aria-label="Modulok"></nav>
+      <div class="rail-foot"><span class="foot-dot"></span><span>OFFLINE DESIGN DEMO</span><small>BUILD 2.0.0-DP</small></div>
+    </aside>
+    <main id="main" class="main">
+      <div class="workspace-header">
+        <div><div class="eyebrow" id="module-tag">OVERVIEW / 01</div><h1 id="module-title">DASHBOARD <span class="slash">//</span></h1><p id="module-description"></p></div>
+        <div class="workspace-buttons"><button id="go-back" class="ghost">← VISSZA</button><button data-action="Új projekt" class="primary">+ ÚJ PROJEKT</button></div>
+      </div>
+      <div class="notice"><span class="notice-flag">DESIGN PREVIEW</span><span>Ez a kiadás a végleges felület terve. <strong>Audio, AI, Core és médiafeldolgozás nem aktív.</strong></span></div>
+      <div class="workspace-body">
+        <section class="stage-card" aria-label="Animált vizualizációs előnézet">
+          <div class="stage-head"><span>◉ LIVE VISUAL PREVIEW <span class="demo-tag">ANIMATED DEMO</span></span><div class="stage-stats"><span id="demo-fps">~60 FPS DEMO</span><span>16:9</span></div></div>
+          <div class="canvas-wrap"><canvas id="visual-canvas" aria-label="Animált demó vizualizáció"></canvas><div class="canvas-overlay"><span>LP / 020</span><span>GENERATION / DEMO</span></div><div class="stage-centered"><strong>LUMINA <span>PULSE</span></strong><small>FEEL THE FREQUENCY</small></div><div class="timeline"><span>◉ PREVIEW ENGINE</span><div class="barline"><i></i></div><span>02:48</span></div></div>
+          <div class="stage-transport"><button data-action="Vizuál lejátszása">▶ PREVIEW</button><button data-action="Vizuál megállítása">■ STOP</button><button data-action="Vizuál mentése">↓ EXPORT</button><span class="transport-separator"></span><span class="cyan">●</span><span>DEMO SIGNAL</span><span class="spacer"></span><span>PROTOTYPE OUTPUT</span></div>
+        </section>
+        <section id="module-content" class="module-content" aria-live="polite"></section>
+      </div>
+    </main>
+    <aside class="inspector" aria-label="Tulajdonságok">
+      <div class="inspector-top"><span>PROPERTIES</span><span class="cyan">◉</span></div>
+      <div class="inspect-head"><div class="inspect-label">SELECTED MODULE</div><h2 id="inspect-name">Dashboard</h2><p id="inspect-desc"></p></div>
+      <div class="inspect-section"><div class="inspect-label">LIVE PARAMETERS <span class="muted">/ DEMO</span></div>
+        <label class="control-label">INTENSITY <output id="intensity-value">72%</output><input id="intensity" type="range" min="0" max="100" value="72"></label>
+        <label class="control-label">MOTION SPEED <output id="speed-value">64%</output><input id="speed" type="range" min="0" max="100" value="64"></label>
+        <label class="control-label">COLOR SHIFT <output id="hue-value">28%</output><input id="hue" type="range" min="0" max="100" value="28"></label>
+      </div>
+      <div class="inspect-section"><div class="inspect-label">COLOR PROFILE</div><div class="swatches"><button class="swatch selected" style="--sw:#00c8e8" data-color="#00c8e8" title="Electric cyan"></button><button class="swatch" style="--sw:#d761ff" data-color="#d761ff" title="Violet"></button><button class="swatch" style="--sw:#67f5aa" data-color="#67f5aa" title="Mint"></button><button class="swatch" style="--sw:#ffffff" data-color="#ffffff" title="White"></button></div></div>
+      <div class="inspect-section"><div class="inspect-label">AUDIO ENGINE STATUS</div><div class="status-row"><span>INPUT</span><span class="muted">DEMO / OFFLINE</span></div><div class="status-row"><span>BEAT DETECTION</span><span class="muted">NOT CONNECTED</span></div><div class="status-row"><span>BPM</span><span>120 <small class="muted">SIMULATED</small></span></div></div>
+      <button data-action="Részletes tulajdonságok" class="outline-btn">OPEN ADVANCED SETTINGS ↗</button>
+      <div class="inspect-note">DESIGN PREVIEW ONLY<br>Nem végleges, működő audio- vagy AI-alkalmazás.</div>
+    </aside>
+  </div>
+  <footer class="bottom">
+    <div class="deck-label">LUMINA / PERFORMANCE DECK <small>SIMULATED</small></div>
+    <div class="decks"><button class="deck on" data-action="Scene 01"><b>01</b><span>NEON TUNNEL</span><small>DEMO</small></button><button class="deck" data-action="Scene 02"><b>02</b><span>PLASMA FLOW</span><small>DEMO</small></button><button class="deck" data-action="Scene 03"><b>03</b><span>PULSE RINGS</span><small>DEMO</small></button><button class="deck" data-action="Scene 04"><b>04</b><span>STARFIELD</span><small>DEMO</small></button><button class="deck" data-action="Scene 05"><b>05</b><span>HEX MATRIX</span><small>DEMO</small></button></div>
+    <div class="bottom-status"><span class="signal"></span><span>CORE: DISCONNECTED</span><span>DESIGN / 2.0</span></div>
+  </footer>
+</div>
+<div id="toast" role="status" aria-live="polite" hidden><span id="toast-text"></span><button id="toast-close" aria-label="Üzenet bezárása">✕</button></div>
+<script src="src/modules.js"></script>
+<script src="src/app.js"></script>
+</body>
+</html>
