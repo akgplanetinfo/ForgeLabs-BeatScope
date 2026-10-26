@@ -39,8 +39,7 @@ jobs:
       - name: Electron native Windows navigation test
         shell: pwsh
         run: |
-          $electronExe = node -p "require('electron')"
-          & $electronExe "tests/electron-smoke.cjs"
+          node -e "const cp=require('node:child_process');const electron=require('electron');const run=cp.spawnSync(electron,['tests/electron-smoke.cjs'],{encoding:'utf8',timeout:120000});process.stdout.write(run.stdout||'');process.stderr.write(run.stderr||'');process.exit(run.status===0?0:1)"
           if ($LASTEXITCODE -ne 0) { throw "Electron navigation / preview smoke test failed." }
 
       - name: Build independent portable Windows EXE
